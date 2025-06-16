@@ -1,0 +1,18 @@
+@startuml certificate-entitys
+entity Student {
+  studentId PK
+  pk_passkey
+  leaf_commit
+  year
+}
+
+entity NFT_Year {
+  tokenId PK
+  year
+  merkleRoot
+  vkHash
+  schemaHash
+}
+
+Student }o--|| NFT_Year : belongs_to
+@enduml 

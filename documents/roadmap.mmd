@@ -1,0 +1,30 @@
+gantt
+    title zk-CertFramework プロトタイプ開発ロードマップ (完成目標: 2025年10月)
+    dateFormat  YYYY-MM-DD
+    axisFormat  %m/%d
+
+    section 準備
+    環境構築                  :done,   prep, 2025-06-18, 4d
+    Solidity/Hardhat入門      :active, sol,  after prep, 7d
+
+    section 基盤チェーン
+    zkEVMテストネット操作      :chain, 2025-06-29, 7d
+    Ledger署名フロー習得       :ledger, after chain, 7d
+    Executive Console試作      :execUI, after ledger, 10d
+
+    section データ生成
+    Poseidon/Merkle実装        :merkle, 2025-07-23, 7d
+    Registrar Console試作      :regUI, after merkle, 10d
+
+    section ZKP
+    Halo2基礎+WASMビルド       :halo, 2025-08-09, 8d
+    Scholar Prover v0          :prover, after halo, 10d
+
+    section 検証
+    pdf.js添付抽出             :pdf, 2025-08-29, 7d
+    Verifier UI v0             :verif, after pdf, 10d
+
+    section 統合・品質
+    E2E自動テスト              :test, 2025-09-15, 8d
+    監査&デモ準備              :audit, after test, 14d
+    バッファ                    :buffer, 2025-10-03, 2025-10-10

@@ -42,4 +42,4 @@ UI --> Student : download
 
 ## 6. エラーコード  
 3001 SIGNATURE_ABORT  
-3002 PROOF_FAIL  
+3002 PROOF_FAIL

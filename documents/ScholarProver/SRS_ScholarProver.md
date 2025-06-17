@@ -3,10 +3,10 @@
 **zk‑CertFramework / 証明者システム** 最終更新: 2025-06-16
 
 ## 1. 目的  
-Scholar Prover は学生がブラウザのみで \
-1) Passkey（WebAuthn ES‑256）署名を生成し、\
-2) Halo 2 WASM により ZKP を作成、\
-3) 生成した `proof.zkp` を PDF/A‑3 に埋め込む。\
+Scholar Prover は学生がブラウザのみで
+1) Passkey（WebAuthn ES‑256）署名を生成し、
+2) Halo 2 WASM により ZKP を作成、
+3) 生成した `proof.zkp` を PDF/A‑3 に埋め込む。
 バックエンド不要で本人が何度でも一時証明を作れる環境を提供する。
 
 ## 2. スコープ  

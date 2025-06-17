@@ -1,128 +1,204 @@
 # 基本設計書 (Basic Design) — Registrar Console
-**zk‑CertFramework / 事務管理システム** 最終更新: 2025-06-16
+**zk‑CertFramework / 事務管理システム** 最終更新: 2025-06-16 Version 2.0
 
 ---
 
 ## 1. システム概要
 
 ### 1.1 目的
-教務事務担当者が学生の公開鍵を管理し、卒業証明書PDFを生成・配布するためのWebベース管理システム。
+教務事務担当者が学生の公開鍵を管理し、卒業証明書PDFを生成・配布するためのElectronデスクトップアプリケーション。完全バックエンドレス設計により、データベースやサーバー不要でローカルJSONファイルのみで動作。
 
 ### 1.2 主要機能
-- 学生公開鍵の一括登録・管理
-- 証明書テンプレート管理
-- PDF証明書生成
-- 学生へのPDF配布
-- Merkle Tree構築・更新
+- 学生公開鍵の一括登録・管理（JSONファイル）
+- 証明書テンプレート管理（ローカルファイル）
+- PDF/A-3証明書生成（ZKP埋め込み）
+- Poseidon Merkle Tree構築・エクスポート
+- CSV インポート/エクスポート機能
+- 年度別データ管理
 
 ### 1.3 非機能要件
-- 同時ユーザー数: ≤ 10人
-- データ処理能力: 500名/バッチ
-- 応答時間: ≤ 3秒
-- 可用性: 99.9%
+- 同時ユーザー数: ≤ 3人（事務職員のみ）
+- データ処理能力: 500名/バッチ（ローカル処理）
+- 応答時間: ≤ 5秒（PDF生成）
+- 可用性: デスクトップアプリ（オフライン動作）
 
 ---
 
 ## 2. システム構成
 
-### 2.1 アーキテクチャ
+### 2.1 アーキテクチャ（完全バックエンドレス）
 ```
-[Registrar Staff] → [Web Frontend] → [Backend API]
-                                          ↓
-                    [Database] ← [Blockchain Interface]
-                        ↓
-                   [PDF Generator] → [File Storage]
+[Registrar Staff] → [Electron Desktop App]
+                            ↓
+                    [Local JSON Files] ← → [Local File System]
+                            ↓                       ↓
+                    [PDF/A-3 Generator] ← → [Templates/Outputs]
+                            ↓
+                    [Poseidon Merkle Tree] → [Export Files]
+                                                    ↓
+                                            [USB Backup / Distribution]
 ```
 
-### 2.2 技術スタック
+### 2.2 技術スタック（Version 2.0）
 | 層 | 技術 | 目的 |
 |----|------|------|
-| Frontend | Vue.js 3 + Vite | SPA基盤 |
-| Backend | Node.js + Express | API Server |
-| Database | PostgreSQL | データ永続化 |
-| PDF生成 | PDFKit + Node.js | 証明書生成 |
-| Storage | MinIO (S3互換) | PDFファイル保存 |
-| Blockchain | Polygon zkEVM | Merkle Root保存 |
+| Frontend | Vue.js 3 + Vite + Electron | デスクトップアプリUI |
+| データ管理 | JSONファイル + FileSystem API | ローカルデータ永続化 |
+| 認証 | Ledger Nano X + EIP-191 | ハードウェア署名 |
+| PDF生成 | PDFtk + PDF/A-3 | 証明書生成・ZKP埋め込み |
+| Merkle Tree | Poseidon256 + JavaScript | ツリー構築 |
+| Storage | ローカルファイルシステム | データ・PDF保存 |
+| 配布 | GitHub Releases | 署名付きバイナリ |
 
 ---
 
-## 3. データ設計
+## 3. データ設計（JSONファイルベース）
 
-### 3.1 データベーススキーマ
-```sql
--- 学生情報
-CREATE TABLE students (
-    id SERIAL PRIMARY KEY,
-    student_id VARCHAR(20) UNIQUE NOT NULL,  -- 学籍番号
-    name_jp VARCHAR(100) NOT NULL,           -- 日本語氏名
-    name_en VARCHAR(100) NOT NULL,           -- 英語氏名
-    public_key BYTEA NOT NULL,               -- Passkey公開鍵
-    commitment VARCHAR(66) NOT NULL,         -- Poseidon256(pk)
-    department VARCHAR(50) NOT NULL,         -- 学部・学科
-    admission_year INTEGER NOT NULL,         -- 入学年度
-    graduation_year INTEGER,                 -- 卒業年度
-    status VARCHAR(20) DEFAULT 'active',     -- ステータス
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
-);
-
--- 証明書テンプレート
-CREATE TABLE certificate_templates (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,              -- テンプレート名
-    type VARCHAR(20) NOT NULL,               -- 証明書種別
-    template_data JSONB NOT NULL,            -- テンプレート設定
-    is_active BOOLEAN DEFAULT true,
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
-);
-
--- 証明書発行履歴
-CREATE TABLE certificate_issues (
-    id SERIAL PRIMARY KEY,
-    student_id INTEGER REFERENCES students(id),
-    template_id INTEGER REFERENCES certificate_templates(id),
-    pdf_path VARCHAR(255) NOT NULL,          -- PDFファイルパス
-    file_hash VARCHAR(66) NOT NULL,          -- PDFハッシュ値
-    issued_at TIMESTAMP DEFAULT NOW(),
-    issued_by VARCHAR(50) NOT NULL           -- 発行者
-);
-
--- Merkle Tree管理
-CREATE TABLE merkle_trees (
-    id SERIAL PRIMARY KEY,
-    root_hash VARCHAR(66) NOT NULL,          -- Merkle Root
-    tree_data JSONB NOT NULL,                -- Tree構造
-    block_number BIGINT,                     -- ブロック番号
-    tx_hash VARCHAR(66),                     -- トランザクションハッシュ
-    created_at TIMESTAMP DEFAULT NOW()
-);
+### 3.1 ファイル構造
+```
+registrar-console-app/
+├── data/                     # 学生データ
+│   ├── students_2025.json
+│   ├── students_2026.json
+│   └── merkle_tree_2025.json
+├── templates/                # 証明書テンプレート
+│   ├── graduation_template.pdf
+│   └── transcript_template.pdf
+├── certificates/             # 生成された証明書
+│   ├── 2025/
+│   │   ├── student_001.pdf
+│   │   └── student_002.pdf
+│   └── 2026/
+├── exports/                  # エクスポートファイル
+│   ├── public_keys_2025.csv
+│   └── merkle_proof_2025.json
+├── backups/                  # 自動バックアップ
+│   └── backup_20250616.zip
+└── config/
+    └── registrar-config.json # アプリ設定
 ```
 
-### 3.2 API設計
-```typescript
-// REST API Endpoints
-interface RegistrarAPI {
-  // 学生管理
-  GET    /api/students                    // 学生一覧取得
-  POST   /api/students                    // 学生登録
-  PUT    /api/students/:id                // 学生情報更新
-  DELETE /api/students/:id                // 学生削除
-  POST   /api/students/bulk-upload        // CSV一括登録
+### 3.2 学生データスキーマ
+```json
+// data/students_2025.json
+{
+  "version": "2.0",
+  "year": 2025,
+  "lastUpdated": "2025-06-16T10:30:00Z",
+  "totalStudents": 150,
+  "institution": {
+    "name": "○○大学",
+    "department": "工学部",
+    "address": "〒123-4567 東京都..."
+  },
+  "students": [
+    {
+      "id": "2025001",
+      "name_jp": "田中太郎",
+      "name_en": "Taro Tanaka",
+      "kana": "タナカタロウ",
+      "email": "tanaka@example.edu",
+      "department": "工学部",
+      "major": "情報工学科",
+      "publicKey": {
+        "x": "0x1234567890abcdef...",
+        "y": "0xfedcba0987654321...",
+        "format": "secp256r1"
+      },
+      "commitment": "0x789abc...",
+      "enrollmentDate": "2021-04-01",
+      "graduationDate": "2025-03-31",
+      "gpa": 3.75,
+      "status": "graduated",
+      "certificateGenerated": true,
+      "certificatePath": "./certificates/2025/tanaka_taro_certificate.pdf",
+      "merkleIndex": 0,
+      "addedAt": "2024-12-01T09:00:00Z",
+      "updatedAt": "2025-03-15T14:30:00Z"
+    }
+  ]
+}
+```
 
-  // 証明書管理
-  GET    /api/templates                   // テンプレート一覧
-  POST   /api/templates                   // テンプレート作成
-  PUT    /api/templates/:id               // テンプレート更新
-  
-  // PDF生成
-  POST   /api/certificates/generate       // 証明書生成
-  GET    /api/certificates/download/:id   // PDF ダウンロード
-  
-  // Merkle Tree
-  POST   /api/merkle/build                // Merkle Tree構築
-  GET    /api/merkle/latest               // 最新Root取得
-  POST   /api/merkle/deploy               // ブロックチェーンにデプロイ
+### 3.3 Merkle Tree データ
+```json
+// data/merkle_tree_2025.json
+{
+  "version": "2.0",
+  "year": 2025,
+  "totalLeaves": 256,
+  "actualStudents": 150,
+  "treeDepth": 8,
+  "hashFunction": "poseidon256",
+  "root": "0xabcdef1234567890...",
+  "leaves": [
+    {
+      "index": 0,
+      "studentId": "2025001",
+      "publicKeyHash": "0x123abc...",
+      "commitment": "0x456def...",
+      "leaf": "0x789ghi..."
+    }
+  ],
+  "tree": {
+    "level0": ["0x123...", "0x456...", "0x000...", "..."],
+    "level1": ["0xabc...", "0xdef...", "..."],
+    "level7": ["0xabcdef1234567890..."]
+  },
+  "generatedAt": "2025-03-15T10:00:00Z",
+  "exportedTo": "./exports/merkle_proof_2025.json"
+}
+```
+
+### 3.4 アプリケーション設定
+```json
+// config/registrar-config.json
+{
+  "version": "2.0",
+  "appVersion": "1.0.0",
+  "currentYear": 2025,
+  "institution": {
+    "name": "○○大学",
+    "department": "工学部情報工学科",
+    "address": "〒123-4567 東京都渋谷区...",
+    "phone": "03-1234-5678",
+    "email": "registrar@example.edu",
+    "website": "https://example.edu"
+  },
+  "ledger": {
+    "required": true,
+    "signingMethod": "EIP-191",
+    "chainId": 1442,
+    "contractAddress": "0x..."
+  },
+  "certificate": {
+    "templatePath": "./templates/graduation_template.pdf",
+    "outputPath": "./certificates",
+    "format": "PDF/A-3",
+    "embedZKP": true,
+    "digitalSignature": true,
+    "watermark": true
+  },
+  "merkleTree": {
+    "hashFunction": "poseidon256",
+    "treeDepth": 8,
+    "paddingLeaves": 256,
+    "autoRebuild": true,
+    "exportOnUpdate": true
+  },
+  "export": {
+    "csvEncoding": "UTF-8",
+    "includePersonalInfo": false,
+    "timestampFormat": "ISO8601",
+    "autoBackup": true
+  },
+  "ui": {
+    "theme": "light",
+    "language": "ja",
+    "autoSave": true,
+    "backupInterval": 300,
+    "pageSize": 50
+  }
 }
 ```
 
@@ -130,49 +206,51 @@ interface RegistrarAPI {
 
 ## 4. 業務フロー設計
 
-### 4.1 学生登録フロー
+### 4.1 学生登録フロー（CSVインポート）
 1. **CSV準備**: 学務システムから学生データエクスポート
-2. **公開鍵収集**: 学生によるPasskey登録（別途実施）
-3. **データ統合**: 学生情報 + 公開鍵の突合
-4. **一括登録**: Registrar ConsoleでCSVアップロード
-5. **検証**: データ整合性チェック
-6. **コミット確定**: データベース反映
+2. **公開鍵収集**: 学生によるPasskey登録（Scholar Prover）
+3. **データ統合**: 学生情報 + 公開鍵の突合・検証
+4. **CSV インポート**: Registrar ConsoleでCSVファイル読み込み
+5. **データ検証**: 公開鍵形式・重複チェック
+6. **JSON保存**: ローカルJSONファイルに保存
 
-### 4.2 証明書発行フロー
+### 4.2 証明書発行フロー（PDF/A-3生成）
 1. **対象選択**: 卒業生リストから発行対象を選択
 2. **テンプレート選択**: 証明書種別・テンプレート指定
-3. **PDF生成**: 個人情報を埋め込んだPDF作成
-4. **ファイル保存**: 生成したPDFをストレージに保存
-5. **配布通知**: 学生へメール通知（別途システム）
+3. **PDF生成**: 個人情報を埋め込んだPDF/A-3作成
+4. **ZKP埋め込み**: 証明書にZKP証明データ埋め込み
+5. **ローカル保存**: 生成したPDFをローカルフォルダに保存
+6. **USBバックアップ**: 外部ドライブへバックアップ
 
-### 4.3 Merkle Tree更新フロー
-1. **変更検知**: 学生データの追加・更新を検知
-2. **Tree再構築**: 最新データでMerkle Tree構築
-3. **ハッシュ計算**: 各ノードのPoseidon256ハッシュ計算
-4. **Root取得**: 新しいMerkle Root算出
-5. **ブロックチェーン更新**: Executive Consoleに更新要求
-6. **確認**: トランザクション完了まで監視
+### 4.3 Merkle Tree構築フロー
+1. **学生データ読み込み**: JSONファイルから公開鍵取得
+2. **Commitment計算**: Poseidon256(publicKey)算出
+3. **Merkle Tree構築**: 8層・256葉のPoseidon Merkle Tree
+4. **Root計算**: 最新のMerkle Root算出
+5. **エクスポート**: 証明生成用データをJSONエクスポート
+6. **Executive Console連携**: 手動でRoot更新要求
 
 ---
 
 ## 5. セキュリティ設計
 
-### 5.1 認証・認可
-- **RBAC**: 事務職員・管理者の権限分離
-- **セッション管理**: JWT Token + Redis Session Store
-- **MFA**: 重要操作時の二要素認証
-- **監査ログ**: 全操作の詳細ログ記録
+### 5.1 認証・認可（Ledger Nano X）
+- **ハードウェア認証**: Ledger Nano X必須
+- **EIP-191署名**: 重要操作時のデジタル署名
+- **権限分離**: 事務職員・管理者の機能制限
+- **操作ログ**: 全操作の詳細ログ記録（JSON）
 
-### 5.2 データ保護
-- **暗号化**: データベース暗号化 (AES-256)
-- **通信**: TLS 1.3 + Perfect Forward Secrecy
-- **アクセス制御**: IP制限 + VPN必須
-- **バックアップ**: 暗号化バックアップ (Daily)
+### 5.2 データ保護（ローカル暗号化）
+- **ファイル暗号化**: 機密JSONファイルの暗号化
+- **アクセス制御**: OSレベルのファイル権限設定
+- **バックアップ暗号化**: 外部ドライブへの暗号化バックアップ
+- **データ完全性**: ファイルハッシュによる改ざん検証
 
 ### 5.3 データ整合性
 - **公開鍵検証**: secp256r1楕円曲線検証
-- **ハッシュ検証**: SHA3-512 + Poseidon256
-- **デジタル署名**: 管理者による操作署名
+- **ハッシュ検証**: SHA3-256 + Poseidon256
+- **JSON スキーマ**: 厳密なデータ形式検証
+- **バージョン管理**: データ形式のバージョン追跡
 
 ---
 
@@ -181,71 +259,73 @@ interface RegistrarAPI {
 ### 6.1 画面構成
 | 画面名 | 機能 | アクセス権限 |
 |--------|------|-------------|
-| ダッシュボード | システム状況確認 | 全権限 |
-| 学生管理 | 学生情報CRUD | 事務職員以上 |
-| 一括登録 | CSV アップロード | 事務職員以上 |
+| ダッシュボード | 年度別データ状況確認 | 全権限 |
+| 学生管理 | 学生情報CRUD・CSV処理 | 事務職員以上 |
+| CSV インポート | 一括データ登録 | 事務職員以上 |
 | テンプレート管理 | PDF テンプレート編集 | 管理者のみ |
-| 証明書生成 | PDF 作成・配布 | 事務職員以上 |
-| Merkle管理 | Tree構築・デプロイ | 管理者のみ |
-| 設定 | システム設定 | 管理者のみ |
+| 証明書生成 | PDF/A-3 バッチ生成 | 事務職員以上 |
+| Merkle Tree管理 | Tree構築・エクスポート | 管理者のみ |
+| エクスポート | CSV・JSON出力 | 事務職員以上 |
+| 設定 | アプリケーション設定 | 管理者のみ |
 
 ### 6.2 ユーザビリティ
-- **直感的UI**: Vue.js + Element Plus UI Framework
-- **レスポンシブ**: タブレット対応
+- **直感的UI**: Vue.js 3 + Element Plus UI Framework
+- **レスポンシブ**: デスクトップ最適化
 - **国際化**: 日本語・英語切り替え
 - **アクセシビリティ**: WCAG 2.1 AA準拠
+- **キーボードショートカット**: 効率的な操作
 
 ---
 
 ## 7. パフォーマンス設計
 
-### 7.1 処理性能
-- **CSV処理**: 500名/分 (並行処理)
-- **PDF生成**: 10件/秒 (Worker Queue)
-- **Merkle Tree**: 1000名 ≤ 5秒
-- **データベース**: Connection Pool + Query最適化
+### 7.1 処理性能（ローカル処理）
+- **CSV処理**: 500名/分（非同期処理）
+- **PDF生成**: 10件/秒（並列Worker）
+- **Merkle Tree**: 1000名 ≤ 3秒（WASM最適化）
+- **ファイルI/O**: 大容量ファイル対応
 
-### 7.2 スケーラビリティ
-- **水平スケーリング**: Load Balancer + Multi Instance
-- **キャッシュ**: Redis Cache (頻繁なクエリ)
-- **CDN**: 静的ファイル配信最適化
+### 7.2 メモリ最適化
+- **ストリーミング処理**: 大容量CSVの分割処理
+- **メモリプール**: オブジェクト再利用
+- **ガベージコレクション**: 定期的なメモリクリーンアップ
 
 ---
 
 ## 8. エラー処理・監視
 
 ### 8.1 エラーハンドリング
-| エラータイプ | 対応 | 通知 |
+| エラータイプ | 対応 | 記録 |
 |-------------|------|------|
-| 入力検証エラー | フロントエンド表示 | なし |
-| データベースエラー | エラーページ + ログ | システム管理者 |
-| 外部API エラー | リトライ + フォールバック | 運用担当者 |
-| ブロックチェーンエラー | 手動対応待ち | 技術責任者 |
+| ファイル読み込みエラー | ダイアログ表示・再試行 | ローカルログ |
+| JSON パースエラー | データ復旧・バックアップ復元 | 詳細エラーログ |
+| PDF生成エラー | 個別スキップ・レポート生成 | 失敗リスト |
+| Ledger接続エラー | 再接続・手動対応 | セキュリティログ |
 
-### 8.2 監視・アラート
-- **APM**: Application Performance Monitoring
-- **ログ監視**: Centralized Logging (ELK Stack)
-- **メトリクス**: CPU/Memory/Disk/Network
-- **ヘルスチェック**: API エンドポイント監視
+### 8.2 監視・ログ
+- **アプリケーションログ**: 操作履歴・エラー記録
+- **ファイル整合性**: 定期的なハッシュ検証
+- **自動バックアップ**: 設定可能な間隔での自動保存
+- **使用量監視**: ディスク容量・処理時間監視
 
 ---
 
 ## 9. 運用設計
 
-### 9.1 バックアップ戦略
-- **データベース**: 日次フルバックアップ + WAL
-- **ファイル**: PDFファイルの増分バックアップ
-- **設定**: システム設定の定期バックアップ
-- **復旧テスト**: 月次復旧テスト実施
+### 9.1 バックアップ戦略（ローカル）
+- **自動バックアップ**: 日次・週次の自動保存
+- **外部ドライブ**: USBドライブへの暗号化バックアップ
+- **世代管理**: 複数世代のバックアップ保持
+- **復旧テスト**: 月次バックアップ復旧テスト
 
 ### 9.2 メンテナンス
-- **定期メンテナンス**: 月次 (第2土曜日 AM 2:00-4:00)
-- **緊急メンテナンス**: 重大障害時の緊急対応
 - **データクリーンアップ**: 古いログ・一時ファイル削除
-- **バージョンアップ**: 四半期ごとのセキュリティアップデート
+- **アプリ更新**: GitHub Releasesからのダウンロード更新
+- **セキュリティ更新**: 四半期ごとの依存関係更新
+- **年度切り替え**: 新年度データ構造の準備
 
-### 9.3 災害復旧
-- **RTO**: 4時間 (Recovery Time Objective)
-- **RPO**: 1時間 (Recovery Point Objective)
-- **冗長化**: Primary-Secondary DB構成
-- **地理的冗長**: 異なるリージョンでのバックアップ 
+### 9.3 配布・インストール
+- **GitHub Releases**: 署名付きバイナリ配布
+- **署名検証**: Electron Builderによるコード署名
+- **自動更新**: アプリ内更新通知・ダウンロード
+- **ポータブル版**: USB実行可能版の提供 

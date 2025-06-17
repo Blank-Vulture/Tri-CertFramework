@@ -1,30 +1,42 @@
 gantt
-    title zk-CertFramework プロトタイプ開発ロードマップ (完成目標: 2025年10月)
+    title zk-CertFramework 論文提出対応ロードマップ (プロトタイプ: 2025年10月)
     dateFormat  YYYY-MM-DD
     axisFormat  %m/%d
 
-    section 準備
-    環境構築                  :done,   prep, 2025-06-18, 4d
-    Solidity/Hardhat入門      :active, sol,  after prep, 7d
+    section Phase 0: 技術検証・環境構築
+    Halo2/Circom技術選定調査      :crit, research, 2025-06-18, 5d
+    開発環境構築・依存関係整理     :setup, after research, 3d
+    ZKP回路プロトタイプ設計       :circuit_design, after setup, 4d
 
-    section 基盤チェーン
-    zkEVMテストネット操作      :chain, 2025-06-29, 7d
-    Ledger署名フロー習得       :ledger, after chain, 7d
-    Executive Console試作      :execUI, after ledger, 10d
+    section Phase 1: 基盤実装 (コア機能)
+    スマートコントラクト基盤      :contract, 2025-06-30, 7d
+    Poseidon/Merkle Tree実装     :merkle, after contract, 5d
+    zkEVM環境構築・デプロイ      :zkevm, after merkle, 4d
 
-    section データ生成
-    Poseidon/Merkle実装        :merkle, 2025-07-23, 7d
-    Registrar Console試作      :regUI, after merkle, 10d
+    section Phase 2: ZKP回路実装
+    基本ZKP回路実装 (Circom)     :zkp_basic, 2025-07-16, 8d
+    ES-256署名検証回路          :sig_circuit, after zkp_basic, 6d
+    Merkle包含証明回路          :merkle_circuit, after sig_circuit, 5d
+    WASM統合・最適化            :wasm_opt, after merkle_circuit, 4d
 
-    section ZKP
-    Halo2基礎+WASMビルド       :halo, 2025-08-09, 8d
-    Scholar Prover v0          :prover, after halo, 10d
+    section Phase 3: フロントエンド開発
+    React基盤・UI設計           :react_base, 2025-08-08, 6d
+    WebAuthn/Passkey統合        :webauthn, after react_base, 5d
+    PDF処理・埋め込み機能       :pdf_func, after webauthn, 6d
+    ZKP生成UI (Scholar Prover)  :scholar_ui, after pdf_func, 8d
 
-    section 検証
-    pdf.js添付抽出             :pdf, 2025-08-29, 7d
-    Verifier UI v0             :verif, after pdf, 10d
+    section Phase 4: システム統合
+    各コンポーネント統合        :integration, 2025-09-02, 6d
+    Executive Console実装       :executive, after integration, 7d
+    Registrar Console実装       :registrar, after executive, 7d
+    Verifier UI実装            :verifier, after registrar, 8d
 
-    section 統合・品質
-    E2E自動テスト              :test, 2025-09-15, 8d
-    監査&デモ準備              :audit, after test, 14d
-    バッファ                    :buffer, 2025-10-03, 2025-10-10
+    section Phase 5: プロトタイプ完成
+    E2Eテスト・デバッグ         :testing, 2025-09-30, 8d
+    パフォーマンス最適化        :optimization, after testing, 5d
+    ドキュメント・デモ準備      :demo_prep, after optimization, 7d
+    論文用実験データ収集        :experiment, after demo_prep, 10d
+
+    section 継続サポート
+    週次技術相談・問題解決      :support, 2025-06-18, 2025-10-31
+    コードレビュー・品質向上    :review, 2025-06-18, 2025-10-31

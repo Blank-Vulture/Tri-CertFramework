@@ -8,7 +8,7 @@ Verifier UI は企業の採用担当者が学生提出 PDF をブラウザのみ
 | 含む | 含まれない |
 |------|------------|
 | PDF drop & extraction | PDF 電子署名 |
-| Halo2‑WASM Verifier | On‑chainトランザクション送信 |
+| Circom‑SnarkJS Verifier | On‑chainトランザクション送信 |
 | YearNFT 取得 (JSON‑RPC) | NFT ミント |
 
 ## 3. 用語  

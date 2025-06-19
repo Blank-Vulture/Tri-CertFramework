@@ -14,7 +14,7 @@
 | **UI** | TailwindCSS | 3.3+ | レスポンシブデザイン |
 
 ## 2. Circom 回路統合  
-### 2.1 Certificate{Year}.circom 回路構造
+### 2.1 Document{Year}.circom 回路構造
 ```circom
 pragma circom 2.1.4;
 

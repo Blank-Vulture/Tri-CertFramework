@@ -6,7 +6,7 @@
 ## 1. 技術スタック（完全静的サイト）
 | 層 | 技術 | バージョン |
 |----|------|-----------|
-| フロントエンド | Next.js 14 + React 18 | 14.0+ / 18.0+ |
+| フロントエンド | Next.js 15 + React 18 + TypeScript | 15.0+ / 18.0+ / 5.0+ |
 | PDF 解析 | pdf.js + pdf-lib | 4.0+ / 1.17+ |
 | ZKP 検証 | Circom 2.1.4 + SnarkJS 0.7 | Latest |
 | ブロックチェーン | ethers.js v6 + Polygon zkEVM | 6.0+ |

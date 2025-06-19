@@ -6,14 +6,14 @@
 ## 1. 技術スタック（完全バックエンドレス）
 | 層 | 技術 | バージョン |
 |----|------|-----------|
-| デスクトップ | Electron + React 18 | 31.0+ / 18.0+ |
+| デスクトップ | Tauri v2 + React 18 + TypeScript | 2.0+ / 18.0+ / 5.0+ |
 | データ管理 | JSON Files + Node.js fs | Native |
 | 認証 | Ledger Nano X + EIP-191 | @ledgerhq/hw-* |
 | ブロックチェーン | Polygon zkEVM + ethers.js | 6.0+ |
 | ZKP | Circom 2.1.4 + SnarkJS 0.7 | Latest |
 | ハッシュ | SHA3-512 + Poseidon256 | Crypto-js + circomlibjs |
 
-## 2. Electron アプリケーション設計
+## 2. Tauri アプリケーション設計
 
 ### 2.1 年度セット管理（JSONファイル）
 ```typescript
@@ -562,15 +562,15 @@ export const YearlySetManagerComponent: React.FC = () => {
 
 ## 8. ビルド・配布
 
-### 8.1 Electron Builder 設定
+### 8.1 Tauri Builder 設定
 ```json
 {
   "main": "dist/main.js",
   "scripts": {
-    "dev": "electron .",
-    "build": "npm run build:react && npm run build:electron",
+    "dev": "tauri dev",
+    "build": "npm run build:react && npm run build:tauri",
     "build:react": "vite build",
-    "build:electron": "electron-builder"
+    "build:tauri": "tauri build"
   },
   "build": {
     "appId": "edu.university.executive-console",

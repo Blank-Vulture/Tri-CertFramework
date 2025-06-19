@@ -26,7 +26,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Circom](https://img.shields.io/badge/Circom-2.1.4-blue)](https://github.com/iden3/circom)
-[![Electron](https://img.shields.io/badge/Electron-27-47848F?style=flat&logo=electron&logoColor=white)](https://www.electronjs.org/)
+[![Tauri](https://img.shields.io/badge/Tauri-v2-24C8DB?style=flat&logo=tauri&logoColor=white)](https://tauri.app/)
 
 **[🇺🇸 Switch to English](#english)**
 
@@ -48,8 +48,8 @@
 
 ### 🏗️ **4システム・アーキテクチャ**
 - **証明者システム (Scholar Prover PWA)** - 書類所有者向け真正性証明生成インターフェース
-- **責任者システム (Executive Console Electron)** - Ledger保護回路デプロイ
-- **管理者システム (Registrar Console Electron)** - ローカル書類データ管理
+- **責任者システム (Executive Console Tauri)** - Ledger保護回路デプロイ
+- **管理者システム (Registrar Console Tauri)** - ローカル書類データ管理
 - **検証者システム (Verifier UI SSG)** - ドラッグ&ドロップ書類検証
 
 ## 🎯 クイックスタート
@@ -90,7 +90,7 @@ npm run dev
 ```bash
 cd executive-console
 npm install
-npm run electron:dev
+npm run tauri:dev
 # Ledger Nano X接続が必要
 ```
 
@@ -98,7 +98,7 @@ npm run electron:dev
 ```bash
 cd registrar-console
 npm install
-npm run electron:dev
+npm run tauri:dev
 ```
 
 #### ✅ Verifier UI (検証者インターフェース)
@@ -126,7 +126,7 @@ graph TD
     end
     
     subgraph "管理者システム"
-        I[📋 Registrar Console] --> J[👥 学生キー管理]
+        I[📋 Registrar Console] --> J[👥 書類所有者管理]
         J --> K[🌳 Merkle Tree生成]
         K --> L[📄 一括PDF作成]
     end
@@ -225,7 +225,7 @@ cd circuits && npm run test
 cd scholar-prover && npm run test
 
 # Executive Consoleテスト
-cd executive-console && npm run test:electron
+cd executive-console && npm run test:tauri
 
 # Registrar Consoleテスト
 cd registrar-console && npm test
@@ -246,8 +246,8 @@ npm run build:all
 
 # 個別コンポーネントビルド
 npm run build:scholar-prover    # PWAビルド
-npm run build:executive         # Electronパッケージ
-npm run build:registrar         # Electronパッケージ  
+npm run build:executive         # Tauriパッケージ
+npm run build:registrar         # Tauriパッケージ  
 npm run build:verifier          # 静的サイトエクスポート
 ```
 
@@ -283,7 +283,7 @@ A **universal document authenticity verification system adaptable to any type of
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Circom](https://img.shields.io/badge/Circom-2.1.4-blue)](https://github.com/iden3/circom)
-[![Electron](https://img.shields.io/badge/Electron-27-47848F?style=flat&logo=electron&logoColor=white)](https://www.electronjs.org/)
+[![Tauri](https://img.shields.io/badge/Tauri-v2-24C8DB?style=flat&logo=tauri&logoColor=white)](https://tauri.app/)
 
 **[🇯🇵 日本語版に切り替え](#japanese)**
 
@@ -305,8 +305,8 @@ A **universal document authenticity verification system adaptable to any type of
 
 ### 🏗️ **Four-System Architecture**
 - **Prover System (Scholar Prover PWA)** - Document owner authenticity proof generation interface
-- **Responsible Party System (Executive Console Electron)** - Ledger-secured circuit deployment
-- **Administrator System (Registrar Console Electron)** - Local document data management
+- **Responsible Party System (Executive Console Tauri)** - Ledger-secured circuit deployment
+- **Administrator System (Registrar Console Tauri)** - Local document data management
 - **Verifier System (Verifier UI SSG)** - Drag-and-drop document verification
 
 ## 🎯 Quick Start
@@ -347,7 +347,7 @@ npm run dev
 ```bash
 cd executive-console
 npm install
-npm run electron:dev
+npm run tauri:dev
 # Requires Ledger Nano X connected
 ```
 
@@ -355,7 +355,7 @@ npm run electron:dev
 ```bash
 cd registrar-console
 npm install
-npm run electron:dev
+npm run tauri:dev
 ```
 
 #### ✅ Verifier UI (Verifier Interface)
@@ -482,7 +482,7 @@ cd circuits && npm run test
 cd scholar-prover && npm run test
 
 # Responsible Party System testing
-cd executive-console && npm run test:electron
+cd executive-console && npm run test:tauri
 
 # Administrator System testing
 cd registrar-console && npm test
@@ -503,15 +503,15 @@ npm run build:all
 
 # Build individual systems
 npm run build:scholar-prover    # PWA build
-npm run build:executive         # Electron package
-npm run build:registrar         # Electron package  
+npm run build:executive         # Tauri package
+npm run build:registrar         # Tauri package  
 npm run build:verifier          # Static site export
 ```
 
 ### Deployment Targets
 - **Prover System**: Deploy PWA to any static hosting (Vercel, Netlify, GitHub Pages)
-- **Responsible Party System**: Distribute as Electron executable (.dmg, .exe, .AppImage)
-- **Administrator System**: Distribute as Electron executable
+- **Responsible Party System**: Distribute as Tauri executable (.dmg, .exe, .AppImage)
+- **Administrator System**: Distribute as Tauri executable
 - **Verifier System**: Deploy static site to CDN/GitHub Pages
 
 ## 📚 Academic Usage
@@ -533,6 +533,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Built with ❤️ for academic research and a trust-minimized future of digital credentials**
 
-*"An academic exploration of empowering students with self-sovereign, verifiable certificates while maintaining institutional trust through zero-knowledge cryptography."*
+*"An academic exploration of empowering document owners with self-sovereign, verifiable documents while maintaining institutional trust through zero-knowledge cryptography."*
 
 </div> 

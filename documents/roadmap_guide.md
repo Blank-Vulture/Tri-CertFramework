@@ -20,8 +20,8 @@
 ### 4つのコンポーネント（シンプル版）
 | コンポーネント | 形態 | 主要技術 | 配布方法 |
 |---|---|---|---|
-| **Executive Console** | Electronアプリ | React + Web3 + ローカルファイル | .exe/.dmg/.AppImage |
-| **Registrar Console** | Electronアプリ | Vue.js 3 + JSONファイル | .exe/.dmg/.AppImage |
+| **Executive Console** | Tauriアプリ | React + Web3 + ローカルファイル | .exe/.dmg/.AppImage |
+| **Registrar Console** | Tauriアプリ | React + TypeScript + JSONファイル | .exe/.dmg/.AppImage |
 | **Scholar Prover** | ブラウザーアプリ | React + WebAuthn + WASM | 静的サイト（PWA） |
 | **Verifier UI** | 静的サイト | Next.js SSG + Web3 | CDN配信 |
 
@@ -51,8 +51,8 @@
 ┌─────────────────────────────────────┐
 │ ユーザーの完全制御下                  │
 ├─────────────────────────────────────┤
-│ • Executive Console (Electronアプリ) │ ← ローカル実行
-│ • Registrar Console (Electronアプリ) │ ← ローカル実行  
+│ • Executive Console (Tauriアプリ) │ ← ローカル実行
+│ • Registrar Console (Tauriアプリ) │ ← ローカル実行  
 │ • Scholar Prover (静的PWA)           │ ← ブラウザー内完結
 │ • Verifier UI (静的サイト)           │ ← ブラウザー内完結
 │                                     │
@@ -181,8 +181,8 @@ Week 5-7: 完全ローカルZKPシステム
 ### Phase 3: フロントエンド（完全ローカル） (8/7-8/31) **25日間**
 ```
 Week 8-11: ゼロトラスト UI開発
-├── Executive Console (Electron + ローカルファイル)
-├── Registrar Console (Electron + JSONデータ)
+├── Executive Console (Tauri + ローカルファイル)
+├── Registrar Console (Tauri + JSONデータ)
 ├── Scholar Prover (PWA + オフライン対応)
 ├── Verifier UI (静的サイト + ブラウザー内完結)
 ├── 全コンポーネントのオフライン動作確認
@@ -295,7 +295,7 @@ Week 16-19: Trust Minimized実証実験
 # Node.js環境
 nvm install 18
 npm install -g @vue/cli @angular/cli create-react-app
-npm install -g electron-builder
+npm install -g @tauri-apps/cli
 
 # Circom環境  
 npm install -g circom snarkjs
@@ -316,8 +316,8 @@ npm install -g hardhat @openzeppelin/contracts
 zk-certframework/
 ├── contracts/              # スマートコントラクト
 ├── circuits/               # Circom ZKP回路
-├── executive-console/      # Electronアプリ
-├── registrar-console/      # Electronアプリ  
+├── executive-console/      # Tauriアプリ
+├── registrar-console/      # Tauriアプリ  
 ├── scholar-prover/         # React PWA
 ├── verifier-ui/           # Next.js SSG
 ├── shared/                # 共通ライブラリ

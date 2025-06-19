@@ -24,7 +24,7 @@ Rel(ZKP, UI, "検証結果 (true/false)")
 
 ## 2. 完全オフライン検証アーキテクチャ
 ### 2.1 静的サイト生成 (SSG)
-- **Next.js 14**: Static Site Generation で完全静的化
+- **Next.js 15**: Static Site Generation で完全静的化
 - **GitHub Pages**: CDN配信、サーバーレス
 - **Service Worker**: オフライン検証キャッシュ
 

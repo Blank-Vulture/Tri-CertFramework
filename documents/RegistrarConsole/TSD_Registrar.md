@@ -6,7 +6,7 @@
 ## 1. 技術スタック（完全バックエンドレス）
 | 層 | 技術 | バージョン |
 |----|------|-----------|
-| デスクトップ | Electron + Vue.js 3 | 31.0+ / 3.4+ |
+| デスクトップ | Tauri v2 + React 18 + TypeScript | 2.0+ / 18.0+ / 5.0+ |
 | データ管理 | JSON Files + Node.js fs | Native |
 | 認証 | Ledger Nano X + EIP-191 | @ledgerhq/hw-* |
 | Merkle Tree | Poseidon256 + circomlibjs | 0.1.7 |
@@ -14,12 +14,12 @@
 | ZKP | Circom 2.1.4 + SnarkJS 0.7 | Latest |
 | ファイル処理 | Papa Parse (CSV) | 5.4+ |
 
-## 2. Electron アプリケーション設計
+## 2. Tauri アプリケーション設計
 
-### 2.1 プロセス構成
-```typescript
-// main.js - メインプロセス
-import { app, BrowserWindow, ipcMain, dialog } from 'electron';
+### 2.1 Rust Backend構成
+```rust
+// main.rs - Tauriバックエンド
+use tauri::{command, State, Manager, AppHandle};
 import { FileManager } from './services/FileManager';
 import { MerkleTreeBuilder } from './services/MerkleTreeBuilder';
 import { PDFGenerator } from './services/PDFGenerator';
@@ -502,7 +502,7 @@ Chain ID: 1442`;
 }
 ```
 
-## 6. Vue.js 3 フロントエンド
+## 6. React 18 + TypeScript フロントエンド
 
 ### 6.1 メインアプリ
 ```typescript
@@ -551,17 +551,17 @@ const handleMenuSelect = (menuItem: string) => {
 
 ## 7. ビルド・配布
 
-### 7.1 Electron Builder設定
+### 7.1 Tauri Builder設定
 ```json
 // package.json (部分)
 {
-  "main": "dist/main.js",
+  "main": "src/main.tsx",
   "scripts": {
-    "dev": "electron .",
-    "build": "npm run build:vue && npm run build:electron",
-    "build:vue": "vite build",
-    "build:electron": "electron-builder",
-    "dist": "npm run build && electron-builder --publish=never"
+    "dev": "tauri dev",
+    "build": "npm run build:react && npm run build:tauri",
+    "build:react": "vite build",
+    "build:tauri": "tauri build",
+    "dist": "npm run build && tauri build"
   },
   "build": {
     "appId": "edu.university.registrar-console",

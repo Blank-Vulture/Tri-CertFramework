@@ -8,7 +8,7 @@
 C4Context
 Person(Professor, "教授")
 Person(Assistant, "研究助手")
-System_Boundary(EC, "Executive Console Electron App") {
+System_Boundary(EC, "Executive Console Tauri App") {
   Container(UI, "管理UI", "React 18", "年度別セット管理・Ledger操作")
   Container(Ledger, "Ledger統合", "Node.js HID", "EIP-191署名・ハードウェア認証")
   Container(Compiler, "Circom コンパイラ", "Node.js", "回路コンパイル・VK生成")
@@ -26,8 +26,8 @@ Rel(Ledger, zkEVM, "署名付きトランザクション")
 
 ## 2. 機能概要 (年度別独立システム)
 ### 2.1 年度別セット管理
-- **2025年度**: Certificate2025.circom → VK2025 → GraduationNFT2025
-- **2026年度**: Certificate2026.circom → VK2026 → GraduationNFT2026  
+- **2025年度**: Document2025.circom → VK2025 → DocumentNFT2025
+- **2026年度**: Document2026.circom → VK2026 → DocumentNFT2026  
 - **完全独立**: 年度間の依存関係・共有状態なし
 
 ### 2.2 Ledger Nano X 必須操作
@@ -76,7 +76,7 @@ Rel(Ledger, zkEVM, "署名付きトランザクション")
     └── signatures.log            # Ledger署名ログ
 ```
 
-## 5. API イベント (Electron Main Process)
+## 5. API イベント (Tauri Rust Backend)
 | メソッド | パラメータ | 説明 |
 |----------|------------|------|
 | `loadYearlySets()` | - | 設定ファイルから年度情報読込 |
@@ -140,7 +140,7 @@ participant "Ledger Nano X" as Ledger
 participant "Polygon zkEVM" as Chain
 
 Professor -> EC : 新年度セット作成開始
-EC -> Professor : 回路ファイル (Certificate{Year}.circom) アップロード
+EC -> Professor : 回路ファイル (Document{Year}.circom) アップロード
 Professor -> EC : 回路ファイル選択
 EC -> CC : circom compile + snarkjs setup
 CC --> EC : {wasm, zkey, vk.json}
@@ -196,9 +196,9 @@ EC --> Professor : デプロイ完了通知
 └─────────────────────────────────────────────────────┘
 ```
 
-## 9. Electron セキュリティ設定
-```typescript
-// main.ts - セキュアなElectronセットアップ
+## 9. Tauri セキュリティ設定
+```rust
+// main.rs - セキュアなTauriセットアップ
 const mainWindow = new BrowserWindow({
   width: 1200,
   height: 800,
@@ -211,7 +211,7 @@ const mainWindow = new BrowserWindow({
 });
 
 // preload.js - 安全なIPC通信
-contextBridge.exposeInMainWorld('electronAPI', {
+// Tauri APIコマンド定義
   // Ledger操作
   connectLedger: () => ipcRenderer.invoke('ledger:connect'),
   signMessage: (message: string) => ipcRenderer.invoke('ledger:sign', message),
@@ -239,13 +239,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
 ## 11. 配布・インストール
 ```bash
 # ビルド
-npm run build:electron-main
-npm run build:electron-renderer
+npm run build:rust-backend
+npm run build:react-frontend
 
 # パッケージング (各OS)
-electron-builder --mac    # ExecutiveConsole-2.0.0.dmg
-electron-builder --win    # ExecutiveConsole-2.0.0.exe
-electron-builder --linux  # ExecutiveConsole-2.0.0.AppImage
+tauri build --target x86_64-apple-darwin    # ExecutiveConsole-2.0.0.dmg
+tauri build --target x86_64-pc-windows-msvc # ExecutiveConsole-2.0.0.exe
+tauri build --target x86_64-unknown-linux-gnu # ExecutiveConsole-2.0.0.AppImage
 
 # 署名検証 (macOS)
 codesign --verify --deep --display ExecutiveConsole.app

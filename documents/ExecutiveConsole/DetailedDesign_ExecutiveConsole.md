@@ -497,8 +497,8 @@ export const YearlySetManager: React.FC<YearlySetManagerProps> = ({
   };
 
   const openCircuitFolder = (year: number) => {
-    // Electronのシェル機能でフォルダを開く
-    window.electronAPI.openFolder(`./circuits/`);
+    // Tauriのシェル機能でフォルダを開く
+    window.__TAURI__.shell.open(`./circuits/`);
   };
 
   return (
@@ -809,11 +809,11 @@ Domain: zk-cert-framework.local
 
 ## 4. 配布・デプロイ
 
-### 4.1 Electronアプリビルド
+### 4.1 Tauriアプリビルド
 ```bash
 # パッケージ化
 npm run build
-npm run electron-pack
+npm run tauri build
 
 # 出力ファイル
 dist/

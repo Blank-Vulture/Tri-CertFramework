@@ -5,7 +5,7 @@
 ```mermaid
 C4Context
 Person(Staff, "学務職員")
-System_Boundary(RC, "Registrar Console Electron App") {
+System_Boundary(RC, "Registrar Console Tauri App") {
   Container(UI, "学生データ管理UI", "Vue 3", "CSVインポート・PDF生成")
   Container(Merkle, "Merkle Tree ビルダー", "Node.js", "Poseidon ハッシュツリー構築")
   Container(PDF, "PDF 生成エンジン", "Puppeteer", "PDF/A-3 バッチ生成")
@@ -156,7 +156,7 @@ Rel(UI, Chain, "Root 更新 (読み取り専用)")
 └─────────────────────────────────────────────────────┘
 ```
 
-## 6. API イベント (Electron Main Process)
+## 6. API イベント (Tauri Rust Backend)
 | メソッド | パラメータ | 説明 |
 |----------|------------|------|
 | `importStudentData(year, file)` | year, jsonFile | 学生データJSON取込み |

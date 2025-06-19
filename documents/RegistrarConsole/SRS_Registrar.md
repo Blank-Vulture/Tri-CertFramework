@@ -2,7 +2,7 @@
 **zk‑CertFramework / 学務管理システム** 最終更新: 2025-06-17 (Version 2.0)
 
 ## 1. 目的  
-Registrar Console は学務職員が **Electron デスクトップアプリ** として、①学生 Passkey 公開鍵の年度別管理、②Poseidon Merkle Tree 構築、③PDF/A-3 証明書の一括生成を**完全ローカル環境**で実行する。**Trust Minimized 設計**により外部データベース・API依存を排除し、**年度別独立データ管理**により簡潔かつ監査可能な運用を実現する。
+Registrar Console は学務職員が **Tauri デスクトップアプリ** として、①書類所有者 Passkey 公開鍵の年度別管理、②Poseidon Merkle Tree 構築、③PDF/A-3 証明書の一括生成を**完全ローカル環境**で実行する。**Trust Minimized 設計**により外部データベース・API依存を排除し、**年度別独立データ管理**により簡潔かつ監査可能な運用を実現する。
 
 ## 2. スコープ  
 | 区分 | 含む | 含まない |
@@ -10,7 +10,7 @@ Registrar Console は学務職員が **Electron デスクトップアプリ** �
 | **データ管理** | 年度別学生データ・JSONファイル管理 | 外部データベース・クラウドストレージ |
 | **Merkle Tree** | Poseidon ハッシュ・depth=8固定構築 | カスタムハッシュ・動的depth設定 |
 | **PDF生成** | PDF/A-3バッチ生成・テンプレート | 動的レイアウト・電子署名・暗号化 |
-| **アプリ形態** | Electron デスクトップ・オフライン完結 | Web アプリ・サーバークライアント |
+| **アプリ形態** | Tauri デスクトップ・オフライン完結 | Web アプリ・サーバークライアント |
 | **セキュリティ** | ローカル暗号化・ファイルレベル権限 | ネットワーク認証・集中認可サーバー |
 
 ## 3. 用語
@@ -38,7 +38,7 @@ Registrar Console は学務職員が **Electron デスクトップアプリ** �
   2. JSON/CSV ファイル選択・アップロード
   3. データ形式・重複検証の自動実行
   4. インポート結果プレビュー・エラー確認
-  5. 確認後、students-2025.json に保存
+  5. 確認後、document-owners-2025.json に保存
   6. 自動バックアップ・操作ログ記録
 - **成功条件**: 正確な年度別学生データの保存完了
 - **例外フロー**: 
@@ -74,8 +74,8 @@ Registrar Console は学務職員が **Electron デスクトップアプリ** �
 ## 6. 機能要求
 | FR ID | 要求 | 検証基準 |
 |-------|------|----------|
-| **FR‑RC‑01** | Electron デスクトップアプリ・単一実行ファイル | Windows/macOS/Linux 配布・インストーラー不要 |
-| **FR‑RC‑02** | 年度別学生データの JSON 形式管理 | students-{year}.json スキーマ準拠 |
+| **FR‑RC‑01** | Tauri デスクトップアプリ・単一実行ファイル | Windows/macOS/Linux 配布・インストーラー不要 |
+| **FR‑RC‑02** | 年度別書類所有者データの JSON 形式管理 | document-owners-{year}.json スキーマ準拠 |
 | **FR‑RC‑03** | COSE_Key 形式 Passkey データの検証・インポート | WebAuthn COSE_Key 仕様準拠・形式チェック |
 | **FR‑RC‑04** | Poseidon ハッシュ Merkle Tree (depth=8) 構築 | @noble/hashes 使用・256葉固定 |
 | **FR‑RC‑05** | PDF/A-3 証明書テンプレート・バッチ生成 | ISO 19005-3 準拠・Adobe Reader 対応 |
@@ -87,7 +87,7 @@ Registrar Console は学務職員が **Electron デスクトップアプリ** �
 |--------|----------|------|------|----------|
 | **NFR‑RC‑P1** | パフォーマンス | Merkle Tree 構築時間 | ≤ 10秒 @ 256学生 | Poseidon ハッシュ・実機測定 |
 | **NFR‑RC‑P2** | パフォーマンス | PDF バッチ生成時間 | ≤ 2分 @ 256学生 | 並列処理・実機測定 |
-| **NFR‑RC‑P3** | パフォーマンス | アプリ起動時間 | ≤ 3秒 | Electron 冷起動 |
+| **NFR‑RC‑P3** | パフォーマンス | アプリ起動時間 | ≤ 2秒 | Tauri 冷起動 |
 | **NFR‑RC‑S1** | セキュリティ | ローカルデータ暗号化 | AES-256 | ファイルレベル暗号化 |
 | **NFR‑RC‑S2** | セキュリティ | 外部ネットワーク通信 | 0件 | 完全ローカル完結 |
 | **NFR‑RC‑R1** | 信頼性 | データ整合性保証 | 100% | ハッシュチェーン検証 |
@@ -96,13 +96,13 @@ Registrar Console は学務職員が **Electron デスクトップアプリ** �
 | **NFR‑RC‑M1** | 保守性 | バックアップ・復元 | 完全 | ワンクリック・USB対応 |
 
 ## 8. データ要求
-### 8.1 学生データスキーマ (students-{year}.json)
+### 8.1 書類所有者データスキーマ (document-owners-{year}.json)
 ```json
 {
   "version": "2.0",
   "year": 2025,
   "lastUpdated": 1704067200000,
-  "students": [
+  "documentOwners": [
     {
       "id": "2025001",
       "name": "田中太郎",
@@ -118,7 +118,7 @@ Registrar Console は学務職員が **Electron デスクトップアプリ** �
     }
   ],
   "statistics": {
-    "totalStudents": 1,
+    "totalDocumentOwners": 1,
     "merkleRoot": "0xabcd1234...",
     "merkleDepth": 8
   }
@@ -132,7 +132,7 @@ Registrar Console は学務職員が **Electron デスクトップアプリ** �
   "year": 2025,
   "depth": 8,
   "totalLeaves": 256,
-  "actualStudents": 1,
+      "actualDocumentOwners": 1,
   "root": "0xabcd1234efgh5678...",
   "leaves": ["0x1a2b3c4d...", "0x0000000000...", "..."],
   "tree": {
@@ -182,14 +182,14 @@ Registrar Console は学務職員が **Electron デスクトップアプリ** �
 - **UX‑07**: **自動バックアップ**: 操作完了時の自動バックアップ
 - **UX‑08**: **検索・フィルタ**: 学生データの高速検索・絞込み
 
-## 11. Electron アプリ要求
+## 11. Tauri アプリ要求
 ### 11.1 デスクトップ統合
 - **DESK‑01**: **ネイティブUI**: OS 標準のファイルダイアログ・通知
 - **DESK‑02**: **システム統合**: ファイル関連付け・右クリックメニュー
 - **DESK‑03**: **マルチウィンドウ**: 複数年度の並行作業対応
 - **DESK‑04**: **自動更新**: 署名検証付きセキュアアップデート
 
-### 11.2 セキュア Electron
+### 11.2 セキュア Tauri
 - **DESK‑05**: **サンドボックス**: 適切なセキュリティ設定
 - **DESK‑06**: **IPC セキュリティ**: Main・Renderer 間の安全通信
 - **DESK‑07**: **CSP 適用**: Content Security Policy 厳格設定
@@ -222,7 +222,7 @@ Registrar Console は学務職員が **Electron デスクトップアプリ** �
 
 ## 13. 制約・依存関係
 ### 13.1 技術制約
-- **Electron**: 27.0+ (セキュリティ対応版)
+- **Tauri**: 2.0+ (セキュリティ対応版)
 - **Node.js**: 18+ LTS (Poseidon・PDF ライブラリ互換)
 - **ストレージ**: 10GB以上 (年度データ・PDF保存)
 - **メモリ**: 8GB以上 (大量PDF生成・Merkle Tree処理)
@@ -243,7 +243,7 @@ Registrar Console は学務職員が **Electron デスクトップアプリ** �
 | **R‑RC‑01** | 大量学生データ処理時のメモリ不足 | 中 | ストリーミング処理・段階的読込み |
 | **R‑RC‑02** | PDF 生成ライブラリの脆弱性 | 高 | 定期更新・代替ライブラリ準備 |
 | **R‑RC‑03** | ローカルファイル破損・消失 | 高 | 自動バックアップ・冗長化 |
-| **R‑RC‑04** | Electron セキュリティ問題 | 高 | 定期アップデート・セキュリティ監視 |
+| **R‑RC‑04** | Tauri セキュリティ問題 | 高 | 定期アップデート・セキュリティ監視 |
 | **R‑RC‑05** | 年度データ移行時の操作ミス | 中 | 確認ダイアログ・操作ログ・復元機能 |
 
 ---

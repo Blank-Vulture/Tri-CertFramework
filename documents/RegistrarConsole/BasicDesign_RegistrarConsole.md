@@ -328,6 +328,6 @@ registrar-console-app/
 
 ### 9.3 配布・インストール
 - **GitHub Releases**: 署名付きバイナリ配布
-- **署名検証**: Electron Builderによるコード署名
+- **署名検証**: Tauri Builderによるコード署名
 - **自動更新**: アプリ内更新通知・ダウンロード
 - **ポータブル版**: USB実行可能版の提供 

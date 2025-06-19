@@ -152,7 +152,7 @@ interface IndexedDBStores {
 ```
 
 ### 10.2 回路ファイル取得
-- **年度別URL**: `https://circuits.zk-cert.framework/Certificate{YEAR}.wasm`
+- **年度別URL**: `https://circuits.zk-cert.framework/Document{YEAR}.wasm`
 - **整合性検証**: SHA-3-512 ハッシュによる検証
 - **フォールバック**: GitHub Releases からの取得
 

@@ -4,21 +4,21 @@
 ---
 
 ## 1. 目的
-Executive Console は教授・研究責任者向けの **Electron デスクトップアプリケーション** として、①**年度別ZKP回路の独立デプロイ**と ②**Ledger Nano X による厳格な認証管理** を行う。**Trust Minimized アーキテクチャ** により、外部依存を排除し、**年度完全独立システム** (2025年度、2026年度等) の暗号パラメータ管理を提供する。
+Executive Console は教授・研究責任者向けの **Tauri デスクトップアプリケーション** として、①**年度別ZKP回路の独立デプロイ**と ②**Ledger Nano X による厳格な認証管理** を行う。**Trust Minimized アーキテクチャ** により、外部依存を排除し、**年度完全独立システム** (2025年度、2026年度等) の暗号パラメータ管理を提供する。
 
 ## 2. スコープ
 | 区分 | 含む | 含まない |
 |------|------|----------|
 | **年度管理** | 年度別回路セット独立デプロイ・VK管理 | 年度間の共有状態・複雑な鍵ローテーション |
 | **認証システム** | Ledger Nano X EIP-191 署名必須 | WebAuthn・ソフトウェア鍵・HSM |
-| **アプリ形態** | Electron デスクトップアプリ (単一実行ファイル) | Web アプリ・モバイルアプリ・サーバークライアント |
+| **アプリ形態** | Tauri デスクトップアプリ (単一実行ファイル) | Web アプリ・モバイルアプリ・サーバークライアント |
 | **ブロックチェーン** | Polygon zkEVM デプロイ・読み取り | 複数チェーン・クロスチェーン・レイヤー2 |
 | **ファイル管理** | ローカル JSON・回路ファイル管理 | データベース・外部ストレージ・クラウド |
 
 ## 3. 用語
 | 用語 | 定義 |
 |------|------|
-| **年度別セット** | Certificate{Year}.circom + VK{Year} + GraduationNFT{Year} の独立単位 |
+| **年度別セット** | Document{Year}.circom + VK{Year} + DocumentNFT{Year} の独立単位 |
 | **Ledger EIP-191** | Ledger Nano X での Ethereum Personal Message 署名 |
 | **Trust Minimized** | 外部依存を最小化し、検証可能なコンポーネントのみ使用 |
 | **Yearly Independence** | 年度間の完全独立、共有秘密・依存関係なし |
@@ -73,9 +73,9 @@ Executive Console は教授・研究責任者向けの **Electron デスクト�
 ## 6. 機能要求
 | ID | 要求 | 検証基準 |
 |----|------|----------|
-| **FR‑EC‑01** | Electron デスクトップアプリとして単一実行ファイル配布 | Windows/macOS/Linux で実行可能 |
+| **FR‑EC‑01** | Tauri デスクトップアプリとして単一実行ファイル配布 | Windows/macOS/Linux で実行可能 |
 | **FR‑EC‑02** | 全管理操作で Ledger Nano X EIP-191 署名必須 | ソフトウェア鍵による操作は一切不可 |
-| **FR‑EC‑03** | 年度別回路ファイル (Certificate{Year}.circom) アップロード・コンパイル | Circom 2.1.4 + SnarkJS 0.7 統合 |
+| **FR‑EC‑03** | 年度別回路ファイル (Document{Year}.circom) アップロード・コンパイル | Circom 2.1.4 + SnarkJS 0.7 統合 |
 | **FR‑EC‑04** | 年度別セット (回路+VK+NFT) 独立デプロイ | 年度間の依存関係・共有状態なし |
 | **FR‑EC‑05** | ローカル JSON ファイルによる設定・状態管理 | ~/.zk-cert-framework/ 以下の構造化ファイル |
 | **FR‑EC‑06** | Polygon zkEVM YearlyDeploymentManager コントラクト操作 | スマートコントラクト呼び出し・イベント監視 |
@@ -84,8 +84,8 @@ Executive Console は教授・研究責任者向けの **Electron デスクト�
 ## 7. 非機能要求
 | NFR ID | カテゴリ | 指標 | 目標 | 測定方法 |
 |--------|----------|------|------|----------|
-| **NFR‑EC‑P1** | パフォーマンス | 回路コンパイル時間 | ≤ 30秒 | Certificate{Year}.circom (65k制約) |
-| **NFR‑EC‑P2** | パフォーマンス | アプリ起動時間 | ≤ 5秒 | Electron アプリ起動完了まで |
+| **NFR‑EC‑P1** | パフォーマンス | 回路コンパイル時間 | ≤ 30秒 | Document{Year}.circom (65k制約) |
+| **NFR‑EC‑P2** | パフォーマンス | アプリ起動時間 | ≤ 3秒 | Tauri アプリ起動完了まで |
 | **NFR‑EC‑S1** | セキュリティ | Ledger ハードウェア認証 | 100% | 全操作でハードウェア署名必須 |
 | **NFR‑EC‑S2** | セキュリティ | EIP-191 フィッシング対策 | 完全 | ドメイン・構造化メッセージ検証 |
 | **NFR‑EC‑R1** | 信頼性 | 年度独立性 | 100% | 年度セット間の依存関係ゼロ |
@@ -119,18 +119,18 @@ Executive Console は教授・研究責任者向けの **Electron デスクト�
 - **ARCH‑04**: **独立スケール**: 年度別の学生数制限・制約の独立設定
 
 ### 9.2 デプロイ戦略
-- **ARCH‑05**: **独立コントラクト**: 年度毎の GraduationNFT{Year} デプロイ
+- **ARCH‑05**: **独立コントラクト**: 年度毎の DocumentNFT{Year} デプロイ
 - **ARCH‑06**: **独立VK**: 年度毎の検証鍵・証明鍵セット
-- **ARCH‑07**: **独立回路**: Certificate{Year}.circom の完全分離
+- **ARCH‑07**: **独立回路**: Document{Year}.circom の完全分離
 
-## 10. Electron アプリケーション要求
+## 10. Tauri アプリケーション要求
 ### 10.1 デスクトップ統合
 - **DESK‑01**: **ネイティブUI**: OS標準のファイルダイアログ・通知
 - **DESK‑02**: **自動更新**: 署名検証付きアップデート機能
 - **DESK‑03**: **システム統合**: システムトレイ・右クリックメニュー
 - **DESK‑04**: **マルチOS**: Windows・macOS・Linux 対応
 
-### 10.2 セキュア Electron
+### 10.2 セキュア Tauri
 - **DESK‑05**: **Node統合無効**: nodeIntegration: false
 - **DESK‑06**: **コンテキスト分離**: contextIsolation: true  
 - **DESK‑07**: **CSP適用**: Content Security Policy Strict
@@ -144,7 +144,7 @@ Executive Console は教授・研究責任者向けの **Electron デスクト�
 - [ ] 年度別独立デプロイ・運用の確認
 
 ### 11.2 性能受入基準
-- [ ] 回路コンパイル時間 ≤ 30秒 (Certificate{Year}.circom)
+- [ ] 回路コンパイル時間 ≤ 30秒 (Document{Year}.circom)
 - [ ] アプリ起動時間 ≤ 5秒 (冷起動)
 - [ ] Ledger署名レスポンス ≤ 10秒
 - [ ] ファイル操作レスポンス ≤ 1秒
@@ -162,7 +162,7 @@ Executive Console は教授・研究責任者向けの **Electron デスクト�
 - **ストレージ**: 1GB以上の空き容量 (回路ファイル・ログ)
 
 ### 12.2 ソフトウェア制約  
-- **Electron**: 27.0+ (セキュリティ対応版)
+- **Tauri**: 2.0+ (セキュリティ対応版)
 - **Node.js**: 18+ LTS (Circom/SnarkJS互換性)
 - **OS**: Windows 10+, macOS 12+, Ubuntu 20.04+
 
@@ -178,7 +178,7 @@ Executive Console は教授・研究責任者向けの **Electron デスクト�
 | **R‑EC‑02** | Polygon zkEVM ネットワーク障害 | 中 | 複数 RPC エンドポイント + フォールバック |
 | **R‑EC‑03** | Circom/SnarkJS API 変更 | 中 | バージョン固定 + アップデート戦略 |
 | **R‑EC‑04** | 年度セット設定破損 | 中 | 自動バックアップ + 復元機能 |
-| **R‑EC‑05** | Electron セキュリティ脆弱性 | 高 | 定期セキュリティアップデート + 自動更新 |
+| **R‑EC‑05** | Tauri セキュリティ脆弱性 | 高 | 定期セキュリティアップデート + 自動更新 |
 
 ## 14. 監査・コンプライアンス
 ### 14.1 監査要求

@@ -1,0 +1,300 @@
+# Dependabot設定ファイル
+# zk-CertFramework プロジェクト用
+# 各システム（証明者システム、責任者システム、管理者システム、検証者システム）の依存関係を管理
+
+version: 2
+
+updates:
+  # 証明者システム (React + TypeScript + Vite)
+  - package-ecosystem: "npm"
+    directory: "/frontend/scholar-prover"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Tokyo"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "pality"
+    assignees:
+      - "pality"
+    commit-message:
+      prefix: "証明者システム"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "scholar-prover"
+      - "frontend"
+    groups:
+      react-ecosystem:
+        patterns:
+          - "react*"
+          - "@types/react*"
+        update-types:
+          - "minor"
+          - "patch"
+      build-tools:
+        patterns:
+          - "vite*"
+          - "@vitejs/*"
+          - "typescript"
+          - "@types/*"
+        update-types:
+          - "minor"
+          - "patch"
+      zkp-libraries:
+        patterns:
+          - "snarkjs"
+          - "circomlib"
+          - "@noble/*"
+        update-types:
+          - "patch"
+
+  # 責任者システム (Tauri v2 + React + TypeScript)
+  - package-ecosystem: "npm"
+    directory: "/desktop/executive-console"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:30"
+      timezone: "Asia/Tokyo"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "pality"
+    assignees:
+      - "pality"
+    commit-message:
+      prefix: "責任者システム"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "executive-console"
+      - "desktop"
+    groups:
+      tauri-ecosystem:
+        patterns:
+          - "@tauri-apps/*"
+        update-types:
+          - "minor"
+          - "patch"
+      web3-libraries:
+        patterns:
+          - "ethers"
+          - "web3*"
+          - "@metamask/*"
+        update-types:
+          - "patch"
+
+  # 責任者システム Rust依存関係
+  - package-ecosystem: "cargo"
+    directory: "/desktop/executive-console/src-tauri"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "09:00"
+      timezone: "Asia/Tokyo"
+    open-pull-requests-limit: 3
+    reviewers:
+      - "pality"
+    assignees:
+      - "pality"
+    commit-message:
+      prefix: "責任者システム(Rust)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "executive-console"
+      - "rust"
+      - "tauri"
+    groups:
+      tauri-core:
+        patterns:
+          - "tauri*"
+        update-types:
+          - "minor"
+          - "patch"
+      serde-ecosystem:
+        patterns:
+          - "serde*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # 管理者システム (Tauri v2 + React + TypeScript)
+  - package-ecosystem: "npm"
+    directory: "/desktop/registrar-console"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "10:00"
+      timezone: "Asia/Tokyo"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "pality"
+    assignees:
+      - "pality"
+    commit-message:
+      prefix: "管理者システム"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "registrar-console"
+      - "desktop"
+    groups:
+      pdf-processing:
+        patterns:
+          - "pdf-lib"
+          - "pdf2pic"
+          - "jspdf"
+        update-types:
+          - "patch"
+      crypto-libraries:
+        patterns:
+          - "@noble/*"
+          - "crypto-js"
+          - "node-forge"
+        update-types:
+          - "patch"
+
+  # 管理者システム Rust依存関係
+  - package-ecosystem: "cargo"
+    directory: "/desktop/registrar-console/src-tauri"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "09:30"
+      timezone: "Asia/Tokyo"
+    open-pull-requests-limit: 3
+    reviewers:
+      - "pality"
+    assignees:
+      - "pality"
+    commit-message:
+      prefix: "管理者システム(Rust)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "registrar-console"
+      - "rust"
+      - "tauri"
+
+  # 検証者システム (Next.js 15 + App Router)
+  - package-ecosystem: "npm"
+    directory: "/frontend/verifier-ui"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "10:30"
+      timezone: "Asia/Tokyo"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "pality"
+    assignees:
+      - "pality"
+    commit-message:
+      prefix: "検証者システム"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "verifier-ui"
+      - "frontend"
+    groups:
+      nextjs-ecosystem:
+        patterns:
+          - "next*"
+          - "@next/*"
+        update-types:
+          - "minor"
+          - "patch"
+      verification-libraries:
+        patterns:
+          - "snarkjs"
+          - "ethers"
+          - "@noble/*"
+        update-types:
+          - "patch"
+
+  # GitHub Actions ワークフロー
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "wednesday"
+      time: "09:00"
+      timezone: "Asia/Tokyo"
+    open-pull-requests-limit: 3
+    reviewers:
+      - "pality"
+    assignees:
+      - "pality"
+    commit-message:
+      prefix: "CI/CD"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "github-actions"
+      - "ci-cd"
+
+  # ドキュメント用依存関係（もしMarkdownプロセッサ等を使用する場合）
+  - package-ecosystem: "npm"
+    directory: "/docs"
+    schedule:
+      interval: "monthly"
+      day: "first-monday"
+      time: "09:00"
+      timezone: "Asia/Tokyo"
+    open-pull-requests-limit: 2
+    reviewers:
+      - "pality"
+    assignees:
+      - "pality"
+    commit-message:
+      prefix: "ドキュメント"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "documentation"
+    groups:
+      markdown-tools:
+        patterns:
+          - "markdown*"
+          - "mermaid*"
+          - "@mermaid-js/*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # 共通ライブラリ（将来の実装用）
+  - package-ecosystem: "npm"
+    directory: "/shared"
+    schedule:
+      interval: "weekly"
+      day: "thursday"
+      time: "09:00"
+      timezone: "Asia/Tokyo"
+    open-pull-requests-limit: 3
+    reviewers:
+      - "pality"
+    assignees:
+      - "pality"
+    commit-message:
+      prefix: "共通ライブラリ"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "shared"
+      - "library"
+    groups:
+      zkp-core:
+        patterns:
+          - "circomlib"
+          - "snarkjs"
+          - "@zk-kit/*"
+        update-types:
+          - "patch"
+      crypto-core:
+        patterns:
+          - "@noble/*"
+          - "ethers"
+        update-types:
+          - "patch" 

@@ -1,15 +1,17 @@
-# 基本設計書 (Basic Design) — Verifier UI
-**zk‑CertFramework / 証明書検証システム** 最終更新: 2025-06-16 Version 2.0
+# 基本設計書 (Basic Design) — 検証者システム (Verifier UI)
+**ZK Document Authenticity Framework / 検証者システム** 最終更新: 2025-01-20 Version 2.1
+
+> **汎用的書類真正性証明システム** - あらゆる書類に適応可能な設計で、例として卒業証書の真正性証明を実装
 
 ---
 
 ## 1. システム概要
 
 ### 1.1 目的
-一般ユーザーが卒業証明書PDF/A-3ファイルの真正性をゼロ知識証明とブロックチェーンで検証するための完全静的Webアプリケーション。
+一般ユーザーが書類PDF/A-3ファイルの真正性をゼロ知識証明とブロックチェーンで検証するための完全静的Webアプリケーション。
 
 ### 1.2 主要機能
-- PDF/A-3証明書ファイルのアップロード・解析
+- PDF/A-3書類ファイルのアップロード・解析
 - 埋め込まれたZKP証明の検証（Circom + SnarkJS）
 - ブロックチェーン上のMerkle Root確認
 - 検証結果レポートの生成・表示
@@ -39,10 +41,10 @@
             [Verification Report]
 ```
 
-### 2.2 技術スタック（Version 2.0）
+### 2.2 技術スタック（Version 2.1）
 | 層 | 技術 | 目的 |
 |----|------|------|
-| フロントエンド | Next.js 14 + React 18 + TypeScript | 静的サイト生成 |
+| フロントエンド | Next.js 15 + React 18 + TypeScript + App Router | 静的サイト生成 |
 | PDF解析 | pdf.js + pdf-lib | PDF/A-3データ抽出 |
 | ZKP検証 | Circom 2.1.4 + SnarkJS 0.7 | Groth16証明検証 |
 | UI | Tailwind CSS + shadcn/ui | レスポンシブUI |
@@ -55,7 +57,7 @@
 
 ## 3. 検証フロー設計
 
-### 3.1 証明書検証プロセス
+### 3.1 書類検証プロセス
 ```mermaid
 graph TD
     A[PDF/A-3アップロード] --> B[ファイル形式検証]

@@ -1,14 +1,19 @@
-# Verifier UI 詳細設計書（完全バックエンドレス・静的サイト版）
+# 検証者システム 詳細設計書（Next.js 15 + App Router・静的サイト版）
+
+## バージョン情報
+- **Version**: 2.1
+- **Last Updated**: 2025-01-20
+- **Target**: プロトタイプ 2025年10月
 
 ## 1. アーキテクチャ概要
 
 ### 1.1 完全静的サイト設計
 ```
 ┌─────────────────────────────────────┐
-│ 静的サイト（Verifier UI）            │
+│ 静的サイト（検証者システム）          │
 ├─────────────────────────────────────┤
 │ • PDF/A-3解析（ブラウザー内）         │
-│ • ZKP検証（WASM）                   │
+│ • ZKP検証（Circom/SnarkJS）          │
 │ • ブロックチェーン検証（Web3）         │
 │ • Merkle Tree検証                   │
 │ • 結果表示・レポート生成              │
@@ -43,38 +48,44 @@
 
 ---
 
-## 2. 静的サイト設計（Next.js SSG + TypeScript）
+## 2. 静的サイト設計（Next.js 15 + App Router + TypeScript）
 
 ### 2.1 アプリケーション構成
 ```
 verifier-ui-app/
 ├── next.config.js          # Next.js設定（SSG）
 ├── package.json            # 依存関係
+├── app/                    # App Router
+│   ├── layout.tsx          # ルートレイアウト
+│   ├── page.tsx            # ホームページ
+│   ├── verify/
+│   │   ├── page.tsx        # 検証ページ
+│   │   └── loading.tsx     # ローディング
+│   ├── report/
+│   │   └── [id]/
+│   │       └── page.tsx    # 検証結果ページ
+│   └── globals.css         # グローバルスタイル
+├── components/             # Reactコンポーネント
+├── lib/                    # ライブラリ・サービス
+├── hooks/                  # カスタムフック
+├── types/                  # TypeScript型定義
 ├── public/
 │   ├── circuits/           # ZKP検証回路（WASM）
-│   │   ├── verifier.wasm
+│   │   ├── Document2025.wasm
 │   │   └── verification_key.json
 │   ├── workers/            # Web Worker
 │   │   └── verification-worker.js
 │   └── icons/              # アイコン・画像
-├── src/
-│   ├── pages/              # Next.jsページ
-│   │   ├── index.tsx       # メインページ
-│   │   ├── verify.tsx      # 検証ページ
-│   │   └── report/[id].tsx # 検証結果ページ
-│   ├── components/         # Reactコンポーネント
-│   ├── services/           # 検証サービス
-│   ├── utils/              # ユーティリティ
-│   └── types/              # TypeScript型定義
 ├── out/                    # 静的ビルド出力
 └── README.md               # 使用方法
 ```
 
 ### 2.2 メイン検証ページ
 ```typescript
-// src/pages/index.tsx
+// app/verify/page.tsx
+'use client';
+
 import React, { useState, useCallback } from 'react';
-import Head from 'next/head';
 import {
   Container,
   Paper,
@@ -87,10 +98,10 @@ import {
   Button,
   LinearProgress
 } from '@mui/material';
-import { FileUploadZone } from '../components/FileUploadZone';
-import { VerificationProgress } from '../components/VerificationProgress';
-import { VerificationResult } from '../components/VerificationResult';
-import { useVerification } from '../hooks/useVerification';
+import { FileUploadZone } from '@/components/FileUploadZone';
+import { VerificationProgress } from '@/components/VerificationProgress';
+import { VerificationResult } from '@/components/VerificationResult';
+import { useVerification } from '@/hooks/useVerification';
 
 const verificationSteps = [
   'PDF解析',
@@ -99,7 +110,7 @@ const verificationSteps = [
   '結果生成'
 ];
 
-const VerifierPage: React.FC = () => {
+export default function VerifyPage() {
   const [file, setFile] = useState<File | null>(null);
   const {
     currentStep,
@@ -176,64 +187,51 @@ const VerifierPage: React.FC = () => {
   };
 
   return (
-    <>
-      <Head>
-        <title>Certificate Verifier - zk-CertFramework</title>
-        <meta 
-          name="description" 
-          content="ゼロ知識証明付き卒業証明書の検証システム" 
-        />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-      </Head>
+    <Container maxWidth="md" sx={{ py: 4 }}>
+      <Paper elevation={3} sx={{ p: 4 }}>
+        <Typography variant="h4" component="h1" gutterBottom align="center">
+          Document Verifier
+        </Typography>
+        
+        <Typography 
+          variant="subtitle1" 
+          align="center" 
+          color="text.secondary" 
+          sx={{ mb: 4 }}
+        >
+          ゼロ知識証明付き文書の真正性を検証します
+        </Typography>
 
-      <Container maxWidth="md" sx={{ py: 4 }}>
-        <Paper elevation={3} sx={{ p: 4 }}>
-          <Typography variant="h4" component="h1" gutterBottom align="center">
-            Certificate Verifier
+        {file && (
+          <Stepper activeStep={currentStep} sx={{ mb: 4 }}>
+            {verificationSteps.map((label, index) => (
+              <Step key={label}>
+                <StepLabel>{label}</StepLabel>
+              </Step>
+            ))}
+          </Stepper>
+        )}
+
+        {error && (
+          <Alert severity="error" sx={{ mb: 3 }}>
+            {error}
+          </Alert>
+        )}
+
+        <Box sx={{ minHeight: 400 }}>
+          {renderContent()}
+        </Box>
+
+        <Box sx={{ mt: 4, textAlign: 'center' }}>
+          <Typography variant="caption" color="text.secondary">
+            このシステムは完全にブラウザー内で動作し、
+            アップロードされたファイルは外部に送信されません。
           </Typography>
-          
-          <Typography 
-            variant="subtitle1" 
-            align="center" 
-            color="text.secondary" 
-            sx={{ mb: 4 }}
-          >
-            ゼロ知識証明付き卒業証明書の真正性を検証します
-          </Typography>
-
-          {file && (
-            <Stepper activeStep={currentStep} sx={{ mb: 4 }}>
-              {verificationSteps.map((label, index) => (
-                <Step key={label}>
-                  <StepLabel>{label}</StepLabel>
-                </Step>
-              ))}
-            </Stepper>
-          )}
-
-          {error && (
-            <Alert severity="error" sx={{ mb: 3 }}>
-              {error}
-            </Alert>
-          )}
-
-          <Box sx={{ minHeight: 400 }}>
-            {renderContent()}
-          </Box>
-
-          <Box sx={{ mt: 4, textAlign: 'center' }}>
-            <Typography variant="caption" color="text.secondary">
-              このシステムは完全にブラウザー内で動作し、
-              アップロードされたファイルは外部に送信されません。
-            </Typography>
-          </Box>
-        </Paper>
-      </Container>
-    </>
+        </Box>
+      </Paper>
+    </Container>
   );
-};
-
-export default VerifierPage;
+}
 ```
 
 ### 2.3 検証サービス
@@ -254,8 +252,9 @@ export interface VerificationResult {
     timestamp: boolean;
   };
   metadata: {
-    studentName?: string;
-    graduationYear?: number;
+    ownerName?: string;
+    documentYear?: number;
+    documentType?: string;
     institution?: string;
     issueDate?: string;
     verificationDate: string;
@@ -284,7 +283,7 @@ export class VerificationService {
     this.worker = new Worker('/workers/verification-worker.js');
   }
 
-  async verifyCertificate(
+  async verifyDocument(
     pdfFile: File,
     onProgress?: (step: number, message: string) => void
   ): Promise<VerificationResult> {
@@ -325,10 +324,10 @@ export class VerificationService {
 
       // ステップ3: ブロックチェーン検証
       onProgress?.(2, 'ブロックチェーンで確認中...');
-      if (pdfData.publicKey && result.metadata.graduationYear) {
+      if (pdfData.publicKey && result.metadata.documentYear) {
         const blockchainResult = await this.verifyOnBlockchain(
           pdfData.publicKey,
-          result.metadata.graduationYear
+          result.metadata.documentYear
         );
         result.checks.blockchain = blockchainResult.isValid;
         result.details = { ...result.details, ...blockchainResult.details };
@@ -371,9 +370,10 @@ export class VerificationService {
 
     return {
       metadata: {
-        studentName: getInfoValue('StudentName'),
-        graduationYear: parseInt(getInfoValue('GraduationYear') || '0'),
-        issueDate: getInfoValue('ZKCertTimestamp')
+        ownerName: getInfoValue('OwnerName'),
+        documentYear: parseInt(getInfoValue('DocumentYear') || '0'),
+        documentType: getInfoValue('DocumentType'),
+        issueDate: getInfoValue('ZKDocTimestamp')
       },
       details: {
         zkProof: zkProofStr && zkPublicInputsStr ? {
@@ -426,7 +426,7 @@ export class VerificationService {
 
   private async verifyOnBlockchain(
     publicKey: { x: string; y: string },
-    graduationYear: number
+    documentYear: number
   ): Promise<{ isValid: boolean; details: any }> {
     try {
       // 年度別NFTコントラクトのアドレスを取得（ハードコード化されたアドレス）
@@ -434,17 +434,17 @@ export class VerificationService {
       const deploymentManager = new ethers.Contract(
         deploymentManagerAddress,
         [
-          'function getYearlySet(uint256 year) view returns (tuple(uint256 year, address nftContract, bytes32 vkHash, bytes32 merkleRoot, bytes32 circuitHash, uint256 deployedAt))'
+          'function getYearlySet(uint256 year) view returns (tuple(uint256 year, address nftContract, bytes32 vkHash, bytes32 merkleRoot, bytes32 circuitHash, string documentType, uint256 deployedAt))'
         ],
         this.web3Provider
       );
 
-      const yearlySet = await deploymentManager.getYearlySet(graduationYear);
+      const yearlySet = await deploymentManager.getYearlySet(documentYear);
       
       if (yearlySet.nftContract === ethers.ZeroAddress) {
         return {
           isValid: false,
-          details: { error: `${graduationYear}年度のNFTコントラクトが見つかりません` }
+          details: { error: `${documentYear}年度のNFTコントラクトが見つかりません` }
         };
       }
 
@@ -453,8 +453,9 @@ export class VerificationService {
         yearlySet.nftContract,
         [
           'function hasClaimed(address user) view returns (bool)',
-          'function GRADUATION_YEAR() view returns (uint256)',
-          'function VK_HASH() view returns (bytes32)'
+          'function ISSUE_YEAR() view returns (uint256)',
+          'function VK_HASH() view returns (bytes32)',
+          'function DOCUMENT_TYPE() view returns (string)'
         ],
         this.web3Provider
       );
@@ -462,17 +463,19 @@ export class VerificationService {
       // 公開鍵からアドレスを計算
       const address = this.publicKeyToAddress(publicKey);
       const hasClaimed = await nftContract.hasClaimed(address);
-      const contractYear = await nftContract.GRADUATION_YEAR();
+      const contractYear = await nftContract.ISSUE_YEAR();
       const vkHash = await nftContract.VK_HASH();
+      const documentType = await nftContract.DOCUMENT_TYPE();
 
       return {
-        isValid: hasClaimed && contractYear.toString() === graduationYear.toString(),
+        isValid: hasClaimed && contractYear.toString() === documentYear.toString(),
         details: {
           nftContract: yearlySet.nftContract,
           hasClaimed,
           contractYear: contractYear.toString(),
           vkHash,
-          studentAddress: address
+          documentType,
+          ownerAddress: address
         }
       };
 

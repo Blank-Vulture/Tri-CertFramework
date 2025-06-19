@@ -1,11 +1,16 @@
-# Executive Console 詳細設計書（Ledger Nano X統合・バックエンドレス版）
+# 責任者システム 詳細設計書（Tauri v2・バックエンドレス版）
+
+## バージョン情報
+- **Version**: 2.1
+- **Last Updated**: 2025-01-20
+- **Target**: プロトタイプ 2025年10月
 
 ## 1. アーキテクチャ概要
 
 ### 1.1 完全バックエンドレス設計
 ```
 ┌─────────────────────────────────────┐
-│ Executive Console (Electron App)    │
+│ 責任者システム (Tauri v2 App)        │
 ├─────────────────────────────────────┤
 │ • 年度別セット管理                    │
 │ • ローカルファイルストレージ            │
@@ -18,17 +23,17 @@
 │ Blockchain (Polygon zkEVM)          │
 ├─────────────────────────────────────┤
 │ • YearlyDeploymentManager.sol       │
-│ • GraduationNFT2025.sol             │
-│ • GraduationNFT2026.sol             │
+│ • DocumentNFT2025.sol               │
+│ • DocumentNFT2026.sol               │
 │ • ...                               │
 └─────────────────────────────────────┘
          ↓ ローカル保存
 ┌─────────────────────────────────────┐
 │ Local File System                   │
 ├─────────────────────────────────────┤
-│ • circuits/Certificate2025.circom   │
-│ • keys/Certificate2025.zkey         │
-│ • keys/Certificate2025_vk.json      │
+│ • circuits/Document2025.circom      │
+│ • keys/Document2025.zkey            │
+│ • keys/Document2025_vk.json         │
 │ • exports/circuit_hashes.json       │
 └─────────────────────────────────────┘
 
@@ -38,19 +43,20 @@
 ✅ API不要
 ✅ 設定ファイルのみ
 ✅ デスクトップアプリ配布
+✅ Rust + WebViewで軽量・高速
 ```
 
 ---
 
-## 2. スマートコントラクト設計（超シンプル版）
+## 2. スマートコントラクト設計（汎用文書対応版）
 
-### 2.1 YearlyDeploymentManager.sol（ミニマル版）
+### 2.1 YearlyDeploymentManager.sol（文書対応版）
 ```solidity
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "./GraduationNFT.sol";
+import "./DocumentNFT.sol";
 
 contract YearlyDeploymentManager is Ownable {
     struct YearlySet {
@@ -59,17 +65,20 @@ contract YearlyDeploymentManager is Ownable {
         bytes32 vkHash;
         bytes32 merkleRoot;
         bytes32 circuitHash;        // 完全ローカル化：IPFSハッシュ廃止
+        string documentType;        // 文書タイプ（例：graduation, certificate, license）
         uint256 deployedAt;
     }
     
     mapping(uint256 => YearlySet) public yearlySets;
+    mapping(string => mapping(uint256 => address)) public documentContracts; // documentType -> year -> contract
     uint256[] public deployedYears;
     
     event YearlySetCreated(
         uint256 indexed year,
         address nftContract,
         bytes32 vkHash,
-        bytes32 circuitHash
+        bytes32 circuitHash,
+        string documentType
     );
     
       /**
@@ -80,16 +89,18 @@ contract YearlyDeploymentManager is Ownable {
       bytes32 vkHash,
       bytes32 merkleRoot,
       bytes32 circuitHash,
+      string calldata documentType,
       string calldata nftName,
       string calldata nftSymbol
   ) external onlyOwner returns (address) {
       require(yearlySets[year].deployedAt == 0, "Year already exists");
       
       // NFTコントラクトをデプロイ
-      GraduationNFT nft = new GraduationNFT(
+      DocumentNFT nft = new DocumentNFT(
           year,
           vkHash,
           merkleRoot,
+          documentType,
           nftName,
           nftSymbol
       );
@@ -101,12 +112,14 @@ contract YearlyDeploymentManager is Ownable {
           vkHash: vkHash,
           merkleRoot: merkleRoot,
           circuitHash: circuitHash,
+          documentType: documentType,
           deployedAt: block.timestamp
       });
       
+      documentContracts[documentType][year] = address(nft);
       deployedYears.push(year);
       
-      emit YearlySetCreated(year, address(nft), vkHash, circuitHash);
+      emit YearlySetCreated(year, address(nft), vkHash, circuitHash, documentType);
       return address(nft);
   }
     
@@ -118,6 +131,14 @@ contract YearlyDeploymentManager is Ownable {
     }
     
     /**
+     * @dev 文書タイプ別コントラクト取得
+     */
+    function getDocumentContract(string calldata documentType, uint256 year) 
+        external view returns (address) {
+        return documentContracts[documentType][year];
+    }
+    
+    /**
      * @dev 全年度取得
      */
     function getAllYears() external view returns (uint256[] memory) {
@@ -126,7 +147,7 @@ contract YearlyDeploymentManager is Ownable {
 }
 ```
 
-### 2.2 GraduationNFT.sol（ミニマル版）
+### 2.2 DocumentNFT.sol（汎用文書対応版）
 ```solidity
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
@@ -134,38 +155,41 @@ pragma solidity ^0.8.19;
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract GraduationNFT is ERC721, Ownable {
-    uint256 public immutable GRADUATION_YEAR;
+contract DocumentNFT is ERC721, Ownable {
+    uint256 public immutable ISSUE_YEAR;
     bytes32 public immutable VK_HASH;
+    string public immutable DOCUMENT_TYPE;
     bytes32 public merkleRoot;
     
     mapping(address => bool) public hasClaimed;
     uint256 private _tokenIdCounter;
     
-    event GraduationNFTMinted(address indexed graduate, uint256 tokenId);
+    event DocumentNFTMinted(address indexed owner, uint256 tokenId, string documentType);
     
     constructor(
         uint256 _year,
         bytes32 _vkHash,
         bytes32 _merkleRoot,
+        string memory _documentType,
         string memory _name,
         string memory _symbol
     ) ERC721(_name, _symbol) {
-        GRADUATION_YEAR = _year;
+        ISSUE_YEAR = _year;
         VK_HASH = _vkHash;
+        DOCUMENT_TYPE = _documentType;
         merkleRoot = _merkleRoot;
     }
     
     /**
-     * @dev 卒業NFTをミント（ZKP + Merkle Tree検証）
+     * @dev 文書NFTをミント（ZKP + Merkle Tree検証）
      */
-    function mintGraduationNFT(
+    function mintDocumentNFT(
         bytes calldata zkProof,
         uint256[] calldata publicInputs,
         bytes32[] calldata merkleProof
     ) external {
         require(!hasClaimed[msg.sender], "Already claimed");
-        require(publicInputs[2] / 1000000 == GRADUATION_YEAR, "Wrong year");
+        require(publicInputs[2] / 1000000 == ISSUE_YEAR, "Wrong year");
         
         // ZKP検証（簡略化 - 実際は詳細な検証）
         require(verifyZKProof(zkProof, publicInputs), "Invalid ZK proof");
@@ -177,11 +201,11 @@ contract GraduationNFT is ERC721, Ownable {
         uint256 tokenId = _tokenIdCounter++;
         
         _safeMint(msg.sender, tokenId);
-        emit GraduationNFTMinted(msg.sender, tokenId);
+        emit DocumentNFTMinted(msg.sender, tokenId, DOCUMENT_TYPE);
     }
     
     function verifyZKProof(bytes calldata, uint256[] calldata) internal view returns (bool) {
-        // 実装は Scholar Prover で検証済みの証明を信頼
+        // 実装は証明者システムで検証済みの証明を信頼
         return true; // 簡略化
     }
     
@@ -198,7 +222,7 @@ contract GraduationNFT is ERC721, Ownable {
         
         return computedHash == merkleRoot;
     }
-    
+
     function totalSupply() external view returns (uint256) {
         return _tokenIdCounter;
     }
@@ -207,23 +231,32 @@ contract GraduationNFT is ERC721, Ownable {
 
 ---
 
-## 3. デスクトップアプリ設計（Electron + React）
+## 3. デスクトップアプリ設計（Tauri v2 + React + TypeScript）
 
 ### 3.1 アプリケーション構成
 ```
 executive-console-app/
-├── main.js                 # Electronメインプロセス
-├── package.json            # 依存関係
-├── config/
-│   └── app-config.json     # アプリ設定（DB代替）
-├── src/
+├── src-tauri/              # Tauriバックエンド（Rust）
+│   ├── src/
+│   │   ├── main.rs         # Tauriメインプロセス
+│   │   ├── commands.rs     # ファイル操作コマンド
+│   │   └── lib.rs          # ライブラリ
+│   ├── Cargo.toml          # Rust依存関係
+│   └── tauri.conf.json     # Tauri設定
+├── src/                    # Reactフロントエンド
+│   ├── main.tsx            # React エントリーポイント
+│   ├── App.tsx             # メインアプリ
 │   ├── components/         # Reactコンポーネント
 │   ├── services/           # Web3・ローカルファイル操作
-│   ├── utils/              # ユーティリティ
-│   └── App.tsx             # メインアプリ
+│   ├── hooks/              # カスタムフック
+│   └── utils/              # ユーティリティ
+├── package.json            # Node.js依存関係
+├── vite.config.ts          # Vite設定
+├── config/
+│   └── app-config.json     # アプリ設定（DB代替）
 ├── circuits/               # 回路ファイル保存
 ├── keys/                   # キーファイル保存
-└── build/                  # ビルド済みファイル
+└── dist/                   # ビルド済みファイル
 ```
 
 ### 3.2 設定ファイル（DB代替）
@@ -247,9 +280,9 @@ executive-console-app/
       "nftContract": "0x...",
       "vkHash": "0x...",
       "circuitHash": "0x...",
-      "localCircuitPath": "./circuits/Certificate2025.circom",
-      "localVKPath": "./keys/Certificate2025_vk.json",
-      "localZkeyPath": "./keys/Certificate2025.zkey",
+      "localCircuitPath": "./circuits/Document2025.circom",
+      "localVKPath": "./keys/Document2025_vk.json",
+      "localZkeyPath": "./keys/Document2025.zkey",
       "merkleRoot": "0x...",
       "deployedAt": 1640995200
     }
@@ -329,7 +362,7 @@ const App: React.FC = () => {
         <AppBar position="static" elevation={0}>
           <Toolbar>
             <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-              Executive Console - 年次セット管理
+              責任者システム - 年次セット管理
             </Typography>
           </Toolbar>
         </AppBar>
@@ -443,9 +476,9 @@ export const YearlySetManager: React.FC<YearlySetManagerProps> = ({
         nftContract: nftAddress,
         vkHash,
         circuitHash,
-        localCircuitPath: `./circuits/Certificate${yearData.year}.circom`,
-        localVKPath: `./keys/Certificate${yearData.year}_vk.json`,
-        localZkeyPath: `./keys/Certificate${yearData.year}.zkey`,
+        localCircuitPath: `./circuits/Document${yearData.year}.circom`,
+        localVKPath: `./keys/Document${yearData.year}_vk.json`,
+        localZkeyPath: `./keys/Document${yearData.year}.zkey`,
         merkleRoot,
         deployedAt: Date.now()
       };
@@ -509,10 +542,10 @@ export const YearlySetManager: React.FC<YearlySetManagerProps> = ({
                     </IconButton>
                   </ListItem>
                   
-                  <ListItem>
+                                      <ListItem>
                     <ListItemText
                       primary="回路ファイル"
-                      secondary={`Certificate${yearSet.year}.circom`}
+                      secondary={`Document${yearSet.year}.circom`}
                     />
                     <IconButton 
                       size="small"

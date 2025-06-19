@@ -1,25 +1,27 @@
-# 機能設計書 (FSD) — ZKP 付き卒業証書システム
-**バージョン 2.0 最終更新: 2025‑06‑17**
+# 機能設計書 (FSD) — ZKP 付き書類真正性証明システム
+**バージョン 2.1 最終更新: 2025‑01‑20**
+
+> **汎用的書類真正性証明システム** - あらゆる書類に適応可能な設計で、例として卒業証書の真正性証明を実装
 
 ---
 
 ## 1. システム構成 (C4)
 ```mermaid
 graph TD
-  subgraph "Scholar Prover (PWA)"
+  subgraph "証明者システム (Scholar Prover PWA)"
     A[PDF + 入力データ] --> B[Circom-SnarkJS Prover]
     B --> C{proof.json}
     C --> D[PDF/A‑3 書き込み]
   end
-  subgraph "Executive Console (Electron)"
+  subgraph "責任者システム (Executive Console Tauri)"
     E[回路ファイル] --> F[Ledger Nano X]
     F --> G[年度セット デプロイ]
   end
-  subgraph "Registrar Console (Electron)"
-    H[学生キー JSON] --> I[Merkle Tree ビルダー]
+  subgraph "管理者システム (Registrar Console Tauri)"
+    H[書類所有者キー JSON] --> I[Merkle Tree ビルダー]
     I --> J[PDF/A-3 生成]
   end
-  subgraph "Verifier UI (SSG)"
+  subgraph "検証者システム (Verifier UI SSG)"
     K[PDF 入力] --> L[SnarkJS 検証]
     L --> M[検証結果]
   end
@@ -29,14 +31,14 @@ graph TD
 ```
 
 ## 2. UI 仕様
-### 2.1 Passkey 登録画面（Scholar Prover）
+### 2.1 Passkey 登録画面（証明者システム）
 | 要素 | ID | 機能 |
 |------|----|------|
 | 登録ボタン | btnRegister | `navigator.credentials.create()` 実行 |
-| 学生ID入力 | txtStudentId | 学生ID（数値検証付き） |
+| 所有者ID入力 | txtOwnerId | 書類所有者ID（数値検証付き） |
 | ローカル保存 | localStorageKey | Passkeyデータをローカル保存 |
 
-### 2.2 証明生成画面（Scholar Prover）
+### 2.2 証明生成画面（証明者システム）
 | 要素 | ID | 機能 |
 |------|----|------|
 | PDF ドロップ | dropPDF | ファイル入力（MIME: application/pdf） |
@@ -44,18 +46,18 @@ graph TD
 | 期限入力 | dateExpire | 最大365日後まで設定可能 |
 | 生成ボタン | btnGenerate | 入力が有効になるまで無効化 |
 
-### 2.3 年度セット管理（Executive Console）
+### 2.3 年度セット管理（責任者システム）
 | 要素 | ID | 機能 |
 |------|----|------|
-| 回路ファイル | fileCircuit | Certificate{Year}.circom アップロード |
+| 回路ファイル | fileCircuit | Document{Year}.circom アップロード |
 | Ptauファイル | filePtau | Powers of Tau セレモニーファイル |
 | Ledger署名 | btnLedgerSign | Ledger Nano X EIP-191 署名実行 |
-| 年度入力 | yearInput | 卒業年度（2025+） |
+| 年度入力 | yearInput | 書類発行年度（2025+） |
 
-### 2.4 学生キー管理（Registrar Console）
+### 2.4 書類所有者キー管理（管理者システム）
 | 要素 | ID | 機能 |
 |------|----|------|
-| 学生キーファイル | fileStudentKeys | 学生Passkeyデータ JSON |
+| 所有者キーファイル | fileOwnerKeys | 書類所有者Passkeyデータ JSON |
 | Merkleビルド | btnBuildMerkle | Poseidon Merkle Tree 構築 |
 | PDF生成 | btnGeneratePDFs | 一括 PDF/A-3 生成 |
 
@@ -63,20 +65,20 @@ graph TD
 
 ### 3.1 ローカルストレージアーキテクチャ
 ```
-Executive Console (Electron):
+責任者システム (Executive Console Tauri):
 config/
 ├── yearly-sets.json          # デプロイ済み年度セット
-├── circuits/Certificate{Year}.circom
-├── build/Certificate{Year}.zkey
+├── circuits/Document{Year}.circom
+├── build/Document{Year}.zkey
 └── signatures/operations.log  # Ledger署名ログ
 
-Registrar Console (Electron):
+管理者システム (Registrar Console Tauri):
 data/
-├── students-{year}.json       # 学生Passkeyデータ
+├── owners-{year}.json         # 書類所有者Passkeyデータ
 ├── merkle-tree-{year}.json    # 計算済みMerkle tree
 └── generated-pdfs/{year}/     # 一括生成PDF
 
-Scholar Prover (PWA):
+証明者システム (Scholar Prover PWA):
 localStorage:
 - passkey_info: {publicKey, credentialId}
 - circuit_cache: {wasm, zkey, vk}
@@ -87,21 +89,21 @@ localStorage:
 
 ```plantuml
 @startuml
-actor Student
-participant "Scholar Prover PWA" as PWA
+actor "書類所有者" as Owner
+participant "証明者システム PWA" as PWA
 participant "Local Storage" as LS
 participant "Circom Circuit" as Circuit
 
-Student -> PWA : PDF + dest + expiry をドラッグ
+Owner -> PWA : PDF + dest + expiry をドラッグ
 PWA -> PWA : pdfHash + destHash 計算
-PWA -> Student : WebAuthn getAssertion()
-Student --> PWA : pk, sig
+PWA -> Owner : WebAuthn getAssertion()
+Owner --> PWA : pk, sig
 PWA -> LS : 回路ファイル読み込み
 LS --> PWA : circuit.wasm, circuit.zkey
 PWA -> Circuit : snarkjs.groth16.fullProve()
 Circuit --> PWA : proof.json + publicSignals
 PWA -> PWA : PDF/A-3 に proof 埋め込み
-PWA --> Student : 拡張PDF ダウンロード
+PWA --> Owner : 拡張PDF ダウンロード
 @enduml
 ```
 
@@ -145,8 +147,8 @@ PWA --> Student : 拡張PDF ダウンロード
 - シンプルな検証ロジック
 
 ## 8. テストケース
-- TC‑01: 正常生成（PWA + Circom）
-- TC‑02: 期限切れ（Verifier UI）
+- TC‑01: 正常生成（証明者システム + Circom）
+- TC‑02: 期限切れ（検証者システム）
 - TC‑03: PDF 改竄検出（SnarkJS）
-- TC‑04: Ledger署名検証（Executive Console）
-- TC‑05: バックエンドレス動作確認（全コンポーネント）
+- TC‑04: Ledger署名検証（責任者システム）
+- TC‑05: バックエンドレス動作確認（全システム）

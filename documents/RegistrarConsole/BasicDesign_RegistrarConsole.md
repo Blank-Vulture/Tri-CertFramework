@@ -1,23 +1,25 @@
-# 基本設計書 (Basic Design) — Registrar Console
-**zk‑CertFramework / 事務管理システム** 最終更新: 2025-06-16 Version 2.0
+# 基本設計書 (Basic Design) — 管理者システム (Registrar Console)
+**ZK Document Authenticity Framework / 管理者システム** 最終更新: 2025-01-20 Version 2.1
+
+> **汎用的書類真正性証明システム** - あらゆる書類に適応可能な設計で、例として卒業証書の真正性証明を実装
 
 ---
 
 ## 1. システム概要
 
 ### 1.1 目的
-教務事務担当者が学生の公開鍵を管理し、卒業証明書PDFを生成・配布するためのElectronデスクトップアプリケーション。完全バックエンドレス設計により、データベースやサーバー不要でローカルJSONファイルのみで動作。
+管理者が書類所有者の公開鍵を管理し、書類PDFを生成・配布するためのTauriデスクトップアプリケーション。完全バックエンドレス設計により、データベースやサーバー不要でローカルJSONファイルのみで動作。
 
 ### 1.2 主要機能
-- 学生公開鍵の一括登録・管理（JSONファイル）
-- 証明書テンプレート管理（ローカルファイル）
-- PDF/A-3証明書生成（ZKP埋め込み）
+- 書類所有者公開鍵の一括登録・管理（JSONファイル）
+- 書類テンプレート管理（ローカルファイル）
+- PDF/A-3書類生成（ZKP埋め込み）
 - Poseidon Merkle Tree構築・エクスポート
 - CSV インポート/エクスポート機能
 - 年度別データ管理
 
 ### 1.3 非機能要件
-- 同時ユーザー数: ≤ 3人（事務職員のみ）
+- 同時ユーザー数: ≤ 3人（管理者のみ）
 - データ処理能力: 500名/バッチ（ローカル処理）
 - 応答時間: ≤ 5秒（PDF生成）
 - 可用性: デスクトップアプリ（オフライン動作）
@@ -28,7 +30,7 @@
 
 ### 2.1 アーキテクチャ（完全バックエンドレス）
 ```
-[Registrar Staff] → [Electron Desktop App]
+[Administrator] → [Tauri Desktop App]
                             ↓
                     [Local JSON Files] ← → [Local File System]
                             ↓                       ↓
@@ -39,13 +41,13 @@
                                             [USB Backup / Distribution]
 ```
 
-### 2.2 技術スタック（Version 2.0）
+### 2.2 技術スタック（Version 2.1）
 | 層 | 技術 | 目的 |
 |----|------|------|
-| Frontend | Vue.js 3 + Vite + Electron | デスクトップアプリUI |
-| データ管理 | JSONファイル + FileSystem API | ローカルデータ永続化 |
+| Frontend | React 18 + TypeScript + Tauri v2 | デスクトップアプリUI |
+| データ管理 | JSONファイル + Tauri fs API | ローカルデータ永続化 |
 | 認証 | Ledger Nano X + EIP-191 | ハードウェア署名 |
-| PDF生成 | PDFtk + PDF/A-3 | 証明書生成・ZKP埋め込み |
+| PDF生成 | PDFtk + PDF/A-3 | 書類生成・ZKP埋め込み |
 | Merkle Tree | Poseidon256 + JavaScript | ツリー構築 |
 | Storage | ローカルファイルシステム | データ・PDF保存 |
 | 配布 | GitHub Releases | 署名付きバイナリ |

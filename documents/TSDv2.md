@@ -1,5 +1,7 @@
-# Technical Design Specification (TSD) — ZK‑CertFramework
-**Version 2.0 – 2025‑06‑17**
+# Technical Design Specification (TSD) — ZK Document Authenticity Framework
+**Version 2.1 – 2025‑01‑20**
+
+> **Universal Document Authenticity System** - Adaptable to any document type with graduation certificates as example implementation
 
 ---
 
@@ -17,7 +19,7 @@
 
 ## 2 Circom Circuit Design
 
-### 2.1 Certificate{Year}.circom Template
+### 2.1 Document{Year}.circom Template
 ```circom
 pragma circom 2.1.4;
 
@@ -25,7 +27,7 @@ include "poseidon.circom";
 include "ecdsa.circom";
 include "merkle-tree.circom";
 
-template CertificateProof() {
+template DocumentProof() {
     // Public inputs
     signal input vkHash;
     signal input schemaHash; 
@@ -71,9 +73,9 @@ template CertificateProof() {
 
 ---
 
-## 3 Component Technology Stacks
+## 3 System Technology Stacks
 
-### 3.1 Scholar Prover (PWA)
+### 3.1 Prover System (Scholar Prover PWA)
 ```typescript
 // Technology Stack
 - Framework: React 18 + Vite 4
@@ -96,14 +98,14 @@ const generateProof = async (inputs: CircuitInputs) => {
 };
 ```
 
-### 3.2 Executive Console (Electron)
+### 3.2 Responsible Party System (Executive Console Tauri)
 ```typescript
 // Technology Stack  
-- Framework: React 18 + Electron 27
+- Framework: React 18 + TypeScript + Tauri v2
 - Ledger: @ledgerhq/hw-transport-node-hid
 - Web3: ethers.js v6
 - Compiler: circom CLI + snarkjs
-- Storage: Node.js fs + JSON files
+- Storage: Tauri fs API + JSON files
 
 // Ledger EIP-191 Integration
 import TransportNodeHid from "@ledgerhq/hw-transport-node-hid";
@@ -122,13 +124,13 @@ const signWithLedger = async (message: string) => {
 };
 ```
 
-### 3.3 Registrar Console (Electron)
+### 3.3 Administrator System (Registrar Console Tauri)
 ```typescript
 // Technology Stack
-- Framework: Vue 3 + Electron 27
+- Framework: React 18 + TypeScript + Tauri v2
 - Hash: @noble/hashes (Poseidon implementation)
 - PDF: puppeteer + PDF/A-3 templates
-- Storage: Node.js fs + JSON files
+- Storage: Tauri fs API + JSON files
 - Merkle: Custom Poseidon Merkle tree
 
 // Merkle Tree Implementation
@@ -149,10 +151,10 @@ class PoseidonMerkleTree {
 }
 ```
 
-### 3.4 Verifier UI (SSG)
+### 3.4 Verifier System (Verifier UI SSG)
 ```typescript
 // Technology Stack
-- Framework: Next.js 14 (SSG mode)
+- Framework: Next.js 15 (SSG mode) + App Router
 - ZKP: SnarkJS 0.7 (verification only)
 - PDF: PDF.js + attachment extraction
 - Web3: ethers.js v6 (read-only)
@@ -355,13 +357,13 @@ Circuit Hash: ${auth.parameters.circuitHash || 'N/A'}
 │   ├── network-config.json
 │   └── ledger-settings.json
 ├── circuits/
-│   ├── Certificate2025.circom
-│   ├── Certificate2026.circom
+│   ├── Document2025.circom
+│   ├── Document2026.circom
 │   └── common/poseidon.circom
 ├── build/
-│   ├── Certificate2025.wasm
-│   ├── Certificate2025.zkey
-│   ├── Certificate2025_vk.json
+│   ├── Document2025.wasm
+│   ├── Document2025.zkey
+│   ├── Document2025_vk.json
 │   └── powersOfTau_bn128_16.ptau
 └── logs/
     ├── operations.log
@@ -370,8 +372,8 @@ Circuit Hash: ${auth.parameters.circuitHash || 'N/A'}
 # Registrar Console  
 ~/.zk-cert-registrar/
 ├── data/
-│   ├── students-2025.json
-│   ├── students-2026.json
+│   ├── owners-2025.json
+│   ├── owners-2026.json
 │   └── merkle-trees/
 ├── generated/
 │   ├── pdfs-2025/
@@ -397,10 +399,10 @@ interface YearlySetConfig {
   };
 }
 
-// students-{year}.json
-interface StudentData {
+// owners-{year}.json
+interface OwnerData {
   year: number;
-  students: {
+  owners: {
     id: string;
     name: string;
     passkey: {
@@ -425,27 +427,27 @@ snarkjs powersoftau new bn128 16 pot16_0000.ptau
 snarkjs powersoftau contribute pot16_0000.ptau pot16_0001.ptau
 
 # Per-year circuit compilation
-circom Certificate2025.circom --r1cs --wasm --sym -o build/
-snarkjs groth16 setup build/Certificate2025.r1cs pot16_final.ptau Certificate2025_0000.zkey
-snarkjs zkey contribute Certificate2025_0000.zkey Certificate2025_final.zkey
-snarkjs zkey export verificationkey Certificate2025_final.zkey Certificate2025_vk.json
+circom Document2025.circom --r1cs --wasm --sym -o build/
+snarkjs groth16 setup build/Document2025.r1cs pot16_final.ptau Document2025_0000.zkey
+snarkjs zkey contribute Document2025_0000.zkey Document2025_final.zkey
+snarkjs zkey export verificationkey Document2025_final.zkey Document2025_vk.json
 ```
 
 ### 7.2 Application Distribution
 ```bash
-# Executive Console (Electron)
-npm run build:electron
-electron-builder --publish=never
+# Responsible Party System (Tauri)
+npm run build:tauri
+npm run tauri build
 
-# Scholar Prover (PWA)
+# Prover System (PWA)
 npm run build:pwa
 npm run deploy:gh-pages
 
-# Registrar Console (Electron)  
-npm run build:electron-registrar
-electron-builder --config electron-registrar.config.js
+# Administrator System (Tauri)  
+npm run build:tauri-registrar
+npm run tauri build --config tauri-registrar.config.js
 
-# Verifier UI (SSG)
+# Verifier System (SSG)
 npm run build:next
 npm run export:static
 ```
@@ -461,12 +463,12 @@ npm run export:static
 - Parallel worker threads for proving
 
 ### 8.2 Application Performance
-| Component | Optimization | Target |
+| System | Optimization | Target |
 |-----------|-------------|--------|
-| Scholar Prover | WASM threading | <10s proof time |
-| Executive Console | Native deps | <2s circuit compile |
-| Registrar Console | Batch processing | 100 PDFs/min |
-| Verifier UI | Static prerender | <100ms verification |
+| Prover System | WASM threading | <10s proof time |
+| Responsible Party System | Native deps | <2s circuit compile |
+| Administrator System | Batch processing | 100 PDFs/min |
+| Verifier System | Static prerender | <100ms verification |
 
 ---
 

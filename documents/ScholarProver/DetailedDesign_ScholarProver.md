@@ -1,14 +1,19 @@
-# Scholar Prover 詳細設計書（完全バックエンドレス・ブラウザーのみ版）
+# 証明者システム 詳細設計書（完全バックエンドレス・ブラウザーのみ版）
+
+## バージョン情報
+- **Version**: 2.1
+- **Last Updated**: 2025-01-20
+- **Target**: プロトタイプ 2025年10月
 
 ## 1. アーキテクチャ概要
 
 ### 1.1 完全ブラウザー内設計
 ```
 ┌─────────────────────────────────────┐
-│ ブラウザー（Scholar Prover）          │
+│ ブラウザー（証明者システム）          │
 ├─────────────────────────────────────┤
 │ • WebAuthnサービス（パスキー生成）     │
-│ • ZKP回路処理（WASM）                │
+│ • ZKP回路処理（Circom/SnarkJS）      │
 │ • PDF/A-3解析・埋め込み              │
 │ • ローカルストレージ管理               │
 │ • 設定・キャッシュ管理                │
@@ -19,7 +24,7 @@
 ├─────────────────────────────────────┤
 │ • navigator.credentials（WebAuthn）  │
 │ • Web Workers（ZKP計算）             │
-│ • IndexedDB（証明書保存）             │
+│ • IndexedDB（文書保存）               │
 │ • File API（PDF処理）                │
 │ • localStorage（設定保存）            │
 └─────────────────────────────────────┘
@@ -27,8 +32,8 @@
 ┌─────────────────────────────────────┐
 │ 出力ファイル                         │
 ├─────────────────────────────────────┤
-│ • enhanced_certificate.pdf          │
-│   ├── 元の証明書内容                  │
+│ • enhanced_document.pdf              │
+│   ├── 元の文書内容                    │
 │   ├── ZKP証明データ                  │
 │   ├── 公開鍵情報                     │
 │   └── タイムスタンプ                  │
@@ -45,17 +50,18 @@
 
 ---
 
-## 2. ブラウザーアプリ設計（React + TypeScript）
+## 2. ブラウザーアプリ設計（React 18 + TypeScript + Vite）
 
 ### 2.1 アプリケーション構成
 ```
 scholar-prover-app/
 ├── index.html              # エントリーHTML
 ├── package.json            # 依存関係
+├── vite.config.ts          # Vite設定
 ├── public/
 │   ├── circuits/           # ZKP回路ファイル（ビルド時埋め込み）
-│   │   ├── certificate.wasm
-│   │   ├── certificate.zkey  
+│   │   ├── Document2025.wasm
+│   │   ├── Document2025.zkey  
 │   │   └── verification_key.json
 │   ├── workers/            # Web Worker
 │   │   └── zkp-worker.js
@@ -88,14 +94,14 @@ import {
   Alert
 } from '@mui/material';
 import { WebAuthnStep } from './components/WebAuthnStep';
-import { CertificateUploadStep } from './components/CertificateUploadStep';
+import { DocumentUploadStep } from './components/DocumentUploadStep';
 import { ZKPGenerationStep } from './components/ZKPGenerationStep';
 import { PDFEnhancementStep } from './components/PDFEnhancementStep';
-import { useScholarProver } from './hooks/useScholarProver';
+import { useDocumentProver } from './hooks/useDocumentProver';
 
 const steps = [
   'パスキー作成',
-  '証明書アップロード', 
+  '文書アップロード', 
   'ZKP証明生成',
   'PDF埋め込み'
 ];
@@ -106,16 +112,16 @@ const App: React.FC = () => {
   
   const {
     webAuthnData,
-    certificateData,
+    documentData,
     zkProof,
     enhancedPDF,
     isProcessing,
     error,
     handleWebAuthnComplete,
-    handleCertificateUpload,
+    handleDocumentUpload,
     handleZKPGeneration,
     handlePDFEnhancement
-  } = useScholarProver();
+  } = useDocumentProver();
 
   const isStepCompleted = (step: number) => completed.has(step);
   const isStepOptional = (step: number) => false;
@@ -153,10 +159,10 @@ const App: React.FC = () => {
         );
       case 1:
         return (
-          <CertificateUploadStep
+          <DocumentUploadStep
             webAuthnData={webAuthnData}
             onComplete={(data) => {
-              handleCertificateUpload(data);
+              handleDocumentUpload(data);
               handleStepComplete(1);
             }}
             onBack={handleBack}
@@ -168,7 +174,7 @@ const App: React.FC = () => {
         return (
           <ZKPGenerationStep
             webAuthnData={webAuthnData}
-            certificateData={certificateData}
+            documentData={documentData}
             onComplete={(proof) => {
               handleZKPGeneration(proof);
               handleStepComplete(2);
@@ -181,7 +187,7 @@ const App: React.FC = () => {
       case 3:
         return (
           <PDFEnhancementStep
-            certificateData={certificateData}
+            documentData={documentData}
             zkProof={zkProof}
             webAuthnData={webAuthnData}
             onComplete={(pdf) => {
@@ -204,10 +210,10 @@ const App: React.FC = () => {
       <Container maxWidth="md" sx={{ py: 4 }}>
         <Paper elevation={3} sx={{ p: 4 }}>
           <Typography variant="h4" component="h1" gutterBottom align="center">
-            Scholar Prover
+            証明者システム
           </Typography>
           <Typography variant="subtitle1" align="center" color="text.secondary" sx={{ mb: 4 }}>
-            ゼロ知識証明付き卒業証明書生成システム
+            ゼロ知識証明付き文書真正性証明システム
           </Typography>
 
           <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
@@ -248,7 +254,7 @@ const App: React.FC = () => {
             <Box sx={{ mt: 2 }}>
               <Alert severity="success">
                 すべての処理が完了しました！
-                拡張された証明書PDFをダウンロードしてください。
+                拡張された文書PDFをダウンロードしてください。
               </Alert>
             </Box>
           )}
@@ -427,8 +433,8 @@ export class ZKPService {
   async generateProof(inputs: {
     privateKey: string;
     publicKey: { x: string; y: string };
-    certificateHash: string;
-    graduationYear: number;
+    documentHash: string;
+    documentYear: number;
     merkleProof: string[];
     merkleRoot: string;
   }): Promise<{
@@ -508,14 +514,14 @@ let wasmBuffer = null;
 let zkeyBuffer = null;
 
 async function loadCircuitFiles() {
-  // ビルド時に静的ファイルとして埋め込まれた回路ファイルを読み込み
+      // ビルド時に静的ファイルとして埋め込まれた回路ファイルを読み込み
   if (!wasmBuffer) {
-    const wasmResponse = await fetch('/circuits/certificate.wasm');
+    const wasmResponse = await fetch('/circuits/Document2025.wasm');
     wasmBuffer = await wasmResponse.arrayBuffer();
   }
   
   if (!zkeyBuffer) {
-    const zkeyResponse = await fetch('/circuits/certificate.zkey');
+    const zkeyResponse = await fetch('/circuits/Document2025.zkey');
     zkeyBuffer = await zkeyResponse.arrayBuffer();
   }
 }
@@ -537,8 +543,8 @@ self.onmessage = async function(event) {
           // 公開入力
           publicKeyX: inputs.publicKey.x,
           publicKeyY: inputs.publicKey.y,
-          certificateHash: inputs.certificateHash,
-          graduationYear: inputs.graduationYear,
+          documentHash: inputs.documentHash,
+          documentYear: inputs.documentYear,
           merkleRoot: inputs.merkleRoot
         },
         wasmBuffer,
@@ -587,8 +593,9 @@ export class PDFService {
     zkProof: { proof: string; publicInputs: string[] },
     webAuthnData: any,
     metadata: {
-      graduationYear: number;
-      studentName: string;
+      documentYear: number;
+      ownerName: string;
+      documentType: string;
       timestamp: string;
     }
   ): Promise<Uint8Array> {
@@ -629,9 +636,10 @@ export class PDFService {
   private async embedMetadata(pdfDoc: PDFDocument, metadata: any) {
     const infoDict = pdfDoc.getInfoDict();
     
-    infoDict.set(PDFName.of('GraduationYear'), PDFString.of(metadata.graduationYear.toString()));
-    infoDict.set(PDFName.of('StudentName'), PDFString.of(metadata.studentName));
-    infoDict.set(PDFName.of('ZKCertTimestamp'), PDFString.of(metadata.timestamp));
+    infoDict.set(PDFName.of('DocumentYear'), PDFString.of(metadata.documentYear.toString()));
+    infoDict.set(PDFName.of('OwnerName'), PDFString.of(metadata.ownerName));
+    infoDict.set(PDFName.of('DocumentType'), PDFString.of(metadata.documentType));
+    infoDict.set(PDFName.of('ZKDocTimestamp'), PDFString.of(metadata.timestamp));
     infoDict.set(PDFName.of('ZKCertVersion'), PDFString.of('1.0'));
   }
 
@@ -639,7 +647,7 @@ export class PDFService {
     // PDF/A-3準拠のメタデータを設定
     const infoDict = pdfDoc.getInfoDict();
     
-    infoDict.set(PDFName.of('Producer'), PDFString.of('Scholar Prover v1.0'));
+    infoDict.set(PDFName.of('Producer'), PDFString.of('証明者システム v2.1'));
     infoDict.set(PDFName.of('Creator'), PDFString.of('zk-CertFramework'));
     
     // PDF/A-3識別情報

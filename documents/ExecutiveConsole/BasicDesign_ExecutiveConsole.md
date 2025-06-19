@@ -1,12 +1,14 @@
-# 基本設計書 (Basic Design) — Executive Console
-**zk‑CertFramework / 教授管理システム** 最終更新: 2025-06-16
+# 基本設計書 (Basic Design) — 責任者システム (Executive Console)
+**ZK Document Authenticity Framework / 責任者システム** 最終更新: 2025-01-20
+
+> **汎用的書類真正性証明システム** - あらゆる書類に適応可能な設計で、例として卒業証書の真正性証明を実装
 
 ---
 
 ## 1. システム概要
 
 ### 1.1 目的
-教授・管理者がゼロ知識証明回路の管理、YearNFTの発行、およびブロックチェーン上のMerkle Root管理を行うための高権限管理システム。
+責任者がゼロ知識証明回路の管理、YearNFTの発行、およびブロックチェーン上のMerkle Root管理を行うための高権限管理システム。
 
 ### 1.2 主要機能
 - ZKP回路 (Proving Key / Verifying Key) 管理
@@ -17,7 +19,7 @@
 
 ### 1.3 非機能要件
 - セキュリティレベル: 最高
-- 同時ユーザー数: ≤ 5人（教授・管理者のみ）
+- 同時ユーザー数: ≤ 5人（責任者のみ）
 - 応答時間: ≤ 5秒
 - 可用性: 99.95%
 
@@ -27,7 +29,7 @@
 
 ### 2.1 アーキテクチャ（Trust Minimized版）
 ```
-[Professor/Admin] → [Electron Desktop App]
+[Responsible Party] → [Tauri Desktop App]
                             ↓
                     [Local JSON Files] ← → [Local File System]
                             ↓                       ↓
@@ -35,13 +37,13 @@
                             ↓
                     [Polygon zkEVM] ← → [Smart Contracts]
                                             • YearlyDeploymentManager
-                                            • GraduationNFT{Year}
+                                            • DocumentNFT{Year}
 ```
 
 ### 2.2 技術スタック（Ledger Nano X版）
 | 層 | 技術 | 目的 |
 |----|------|------|
-| Frontend | React + Electron | デスクトップアプリ |
+| Frontend | React 18 + TypeScript + Tauri v2 | デスクトップアプリ |
 | データ管理 | JSONファイル | ローカル設定・状態 |
 | 認証 | Ledger Nano X + EIP-191 | ハードウェア署名 |
 | Blockchain | Polygon zkEVM (読み取り専用) | スマートコントラクト |
@@ -79,15 +81,15 @@ contract YearlyDeploymentManager {
     ) external onlyOwner returns (address);
 }
 
-// GraduationNFT.sol - 年度別NFT（完全独立）
-contract GraduationNFT is ERC721 {
-    uint256 public immutable GRADUATION_YEAR;
+// DocumentNFT.sol - 年度別NFT（完全独立）
+contract DocumentNFT is ERC721 {
+    uint256 public immutable ISSUANCE_YEAR;
     bytes32 public immutable VK_HASH;
     bytes32 public merkleRoot;
     mapping(address => bool) public hasClaimed;
     
     // ZKP検証・NFT発行（年度独立）
-    function mintGraduationNFT(
+    function mintDocumentNFT(
         bytes calldata zkProof,
         uint256[] calldata publicInputs,
         bytes32[] calldata merkleProof
@@ -129,11 +131,11 @@ graph LR
       "vkHash": "0x...",
       "merkleRoot": "0x...",
       "circuitHash": "0x...",
-      "localFiles": {
-        "circuit": "./circuits/Certificate2025.circom",
-        "vk": "./keys/Certificate2025_vk.json",
-        "zkey": "./keys/Certificate2025.zkey"
-      },
+              "localFiles": {
+          "circuit": "./circuits/Document2025.circom",
+          "vk": "./keys/Document2025_vk.json",
+          "zkey": "./keys/Document2025.zkey"
+        },
       "deployedAt": "2025-03-01T10:00:00Z",
       "deployTx": "0x...",
       "status": "active"
@@ -157,9 +159,9 @@ graph LR
 
 **🔹 年度独立設計**
 ```
-2025年度: Certificate2025.circom + VK2025 + NFT2025
-2026年度: Certificate2026.circom + VK2026 + NFT2026
-2027年度: Certificate2027.circom + VK2027 + NFT2027
+2025年度: Document2025.circom + VK2025 + NFT2025
+2026年度: Document2026.circom + VK2026 + NFT2026
+2027年度: Document2027.circom + VK2027 + NFT2027
 ↓
 各年度は完全独立・永続利用・他年度に影響なし
 ```

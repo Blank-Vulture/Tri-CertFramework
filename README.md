@@ -17,9 +17,9 @@
 
 # 🇯🇵 ZK-CertFramework 🎓⚡
 
-> **Trust Minimized・完全バックエンドレス・ゼロ知識証明書システム**
+> **Trust Minimized・完全バックエンドレス・ゼロ知識書類真正性証明システム**
 
-学生本人のみがCircom回路とSnarkJSを使用して時限付きゼロ知識証明を生成し、**Ledger Nano X ハードウェアセキュリティ**による管理者操作を実現する革新的な卒業証書システム。検証者はPDFファイルとPolygon zkEVMオンチェーンデータのみで真正性を確認できます。
+**あらゆる書類に適応可能な汎用的真正性証明システム**として設計され、**例として卒業証書の真正性証明**を実装。書類所有者のみがCircom回路とSnarkJSを使用して時限付きゼロ知識証明を生成し、**Ledger Nano X ハードウェアセキュリティ**による責任者操作を実現。検証者はPDFファイルとPolygon zkEVMオンチェーンデータのみで真正性を確認できます。
 
 <div align="center">
 
@@ -46,11 +46,11 @@
 - **WebAuthn統合** - 生体認証によるパスワードレス認証
 - **EIP-191署名** - ハードウェア保護管理者操作
 
-### 🏗️ **4コンポーネント・アーキテクチャ**
-- **Scholar Prover (PWA)** - 学生向け証明書生成インターフェース
-- **Executive Console (Electron)** - Ledger保護回路デプロイ
-- **Registrar Console (Electron)** - ローカル学生データ管理
-- **Verifier UI (SSG)** - ドラッグ&ドロップ証明書検証
+### 🏗️ **4システム・アーキテクチャ**
+- **証明者システム (Scholar Prover PWA)** - 書類所有者向け真正性証明生成インターフェース
+- **責任者システム (Executive Console Electron)** - Ledger保護回路デプロイ
+- **管理者システム (Registrar Console Electron)** - ローカル書類データ管理
+- **検証者システム (Verifier UI SSG)** - ドラッグ&ドロップ書類検証
 
 ## 🎯 クイックスタート
 
@@ -63,7 +63,7 @@
 
 ```bash
 # リポジトリをクローン
-git clone https://github.com/your-org/zk-CertFramework.git
+git clone https://github.com/Blank-Vulture/zk-CertFramework.git
 cd zk-CertFramework
 
 # 全コンポーネントの依存関係をインストール
@@ -78,7 +78,7 @@ npm run dev:all
 
 ### コンポーネント設定
 
-#### 🎓 Scholar Prover (学生インターフェース)
+#### 🎓 Scholar Prover (証明者インターフェース)
 ```bash
 cd scholar-prover
 npm install
@@ -86,7 +86,7 @@ npm run dev
 # http://localhost:3000 でアクセス
 ```
 
-#### 🏛️ Executive Console (管理者インターフェース)
+#### 🏛️ Executive Console (責任者インターフェース)
 ```bash
 cd executive-console
 npm install
@@ -94,14 +94,14 @@ npm run electron:dev
 # Ledger Nano X接続が必要
 ```
 
-#### 📋 Registrar Console (職員インターフェース)
+#### 📋 Registrar Console (管理者インターフェース)
 ```bash
 cd registrar-console
 npm install
 npm run electron:dev
 ```
 
-#### ✅ Verifier UI (企業インターフェース)
+#### ✅ Verifier UI (検証者インターフェース)
 ```bash
 cd verifier-ui
 npm install
@@ -113,25 +113,25 @@ npm run dev
 
 ```mermaid
 graph TD
-    subgraph "学生体験"
+    subgraph "証明者システム"
         A[📱 Scholar Prover PWA] --> B[🔐 WebAuthn Passkey]
         B --> C[⚡ Circom ZKP生成]
         C --> D[📄 PDF/A-3埋め込み]
     end
     
-    subgraph "管理者設定"
+    subgraph "責任者システム"
         E[🏛️ Executive Console] --> F[🔐 Ledger Nano X]
         F --> G[📡 年度回路デプロイ]
         G --> H[🌐 Polygon zkEVM]
     end
     
-    subgraph "職員管理"
+    subgraph "管理者システム"
         I[📋 Registrar Console] --> J[👥 学生キー管理]
         J --> K[🌳 Merkle Tree生成]
         K --> L[📄 一括PDF作成]
     end
     
-    subgraph "検証"
+    subgraph "検証者システム"
         M[✅ Verifier UI] --> N[📄 PDFドラッグ&ドロップ]
         N --> O[⚡ SnarkJS検証]
         O --> H
@@ -148,46 +148,47 @@ graph TD
 - **ブロックチェーン**: Polygon zkEVM (メインネット/Amoyテストネット)
 - **ハードウェアセキュリティ**: Ledger Nano X + EIP-191署名
 - **PDF標準**: PDF/A-3 with embedded proofs
+- **デスクトップフレームワーク**: Tauri v2 (Rust + OS WebView)
 
 ### コンポーネント技術
-| コンポーネント | フレームワーク | 目的 | ストレージ |
+| システム | フレームワーク | 目的 | ストレージ |
 |-----------|-----------|---------|---------|
-| Scholar Prover | React 18 + Vite (PWA) | ZKP生成 | IndexedDB + localStorage |
-| Executive Console | React 18 + Electron 27 | 回路デプロイ | ローカルJSONファイル |
-| Registrar Console | Vue 3 + Electron 27 | 学生管理 | ローカルJSONファイル |
-| Verifier UI | Next.js 14 (SSG) | 証明書検証 | 永続ストレージなし |
+| 証明者システム | React 18 + Vite (PWA) | ZKP生成 | IndexedDB + localStorage |
+| 責任者システム | React 18 + TypeScript + Tauri v2 | 回路デプロイ | ローカルJSONファイル |
+| 管理者システム | React 18 + TypeScript + Tauri v2 | 書類所有者管理 | ローカルJSONファイル |
+| 検証者システム | Next.js 15 (SSG) + App Router | 書類検証 | 永続ストレージなし |
 
 ## 📋 使用ワークフロー
 
-### 1. 🏛️ **管理者設定** (Executive Console)
+### 1. 🏛️ **責任者システム設定** (Executive Console)
 ```typescript
 // 1. Ledger Nano X接続
-// 2. Certificate{Year}.circomアップロード
+// 2. Document{Year}.circomアップロード
 // 3. Powers of Tauで回路コンパイル
 // 4. Ledgerでデプロイメント署名
 // 5. Polygon zkEVMにYearlySetデプロイ
 ```
 
-### 2. 📋 **学生登録** (Registrar Console)
+### 2. 📋 **管理者システム運用** (Registrar Console)
 ```typescript
-// 1. 学生データインポート (CSV/JSON)
+// 1. 書類所有者データインポート (CSV/JSON)
 // 2. Poseidon Merkle Tree構築
-// 3. 一括PDF/A-3証明書生成
-// 4. 学生に配布
+// 3. 一括PDF/A-3書類生成
+// 4. 書類所有者に配布
 ```
 
-### 3. 🎓 **証明書生成** (Scholar Prover)
+### 3. 🎓 **証明者システム利用** (Scholar Prover)
 ```typescript
 // 1. WebAuthn Passkey登録
-// 2. PDF証明書ドラッグ + 詳細入力
+// 2. PDF書類ドラッグ + 詳細入力
 // 3. ゼロ知識証明生成
 // 4. PDF/A-3にproof埋め込み
-// 5. 拡張証明書ダウンロード
+// 5. 拡張書類ダウンロード
 ```
 
-### 4. ✅ **証明書検証** (Verifier UI)
+### 4. ✅ **検証者システム利用** (Verifier UI)
 ```typescript
-// 1. PDF証明書ドラッグ&ドロップ
+// 1. PDF書類ドラッグ&ドロップ
 // 2. 埋め込みZKP自動抽出
 // 3. SnarkJSでproof検証
 // 4. Polygon zkEVMでVK照会
@@ -250,9 +251,9 @@ npm run build:registrar         # Electronパッケージ
 npm run build:verifier          # 静的サイトエクスポート
 ```
 
-## 🤝 コントリビューション
+## 📚 学術的利用について
 
-コントリビューションを歓迎します！詳細は[コントリビューションガイド](CONTRIBUTING.md)をご覧ください。
+このプロジェクトは学術研究目的で開発されています。研究や教育目的での利用を歓迎します。商用利用については事前にご相談ください。
 
 ## 📜 ライセンス
 
@@ -263,12 +264,7 @@ npm run build:verifier          # 静的サイトエクスポート
 - **ドキュメント**: [技術仕様書](documents/)
 - **Circom回路**: [circuits/](circuits/)
 - **Polygon zkEVM**: [公式ドキュメント](https://polygon.technology/polygon-zkevm)
-
----
-
-**デジタル証明書のtrust-minimized未来のために ❤️ で構築**
-
-*「ゼロ知識暗号学を通じて機関の信頼を維持しながら、学生に自己主権的で検証可能な証明書を提供する。」*
+- **リポジトリ**: [GitHub](https://github.com/Blank-Vulture/zk-CertFramework)
 
 </div>
 
@@ -278,9 +274,9 @@ npm run build:verifier          # 静的サイトエクスポート
 
 # 🇺🇸 ZK-CertFramework 🎓⚡
 
-> **Trust-Minimized, Fully Backendless Zero-Knowledge Certificate System**
+> **Trust-Minimized, Fully Backendless Zero-Knowledge Document Authenticity System**
 
-A revolutionary graduation certificate system where **only students can generate time-bound zero-knowledge proofs** using Circom circuits and SnarkJS, with **Ledger Nano X hardware security** for administrative operations. Verifiers can confirm authenticity using only the PDF file and on-chain Polygon zkEVM data.
+A **universal document authenticity verification system adaptable to any type of document**, with **graduation certificates as an example implementation**. Only document owners can generate time-bound zero-knowledge proofs using Circom circuits and SnarkJS, with **Ledger Nano X hardware security** for responsible party operations. Verifiers can confirm authenticity using only the PDF file and on-chain Polygon zkEVM data.
 
 <div align="center">
 
@@ -307,11 +303,11 @@ A revolutionary graduation certificate system where **only students can generate
 - **WebAuthn Integration** - Passwordless authentication with biometrics
 - **EIP-191 Signatures** - Hardware-secured administrative operations
 
-### 🏗️ **Four-Component Architecture**
-- **Scholar Prover (PWA)** - Student certificate generation interface
-- **Executive Console (Electron)** - Ledger-secured circuit deployment
-- **Registrar Console (Electron)** - Local student data management
-- **Verifier UI (SSG)** - Drag-and-drop certificate verification
+### 🏗️ **Four-System Architecture**
+- **Prover System (Scholar Prover PWA)** - Document owner authenticity proof generation interface
+- **Responsible Party System (Executive Console Electron)** - Ledger-secured circuit deployment
+- **Administrator System (Registrar Console Electron)** - Local document data management
+- **Verifier System (Verifier UI SSG)** - Drag-and-drop document verification
 
 ## 🎯 Quick Start
 
@@ -324,7 +320,7 @@ A revolutionary graduation certificate system where **only students can generate
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/zk-CertFramework.git
+git clone https://github.com/Blank-Vulture/zk-CertFramework.git
 cd zk-CertFramework
 
 # Install dependencies for all components
@@ -337,9 +333,9 @@ npm run build:circuits
 npm run dev:all
 ```
 
-### Component Setup
+### System Setup
 
-#### 🎓 Scholar Prover (Student Interface)
+#### 🎓 Scholar Prover (Prover Interface)
 ```bash
 cd scholar-prover
 npm install
@@ -347,7 +343,7 @@ npm run dev
 # Access at http://localhost:3000
 ```
 
-#### 🏛️ Executive Console (Admin Interface)
+#### 🏛️ Executive Console (Responsible Party Interface)
 ```bash
 cd executive-console
 npm install
@@ -355,14 +351,14 @@ npm run electron:dev
 # Requires Ledger Nano X connected
 ```
 
-#### 📋 Registrar Console (Staff Interface)
+#### 📋 Registrar Console (Administrator Interface)
 ```bash
 cd registrar-console
 npm install
 npm run electron:dev
 ```
 
-#### ✅ Verifier UI (Employer Interface)
+#### ✅ Verifier UI (Verifier Interface)
 ```bash
 cd verifier-ui
 npm install
@@ -374,31 +370,31 @@ npm run dev
 
 ```mermaid
 graph TD
-    subgraph "Student Experience"
+    subgraph "Prover System"
         A[📱 Scholar Prover PWA] --> B[🔐 WebAuthn Passkey]
         B --> C[⚡ Circom ZKP Generation]
         C --> D[📄 PDF/A-3 Embedding]
     end
     
-    subgraph "Administrative Setup"
+    subgraph "Responsible Party System"
         E[🏛️ Executive Console] --> F[🔐 Ledger Nano X]
         F --> G[📡 Yearly Circuit Deployment]
         G --> H[🌐 Polygon zkEVM]
     end
     
-    subgraph "Staff Management"
-        I[📋 Registrar Console] --> J[👥 Student Key Management]
+    subgraph "Administrator System"
+        I[📋 Registrar Console] --> J[👥 Document Owner Management]
         J --> K[🌳 Merkle Tree Generation]
         K --> L[📄 Batch PDF Creation]
     end
     
-    subgraph "Verification"
+    subgraph "Verifier System"
         M[✅ Verifier UI] --> N[📄 PDF Drag & Drop]
         N --> O[⚡ SnarkJS Verification]
         O --> H
     end
     
-    D -.->|Send Certificate| N
+    D -.->|Send Document| N
     H -.->|Query NFT Data| O
 ```
 
@@ -409,46 +405,47 @@ graph TD
 - **Blockchain**: Polygon zkEVM (Mainnet/Amoy Testnet)
 - **Hardware Security**: Ledger Nano X + EIP-191 signing
 - **PDF Standard**: PDF/A-3 with embedded proofs
+- **Desktop Framework**: Tauri v2 (Rust + OS WebView)
 
-### Component Technologies
-| Component | Framework | Purpose | Storage |
+### System Technologies
+| System | Framework | Purpose | Storage |
 |-----------|-----------|---------|---------|
-| Scholar Prover | React 18 + Vite (PWA) | ZKP generation | IndexedDB + localStorage |
-| Executive Console | React 18 + Electron 27 | Circuit deployment | Local JSON files |
-| Registrar Console | Vue 3 + Electron 27 | Student management | Local JSON files |
-| Verifier UI | Next.js 14 (SSG) | Certificate verification | No persistent storage |
+| Prover System | React 18 + Vite (PWA) | ZKP generation | IndexedDB + localStorage |
+| Responsible Party System | React 18 + TypeScript + Tauri v2 | Circuit deployment | Local JSON files |
+| Administrator System | React 18 + TypeScript + Tauri v2 | Document owner management | Local JSON files |
+| Verifier System | Next.js 15 (SSG) + App Router | Document verification | No persistent storage |
 
 ## 📋 Usage Workflow
 
-### 1. 🏛️ **Administrative Setup** (Executive Console)
+### 1. 🏛️ **Responsible Party System Setup** (Executive Console)
 ```typescript
 // 1. Connect Ledger Nano X
-// 2. Upload Certificate{Year}.circom
+// 2. Upload Document{Year}.circom
 // 3. Compile circuit with Powers of Tau
 // 4. Sign deployment with Ledger
 // 5. Deploy YearlySet to Polygon zkEVM
 ```
 
-### 2. 📋 **Student Registration** (Registrar Console)
+### 2. 📋 **Administrator System Operation** (Registrar Console)
 ```typescript
-// 1. Import student data (CSV/JSON)
+// 1. Import document owner data (CSV/JSON)
 // 2. Build Poseidon Merkle Tree
-// 3. Generate batch PDF/A-3 certificates
-// 4. Distribute to students
+// 3. Generate batch PDF/A-3 documents
+// 4. Distribute to document owners
 ```
 
-### 3. 🎓 **Certificate Generation** (Scholar Prover)
+### 3. 🎓 **Prover System Usage** (Scholar Prover)
 ```typescript
 // 1. Register WebAuthn Passkey
-// 2. Drag PDF certificate + enter details
+// 2. Drag PDF document + enter details
 // 3. Generate zero-knowledge proof
 // 4. Embed proof in PDF/A-3
-// 5. Download enhanced certificate
+// 5. Download enhanced document
 ```
 
-### 4. ✅ **Certificate Verification** (Verifier UI)
+### 4. ✅ **Verifier System Usage** (Verifier UI)
 ```typescript
-// 1. Drag and drop PDF certificate
+// 1. Drag and drop PDF document
 // 2. Extract embedded ZKP automatically
 // 3. Verify proof with SnarkJS
 // 4. Query Polygon zkEVM for VK
@@ -476,21 +473,21 @@ graph TD
 npm run test:all
 ```
 
-### Component-Specific Testing
+### System-Specific Testing
 ```bash
 # Circuit testing
 cd circuits && npm run test
 
-# Scholar Prover testing
+# Prover System testing
 cd scholar-prover && npm run test
 
-# Executive Console testing
+# Responsible Party System testing
 cd executive-console && npm run test:electron
 
-# Registrar Console testing
+# Administrator System testing
 cd registrar-console && npm test
 
-# Verifier UI testing
+# Verifier System testing
 cd verifier-ui && npm test
 
 # End-to-end testing
@@ -501,10 +498,10 @@ npm run test:e2e
 
 ### Production Build
 ```bash
-# Build all components
+# Build all systems
 npm run build:all
 
-# Build individual components
+# Build individual systems
 npm run build:scholar-prover    # PWA build
 npm run build:executive         # Electron package
 npm run build:registrar         # Electron package  
@@ -512,24 +509,14 @@ npm run build:verifier          # Static site export
 ```
 
 ### Deployment Targets
-- **Scholar Prover**: Deploy PWA to any static hosting (Vercel, Netlify, GitHub Pages)
-- **Executive Console**: Distribute as Electron executable (.dmg, .exe, .AppImage)
-- **Registrar Console**: Distribute as Electron executable
-- **Verifier UI**: Deploy static site to CDN/GitHub Pages
+- **Prover System**: Deploy PWA to any static hosting (Vercel, Netlify, GitHub Pages)
+- **Responsible Party System**: Distribute as Electron executable (.dmg, .exe, .AppImage)
+- **Administrator System**: Distribute as Electron executable
+- **Verifier System**: Deploy static site to CDN/GitHub Pages
 
-## 🤝 Contributing
+## 📚 Academic Usage
 
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
-
-### Development Setup
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Install dependencies (`npm run install:all`)
-4. Make your changes
-5. Run tests (`npm run test:all`)
-6. Commit changes (`git commit -m 'Add amazing feature'`)
-7. Push to branch (`git push origin feature/amazing-feature`)
-8. Open a Pull Request
+This project is developed for academic research purposes. We welcome its use for research and educational purposes. For commercial use, please contact us in advance.
 
 ## 📜 License
 
@@ -540,11 +527,12 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Documentation**: [Technical Specifications](documents/)
 - **Circom Circuits**: [circuits/](circuits/)
 - **Polygon zkEVM**: [Official Documentation](https://polygon.technology/polygon-zkevm)
+- **Repository**: [GitHub](https://github.com/Blank-Vulture/zk-CertFramework)
 
 ---
 
-**Built with ❤️ for a trust-minimized future of digital credentials**
+**Built with ❤️ for academic research and a trust-minimized future of digital credentials**
 
-*"Empowering students with self-sovereign, verifiable certificates while maintaining institutional trust through zero-knowledge cryptography."*
+*"An academic exploration of empowering students with self-sovereign, verifiable certificates while maintaining institutional trust through zero-knowledge cryptography."*
 
 </div> 

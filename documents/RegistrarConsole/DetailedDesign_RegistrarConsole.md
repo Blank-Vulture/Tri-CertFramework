@@ -1,13 +1,18 @@
-# Registrar Console 詳細設計書（完全バックエンドレス・デスクトップアプリ版）
+# 管理者システム 詳細設計書（React + TypeScript + Tauri v2・バックエンドレス版）
+
+## バージョン情報
+- **Version**: 2.1
+- **Last Updated**: 2025-01-20
+- **Target**: プロトタイプ 2025年10月
 
 ## 1. アーキテクチャ概要
 
 ### 1.1 完全バックエンドレス設計
 ```
 ┌─────────────────────────────────────┐
-│ Registrar Console (Electron App)    │
+│ 管理者システム (Tauri v2 App)        │
 ├─────────────────────────────────────┤
-│ • 学生公開鍵管理（JSONファイル）       │
+│ • 文書所有者公開鍵管理（JSONファイル） │
 │ • PDF/A-3生成（ローカル）            │
 │ • Merkle Tree構築（ローカル）         │
 │ • CSVバルク処理                      │
@@ -17,11 +22,11 @@
 ┌─────────────────────────────────────┐
 │ Local File System                   │
 ├─────────────────────────────────────┤
-│ • students_2025.json                │
+│ • document_owners_2025.json         │
 │ • merkle_tree_2025.json             │
-│ • certificates_2025/                │
-│   ├── 学生A_certificate.pdf         │
-│   ├── 学生B_certificate.pdf         │
+│ • documents_2025/                   │
+│   ├── 所有者A_document.pdf           │
+│   ├── 所有者B_document.pdf           │
 │   └── ...                           │
 │ • exports/                          │
 │   ├── public_keys_2025.csv          │
@@ -34,49 +39,55 @@
 ✅ ローカルJSONファイルのみ
 ✅ フォルダー構造で管理
 ✅ CSVインポート/エクスポート
-✅ デスクトップアプリ配布
+✅ Tauri v2デスクトップアプリ配布
 ```
 
 ### 1.2 アプリケーション構成
 ```
 registrar-console-app/
-├── main.js                 # Electronメインプロセス
-├── package.json            # 依存関係
-├── config/
-│   └── registrar-config.json
-├── data/                   # 学生データ（JSON）
-│   ├── students_2025.json
-│   ├── students_2026.json
+├── src-tauri/              # Tauriバックエンド（Rust）
+│   ├── src/
+│   │   ├── main.rs         # Tauriメインプロセス
+│   │   ├── commands.rs     # ファイル操作コマンド
+│   │   └── lib.rs          # ライブラリ
+│   ├── Cargo.toml          # Rust依存関係
+│   └── tauri.conf.json     # Tauri設定
+├── src/                    # Reactフロントエンド
+│   ├── main.tsx            # React エントリーポイント
+│   ├── App.tsx             # メインアプリ
+│   ├── components/         # Reactコンポーネント
+│   ├── hooks/              # カスタムフック
+│   ├── services/           # ビジネスロジック
+│   ├── stores/             # Zustand ストア
+│   └── utils/              # ユーティリティ
+├── package.json            # Node.js依存関係
+├── vite.config.ts          # Vite設定
+├── data/                   # 文書所有者データ（JSON）
+│   ├── document_owners_2025.json
+│   ├── document_owners_2026.json
 │   └── merkle_tree_2025.json
-├── templates/              # 証明書テンプレート
-│   └── certificate_template.pdf
-├── certificates/           # 生成された証明書
+├── templates/              # 文書テンプレート
+│   └── document_template.pdf
+├── documents/              # 生成された文書
 │   ├── 2025/
 │   └── 2026/
 ├── exports/               # エクスポートファイル
-├── backups/               # 自動バックアップ
-├── src/
-│   ├── main.ts            # Vue.js エントリーポイント
-│   ├── App.vue            # メインアプリ
-│   ├── components/        # Vueコンポーネント
-│   ├── stores/            # Pinia ストア
-│   ├── services/          # ビジネスロジック
-│   └── utils/             # ユーティリティ
-└── dist/                  # ビルド出力
+└── backups/               # 自動バックアップ
 ```
 
 ---
 
 ## 2. データ構造設計（JSONファイルベース）
 
-### 2.1 学生データファイル
+### 2.1 文書所有者データファイル
 ```json
-// data/students_2025.json
+// data/document_owners_2025.json
 {
   "year": 2025,
+  "documentType": "graduation_certificate",
   "lastUpdated": "2025-03-01T10:30:00Z",
-  "totalStudents": 150,
-  "students": [
+  "totalOwners": 150,
+  "owners": [
     {
       "id": "2025001",
       "name": "田中太郎",
@@ -90,10 +101,11 @@ registrar-console-app/
         "format": "secp256r1"
       },
       "enrollmentDate": "2021-04-01",
-      "expectedGraduation": "2025-03-31",
+      "expectedIssueDate": "2025-03-31",
+      "documentType": "graduation_certificate",
       "status": "active",
-      "certificateGenerated": false,
-      "certificatePath": null,
+      "documentGenerated": false,
+      "documentPath": null,
       "addedAt": "2024-12-01T09:00:00Z",
       "updatedAt": "2024-12-15T14:30:00Z"
     }
@@ -106,13 +118,14 @@ registrar-console-app/
 // data/merkle_tree_2025.json
 {
   "year": 2025,
+  "documentType": "graduation_certificate",
   "totalLeaves": 150,
   "treeDepth": 8,
   "root": "0xabcdef1234567890...",
   "leaves": [
     {
       "index": 0,
-      "studentId": "2025001",
+      "ownerId": "2025001",
       "publicKeyHash": "0x123abc...",
       "leaf": "0x456def..."
     }
@@ -130,7 +143,7 @@ registrar-console-app/
 ```json
 // config/registrar-config.json
 {
-  "version": "1.0.0",
+  "version": "2.1.0",
   "currentYear": 2025,
   "institution": {
     "name": "○○大学",
@@ -139,11 +152,12 @@ registrar-console-app/
     "phone": "03-1234-5678",
     "email": "registrar@example.edu"
   },
-  "certificate": {
-    "templatePath": "./templates/certificate_template.pdf",
-    "outputPath": "./certificates",
+  "document": {
+    "templatePath": "./templates/document_template.pdf",
+    "outputPath": "./documents",
     "watermark": true,
-    "digitalSignature": true
+    "digitalSignature": true,
+    "defaultType": "graduation_certificate"
   },
   "merkleTree": {
     "hashFunction": "poseidon256",
@@ -167,28 +181,29 @@ registrar-console-app/
 ### 2.3 ローカルデータ管理パターン
 
 ```typescript
-// Student Data Management (Local JSON)
-interface StudentRecord {
+// Document Owner Data Management (Local JSON)
+interface DocumentOwnerRecord {
   id: string;
   name: string;
   email: string;
   passkeyPublicKey: string;
   passkeyCredentialId: string;
   registrationDate: string;
-  graduationYear: number;
+  issueYear: number;
+  documentType: string;
 }
 
-class StudentDataManager {
+class DocumentOwnerDataManager {
   private dataPath: string;
-  private students: Map<string, StudentRecord> = new Map();
+  private owners: Map<string, DocumentOwnerRecord> = new Map();
 
-  constructor(year: number) {
-    this.dataPath = `./data/students-${year}.json`;
-    this.loadStudents();
+  constructor(year: number, documentType: string) {
+    this.dataPath = `./data/document_owners_${year}_${documentType}.json`;
+    this.loadOwners();
   }
 
-  async addStudent(student: StudentRecord): Promise<void> {
-    this.students.set(student.id, student);
+  async addOwner(owner: DocumentOwnerRecord): Promise<void> {
+    this.owners.set(owner.id, owner);
     await this.saveToFile();
   }
 
@@ -199,12 +214,13 @@ class StudentDataManager {
     for (const row of rows) {
       try {
         const [id, name, email, publicKey, credentialId] = row.split(',');
-        await this.addStudent({
+        await this.addOwner({
           id, name, email,
           passkeyPublicKey: publicKey.trim(),
           passkeyCredentialId: credentialId.trim(),
           registrationDate: new Date().toISOString(),
-          graduationYear: 2025
+          issueYear: 2025,
+          documentType: "graduation_certificate"
         });
         results.success++;
       } catch (error) {
@@ -216,7 +232,7 @@ class StudentDataManager {
   }
 
   private async saveToFile(): Promise<void> {
-    const data = Object.fromEntries(this.students);
+    const data = Object.fromEntries(this.owners);
     await fs.writeFile(this.dataPath, JSON.stringify(data, null, 2));
   }
 }
@@ -232,10 +248,10 @@ class PoseidonMerkleTreeBuilder {
   private depth = 8; // 256 leaves maximum
   private zeroValue = BigInt(0);
 
-  buildFromStudents(students: StudentRecord[]): MerkleTreeData {
+  buildFromOwners(owners: DocumentOwnerRecord[]): MerkleTreeData {
     // Convert passkey public keys to Poseidon hashes
-    const leaves = students.map(student => 
-      poseidon1([BigInt('0x' + student.passkeyPublicKey)])
+    const leaves = owners.map(owner => 
+      poseidon1([BigInt('0x' + owner.passkeyPublicKey)])
     );
 
     // Pad to full capacity
@@ -272,30 +288,30 @@ class PoseidonMerkleTreeBuilder {
 
 // PDF/A-3 Batch Generator
 class BatchPDFGenerator {
-  async generateCertificates(
-    students: StudentRecord[],
+  async generateDocuments(
+    owners: DocumentOwnerRecord[],
     merkleTree: MerkleTreeData,
     template: PDFTemplate
   ): Promise<GenerationResult> {
     const results = { generated: 0, errors: [] };
     
-    for (let i = 0; i < students.length; i++) {
+    for (let i = 0; i < owners.length; i++) {
       try {
-        const student = students[i];
+        const owner = owners[i];
         const merkleProof = this.generateMerkleProof(merkleTree, i);
         
-        const pdf = await this.createCertificatePDF(
-          student,
+        const pdf = await this.createDocumentPDF(
+          owner,
           merkleProof,
           template
         );
         
-        const outputPath = `./generated-pdfs/${student.graduationYear}/${student.id}_certificate.pdf`;
+        const outputPath = `./generated-documents/${owner.issueYear}/${owner.id}_document.pdf`;
         await fs.writeFile(outputPath, pdf);
         
         results.generated++;
       } catch (error) {
-        results.errors.push(`Error generating PDF for ${students[i].id}: ${error.message}`);
+        results.errors.push(`Error generating PDF for ${owners[i].id}: ${error.message}`);
       }
     }
     
@@ -328,18 +344,18 @@ class BatchPDFGenerator {
 ```
 registrar-console/
 ├── data/
-│   ├── students-2025.json      # 2025年度学生データ
-│   ├── students-2026.json      # 2026年度学生データ
-│   ├── merkle-tree-2025.json   # 2025年度Merkle Tree
-│   ├── merkle-tree-2026.json   # 2026年度Merkle Tree
-│   └── config.json             # アプリケーション設定
-├── generated-pdfs/
-│   ├── 2025/                   # 2025年度生成PDF
-│   └── 2026/                   # 2026年度生成PDF
+│   ├── document_owners-2025.json      # 2025年度文書所有者データ
+│   ├── document_owners-2026.json      # 2026年度文書所有者データ
+│   ├── merkle-tree-2025.json          # 2025年度Merkle Tree
+│   ├── merkle-tree-2026.json          # 2026年度Merkle Tree
+│   └── config.json                   # アプリケーション設定
+├── generated-documents/
+│   ├── 2025/                          # 2025年度生成文書
+│   └── 2026/                          # 2026年度生成文書
 ├── templates/
-│   └── certificate-template.pdf # PDF/A-3テンプレート
+│   └── document-template.pdf           # PDF/A-3テンプレート
 └── logs/
-    └── operations.log          # 操作ログ
+    └── operations.log                 # 操作ログ
 ```
 
 ### 3.2 年度別独立データ管理

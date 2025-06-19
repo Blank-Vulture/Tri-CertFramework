@@ -1,16 +1,18 @@
-# 基本設計書 (Basic Design) — Scholar Prover
-**zk‑CertFramework / 証明者システム** 最終更新: 2025-06-16
+# 基本設計書 (Basic Design) — 証明者システム (Scholar Prover)
+**ZK Document Authenticity Framework / 証明者システム** 最終更新: 2025-01-20
+
+> **汎用的書類真正性証明システム** - あらゆる書類に適応可能な設計で、例として卒業証書の真正性証明を実装
 
 ---
 
 ## 1. システム概要
 
 ### 1.1 目的
-学生がブラウザのみで、自身のPasskey署名を用いてゼロ知識証明を生成し、PDF/A-3形式の卒業証明書に埋め込むシステム。
+書類所有者がブラウザのみで、自身のPasskey署名を用いてゼロ知識証明を生成し、PDF/A-3形式の書類に真正性証明を埋め込むシステム。
 
 ### 1.2 主要機能
 - WebAuthn Passkey認証
-- Halo2-WASM証明生成
+- Circom-SnarkJS証明生成
 - PDF/A-3証明埋め込み
 - 証明付きPDFダウンロード
 
@@ -25,17 +27,17 @@
 
 ### 2.1 アーキテクチャ
 ```
-[Student] → [Browser SPA] → [WebAuthn API]
-                ↓
-         [Halo2-WASM] → [pdf-lib] → [Download]
+[Document Owner] → [Browser PWA] → [WebAuthn API]
+                     ↓
+           [Circom-SnarkJS] → [pdf-lib] → [Download]
 ```
 
 ### 2.2 技術スタック
 | 層 | 技術 | 目的 |
 |----|------|------|
-| UI | React + Vite | SPA基盤 |
+| UI | React 18 + Vite | PWA基盤 |
 | 認証 | WebAuthn API | Passkey署名 |
-| ZKP | Halo2-WASM | 証明生成 |
+| ZKP | Circom + SnarkJS | 証明生成 |
 | PDF | pdf-lib | 埋め込み処理 |
 
 ---
@@ -46,7 +48,7 @@
 1. **PDF入力**: ユーザーがPDFをドロップ
 2. **パラメータ入力**: 提出先・有効期限設定
 3. **署名生成**: WebAuthn Passkey署名
-4. **証明生成**: Halo2-WASMで証明作成
+4. **証明生成**: Circom-SnarkJSで証明作成
 5. **埋め込み**: PDF/A-3に証明データ埋め込み
 6. **ダウンロード**: 証明付きPDF提供
 
@@ -120,7 +122,7 @@ interface ScholarProverAPI {
 ## 7. パフォーマンス設計
 
 ### 7.1 最適化戦略
-- **WASM最適化**: wasm-opt `-Oz`使用
+- **WASM最適化**: SnarkJS WASM最適化
 - **並行処理**: WebWorkerでの証明生成
 - **メモリ管理**: 大容量データの適切な解放
 

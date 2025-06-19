@@ -1,5 +1,7 @@
-# 技術設計書 (TSD) — ZKP 付き卒業証書システム
-**バージョン 2.0 最終更新: 2025‑06‑17**
+# 技術設計書 (TSD) — ZKP 付き書類真正性証明システム
+**バージョン 2.1 最終更新: 2025‑01‑20**
+
+> **汎用的書類真正性証明システム** - あらゆる書類に適応可能な設計で、例として卒業証書の真正性証明を実装
 
 ---
 
@@ -17,7 +19,7 @@
 
 ## 2. Circom回路設計
 
-### 2.1 Certificate{Year}.circomテンプレート
+### 2.1 Document{Year}.circomテンプレート
 ```circom
 pragma circom 2.1.4;
 
@@ -25,7 +27,7 @@ include "poseidon.circom";
 include "ecdsa.circom";
 include "merkle-tree.circom";
 
-template CertificateProof() {
+template DocumentProof() {
     // 公開入力
     signal input vkHash;
     signal input schemaHash; 
@@ -71,9 +73,9 @@ template CertificateProof() {
 
 ---
 
-## 3. コンポーネント技術スタック
+## 3. システム技術スタック
 
-### 3.1 Scholar Prover (PWA)
+### 3.1 証明者システム (Scholar Prover PWA)
 ```typescript
 // 技術スタック
 - フレームワーク: React 18 + Vite 4
@@ -96,14 +98,14 @@ const generateProof = async (inputs: CircuitInputs) => {
 };
 ```
 
-### 3.2 Executive Console (Electron)
+### 3.2 責任者システム (Executive Console Tauri)
 ```typescript
 // 技術スタック
-- フレームワーク: React 18 + Electron 27
+- フレームワーク: React 18 + TypeScript + Tauri v2
 - Ledger: @ledgerhq/hw-transport-node-hid
 - Web3: ethers.js v6
 - コンパイラー: circom CLI + snarkjs
-- ストレージ: Node.js fs + JSONファイル
+- ストレージ: Tauri fs API + JSONファイル
 
 // Ledger EIP-191統合
 import TransportNodeHid from "@ledgerhq/hw-transport-node-hid";
@@ -122,13 +124,13 @@ const signWithLedger = async (message: string) => {
 };
 ```
 
-### 3.3 Registrar Console (Electron)
+### 3.3 管理者システム (Registrar Console Tauri)
 ```typescript
 // 技術スタック
-- フレームワーク: Vue 3 + Electron 27
+- フレームワーク: React 18 + TypeScript + Tauri v2
 - ハッシュ: @noble/hashes (Poseidon実装)
 - PDF: puppeteer + PDF/A-3テンプレート
-- ストレージ: Node.js fs + JSONファイル
+- ストレージ: Tauri fs API + JSONファイル
 - Merkle: カスタムPoseidon Merkle tree
 
 // Merkle Tree実装
@@ -149,10 +151,10 @@ class PoseidonMerkleTree {
 }
 ```
 
-### 3.4 Verifier UI (SSG)
+### 3.4 検証者システム (Verifier UI SSG)
 ```typescript
 // 技術スタック
-- フレームワーク: Next.js 14 (SSGモード)
+- フレームワーク: Next.js 15 (SSGモード) + App Router
 - ZKP: SnarkJS 0.7 (検証のみ)
 - PDF: PDF.js + 添付ファイル抽出
 - Web3: ethers.js v6 (読み取り専用)
@@ -272,13 +274,13 @@ jobs:
         run: |
           npm install -g circom snarkjs
           cd circuits
-          circom Certificate2025.circom --wasm --r1cs
-          snarkjs groth16 setup Certificate2025.r1cs ptau/pot15_final.ptau Certificate2025_final.zkey
+          circom Document2025.circom --wasm --r1cs
+          snarkjs groth16 setup Document2025.r1cs ptau/pot15_final.ptau Document2025_final.zkey
       - name: Test Components
         run: |
           cd scholar-prover && npm test
-          cd ../executive-console && npm run test:electron
-          cd ../registrar-console && npm test
+          cd ../executive-console && npm run test:tauri
+          cd ../registrar-console && npm run test:tauri
           cd ../verifier-ui && npm test
       - name: E2E Tests
         run: npx playwright test

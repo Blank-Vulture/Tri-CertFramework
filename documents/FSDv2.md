@@ -64,47 +64,45 @@ graph TD
 
 ## 3 Detailed Workflow – Proof Generation  
 
-```plantuml
-@startuml
-actor "Document Owner" as Owner
-participant "Prover System PWA" as PWA
-participant "Local Storage" as LS
-participant "Circom Circuit" as Circuit
+```mermaid
+sequenceDiagram
+    participant Owner as Document Owner
+    participant PWA as Prover System PWA
+    participant LS as Local Storage
+    participant Circuit as Circom Circuit
 
-Owner -> PWA : drag PDF + dest + expiry
-PWA -> PWA : calc pdfHash + destHash
-PWA -> Owner : WebAuthn getAssertion()
-Owner --> PWA : pk, sig
-PWA -> LS : load circuit files
-LS --> PWA : circuit.wasm, circuit.zkey
-PWA -> Circuit : snarkjs.groth16.fullProve()
-Circuit --> PWA : proof.json + publicSignals
-PWA -> PWA : embed proof in PDF/A-3
-PWA --> Owner : download enhanced PDF
-@enduml
+    Owner->>PWA: drag PDF + dest + expiry
+    PWA->>PWA: calc pdfHash + destHash
+    PWA->>Owner: WebAuthn getAssertion()
+    Owner-->>PWA: pk, sig
+    PWA->>LS: load circuit files
+    LS-->>PWA: circuit.wasm, circuit.zkey
+    PWA->>Circuit: snarkjs.groth16.fullProve()
+    Circuit-->>PWA: proof.json + publicSignals
+    PWA->>PWA: embed proof in PDF/A-3
+    PWA-->>Owner: download enhanced PDF
 ```
 
 ## 4 Yearly Set Deployment (Responsible Party System)
 
-```plantuml
-@startuml
-actor "Responsible Party" as RP
-participant "Responsible Party System" as RPS
-participant "Ledger Nano X" as Ledger
-participant "Polygon zkEVM" as Chain
+```mermaid
+sequenceDiagram
+    participant RP as Responsible Party
+    participant RPS as Responsible Party System
+    participant Ledger as Ledger Nano X
+    participant Chain as Polygon zkEVM
 
-RP -> RPS : upload Document{Year}.circom
-RPS -> RPS : compile with circom + snarkjs
-RPS -> RPS : calculate VK hash
-RP -> RPS : initiate yearly set deployment
-RPS -> Ledger : request EIP-191 signature
-Ledger -> RP : display operation details
-RP -> Ledger : confirm on device
-Ledger --> RPS : signed message
-RPS -> Chain : deploy YearlySet{Year}
-Chain --> RPS : contract addresses
-RPS -> RPS : save to local JSON config
-@enduml
+    RP->>RPS: upload Document{Year}.circom
+    RPS->>RPS: compile with circom + snarkjs
+    RPS->>RPS: calculate VK hash
+    RP->>RPS: initiate yearly set deployment
+    RPS->>Ledger: request EIP-191 signature
+    Ledger->>RP: display operation details
+    RP->>Ledger: confirm on device
+    Ledger-->>RPS: signed message
+    RPS->>Chain: deploy YearlySet{Year}
+    Chain-->>RPS: contract addresses
+    RPS->>RPS: save to local JSON config
 ```
 
 ## 5 Data Dictionary  

@@ -230,27 +230,26 @@ class PoseidonMerkleTree {
 ```
 
 ## 8. PDF 生成フロー
-```plantuml
-@startuml
-actor Staff
-participant "Registrar UI" as UI
-participant "Merkle Builder" as MB
-participant "PDF Generator" as PG
-participant "File System" as FS
+```mermaid
+sequenceDiagram
+    participant Staff
+    participant UI as Registrar UI
+    participant MB as Merkle Builder
+    participant PG as PDF Generator
+    participant FS as File System
 
-Staff -> UI : "PDF生成開始" (2025年度)
-UI -> MB : buildMerkleTree(2025)
-MB -> MB : Poseidon ハッシュ計算
-MB --> UI : merkleRoot
-UI -> PG : generateBatchPDFs(students, template)
-loop 各学生
-  PG -> PG : HTML テンプレート展開
-  PG -> PG : PDF/A-3 変換
-  PG -> FS : 個別PDF保存
-end
-PG --> UI : 生成完了レポート
-UI --> Staff : "158件のPDF生成完了"
-@enduml
+    Staff->>UI: "PDF生成開始" (2025年度)
+    UI->>MB: buildMerkleTree(2025)
+    MB->>MB: Poseidon ハッシュ計算
+    MB-->>UI: merkleRoot
+    UI->>PG: generateBatchPDFs(students, template)
+    loop 各学生
+        PG->>PG: HTML テンプレート展開
+        PG->>PG: PDF/A-3 変換
+        PG->>FS: 個別PDF保存
+    end
+    PG-->>UI: 生成完了レポート
+    UI-->>Staff: "158件のPDF生成完了"
 ```
 
 ## 9. バッチ処理最適化

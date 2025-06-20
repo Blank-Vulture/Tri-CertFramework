@@ -131,31 +131,30 @@ Nonce: ${nonce}
 ```
 
 ## 7. 年度セット作成フロー
-```plantuml
-@startuml
-actor Professor
-participant "Executive Console" as EC
-participant "Circom Compiler" as CC
-participant "Ledger Nano X" as Ledger
-participant "Polygon zkEVM" as Chain
+```mermaid
+sequenceDiagram
+    participant Professor
+    participant EC as Executive Console
+    participant CC as Circom Compiler
+    participant Ledger as Ledger Nano X
+    participant Chain as Polygon zkEVM
 
-Professor -> EC : 新年度セット作成開始
-EC -> Professor : 回路ファイル (Document{Year}.circom) アップロード
-Professor -> EC : 回路ファイル選択
-EC -> CC : circom compile + snarkjs setup
-CC --> EC : {wasm, zkey, vk.json}
-EC -> EC : VKハッシュ・回路ハッシュ計算
-EC -> Professor : デプロイ内容確認画面
-Professor -> EC : "デプロイ実行" ボタン
-EC -> Ledger : EIP-191署名要求
-Ledger -> Professor : デバイス画面で内容確認
-Professor -> Ledger : 物理ボタンで承認
-Ledger --> EC : 署名データ (65 bytes)
-EC -> Chain : YearlyDeploymentManager.createYearlySet()
-Chain --> EC : トランザクションハッシュ
-EC -> EC : yearly-sets.json 更新
-EC --> Professor : デプロイ完了通知
-@enduml
+    Professor->>EC: 新年度セット作成開始
+    EC->>Professor: 回路ファイル (Document{Year}.circom) アップロード
+    Professor->>EC: 回路ファイル選択
+    EC->>CC: circom compile + snarkjs setup
+    CC-->>EC: {wasm, zkey, vk.json}
+    EC->>EC: VKハッシュ・回路ハッシュ計算
+    EC->>Professor: デプロイ内容確認画面
+    Professor->>EC: "デプロイ実行" ボタン
+    EC->>Ledger: EIP-191署名要求
+    Ledger->>Professor: デバイス画面で内容確認
+    Professor->>Ledger: 物理ボタンで承認
+    Ledger-->>EC: 署名データ (65 bytes)
+    EC->>Chain: YearlyDeploymentManager.createYearlySet()
+    Chain-->>EC: トランザクションハッシュ
+    EC->>EC: yearly-sets.json 更新
+    EC-->>Professor: デプロイ完了通知
 ```
 
 ## 8. UI モックアップ

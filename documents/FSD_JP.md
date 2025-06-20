@@ -87,24 +87,23 @@ localStorage:
 
 ## 4. 詳細ワークフロー - 証明生成
 
-```plantuml
-@startuml
-actor "書類所有者" as Owner
-participant "証明者システム PWA" as PWA
-participant "Local Storage" as LS
-participant "Circom Circuit" as Circuit
+```mermaid
+sequenceDiagram
+    participant Owner as 書類所有者
+    participant PWA as 証明者システム PWA
+    participant LS as Local Storage
+    participant Circuit as Circom Circuit
 
-Owner -> PWA : PDF + dest + expiry をドラッグ
-PWA -> PWA : pdfHash + destHash 計算
-PWA -> Owner : WebAuthn getAssertion()
-Owner --> PWA : pk, sig
-PWA -> LS : 回路ファイル読み込み
-LS --> PWA : circuit.wasm, circuit.zkey
-PWA -> Circuit : snarkjs.groth16.fullProve()
-Circuit --> PWA : proof.json + publicSignals
-PWA -> PWA : PDF/A-3 に proof 埋め込み
-PWA --> Owner : 拡張PDF ダウンロード
-@enduml
+    Owner->>PWA: PDF + dest + expiry をドラッグ
+    PWA->>PWA: pdfHash + destHash 計算
+    PWA->>Owner: WebAuthn getAssertion()
+    Owner-->>PWA: pk, sig
+    PWA->>LS: 回路ファイル読み込み
+    LS-->>PWA: circuit.wasm, circuit.zkey
+    PWA->>Circuit: snarkjs.groth16.fullProve()
+    Circuit-->>PWA: proof.json + publicSignals
+    PWA->>PWA: PDF/A-3 に proof 埋め込み
+    PWA-->>Owner: 拡張PDF ダウンロード
 ```
 
 ## 5. データ辞書

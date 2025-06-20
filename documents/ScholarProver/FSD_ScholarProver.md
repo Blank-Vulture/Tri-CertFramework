@@ -85,27 +85,26 @@ interface CircuitStore {
 ```
 
 ## 6. シーケンス (正常フロー - Circom版)
-```plantuml
-@startuml
-actor Student
-participant "PWA UI" as UI  
-participant "Service Worker" as SW
-participant "Circom Engine" as Circom
-participant "WebAuthn API" as WA
-participant "IndexedDB" as IDB
+```mermaid
+sequenceDiagram
+    participant Student
+    participant UI as PWA UI
+    participant SW as Service Worker
+    participant Circom as Circom Engine
+    participant WA as WebAuthn API
+    participant IDB as IndexedDB
 
-Student -> UI : PDF ドロップ + 設定
-UI -> IDB : 回路ファイル取得 (year)
-IDB --> UI : {wasm, zkey, vk}
-UI -> Student : WebAuthn 署名要求
-Student -> WA : Touch ID / Face ID
-WA --> UI : signature {r, s}
-UI -> Circom : snarkjs.groth16.fullProve()
-Note over Circom : Groth16 プルーフ生成\n5-15秒 (ブラウザ内)
-Circom --> UI : {proof, publicSignals}
-UI -> UI : PDF/A-3 埋込み (pdf-lib)
-UI --> Student : 強化PDF ダウンロード
-@enduml
+    Student->>UI: PDF ドロップ + 設定
+    UI->>IDB: 回路ファイル取得 (year)
+    IDB-->>UI: {wasm, zkey, vk}
+    UI->>Student: WebAuthn 署名要求
+    Student->>WA: Touch ID / Face ID
+    WA-->>UI: signature {r, s}
+    UI->>Circom: snarkjs.groth16.fullProve()
+    Note over Circom: Groth16 プルーフ生成<br/>5-15秒 (ブラウザ内)
+    Circom-->>UI: {proof, publicSignals}
+    UI->>UI: PDF/A-3 埋込み (pdf-lib)
+    UI-->>Student: 強化PDF ダウンロード
 ```
 
 ## 7. 回路統合詳細

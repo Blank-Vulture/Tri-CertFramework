@@ -1,5 +1,5 @@
 # 技術設計書 (TSD) — Registrar Console  
-最終更新: 2025-06-16 Version 2.0
+最終更新: 2025-06-21 Version 2.0
 
 ---
 

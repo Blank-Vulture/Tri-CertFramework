@@ -1,5 +1,5 @@
 # 機能設計書 (FSD) — Scholar Prover  
-最終更新: 2025-01-20 (Version 2.2)
+最終更新: 2025-06-21 (Version 2.2)
 
 ## 1. システム構成 (C4 コンテキスト)  
 ```mermaid

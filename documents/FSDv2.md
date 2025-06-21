@@ -1,5 +1,5 @@
 # Functional Design Specification (FSD) — ZK Document Authenticity Framework
-**Version 2.2 – 2025‑01‑20**
+**Version 2.2 – 2025‑06‑21**
 
 > **Universal Document Authenticity System** - Adaptable to any document type with graduation certificates as example implementation
 

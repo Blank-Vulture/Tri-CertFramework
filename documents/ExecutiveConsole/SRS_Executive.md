@@ -1,5 +1,5 @@
 # 要件定義書 (SRS) — Executive Console  
-**zk‑CertFramework / 責任者システム** 最終更新: 2025-06-17 (Version 2.0)
+**zk‑CertFramework / 責任者システム** 最終更新: 2025-06-21 (Version 2.0)
 
 ---
 

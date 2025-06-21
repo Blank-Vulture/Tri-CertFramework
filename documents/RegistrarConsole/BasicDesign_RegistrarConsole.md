@@ -1,5 +1,5 @@
 # 基本設計書 (Basic Design) — 管理者システム (Registrar Console)
-**ZK Document Authenticity Framework / 管理者システム** 最終更新: 2025-01-20 Version 2.1
+**ZK Document Authenticity Framework / 管理者システム** 最終更新: 2025-06-21 Version 2.1
 
 > **汎用的書類真正性証明システム** - あらゆる書類に適応可能な設計で、例として卒業証書の真正性証明を実装
 

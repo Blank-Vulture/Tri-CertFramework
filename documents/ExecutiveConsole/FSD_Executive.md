@@ -1,5 +1,5 @@
 # 機能設計書 (FSD) — Executive Console  
-最終更新: 2025-06-17 (Version 2.0)
+最終更新: 2025-06-21 (Version 2.0)
 
 ---
 

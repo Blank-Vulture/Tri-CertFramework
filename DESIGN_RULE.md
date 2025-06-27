@@ -1,1000 +1,407 @@
-# ZK-CertFramework Design System Rules
-**Trust Minimized Zero-Knowledge Document Authenticity Framework**
+# zk-CertFramework AI協働開発デザインルール
 
-> **AI読み込み用デザインルール** - プロンプトエンジニアリング最適化版  
-> Version 2.2 | 最終更新: 2025年6月 | AI開発アシスタント用完全仕様
+**Version 3.0 | 最終更新: 2025-01-27**
 
 ---
 
-## 🎯 Design System Core Philosophy
+## 🎯 AI協働開発の目的と原則
 
-### Trust Minimization Design Principles
-**すべてのデザイン決定は「Trust Minimization（信頼最小化）」原則に基づく**
+### 1. 目的
+**Trust Minimized・完全バックエンドレス・ゼロ知識書類真正性証明システム**の効率的な開発を、AIと人間の協働により実現する。
 
-```yaml
-Core Values:
-  - User Control: ユーザーが完全制御権を持つ
-  - Transparency: すべての処理が可視化・検証可能
-  - Security First: セキュリティが最優先事項
-  - Offline First: 外部依存なしで完全動作
-  - Hardware Trust: 物理的セキュリティデバイス依存
-```
-
-### Design Language Hierarchy
-```
-1. Security & Trust Indicators (最重要)
-2. User Control & Feedback (重要)  
-3. Visual Consistency (標準)
-4. Aesthetic Enhancement (補助)
-```
+### 2. AI協働の核心原則
+- **明確性優先**: 曖昧さを排除し、具体的で実行可能な指示を提供
+- **構造化思考**: 段階的な情報提示により、AIの理解と実行精度を最大化
+- **検証可能性**: 全ての出力が検証・テスト可能な形で提供される
+- **反復改善**: 継続的なフィードバックループによる品質向上
 
 ---
 
-## 🏗️ Component Architecture Design Rules
+## 📋 システム理解のためのコンテキスト
 
-### Four-System Visual Identity
-各システムは**独立したアイデンティティ**を持ちながら**統一されたデザイン言語**を共有
+### 3. プロジェクト概要
+```
+システム名: zk-CertFramework
+目的: 書類真正性のゼロ知識証明システム（卒業証書を例として実装）
+特徴: Trust Minimized（信頼最小化）、完全バックエンドレス
+技術: Circom回路 + SnarkJS + WebAuthn + Polygon zkEVM
+```
 
-| システム | プライマリカラー | 象徴的アイコン | UI特性 |
-|---------|---------------|-------------|--------|
-| **Scholar Prover PWA** | `#2563EB` (Blue) | 🎓 Graduation | Consumer-friendly, Mobile-first |
-| **Executive Console** | `#DC2626` (Red) | 🏛️ Institution | Enterprise, Security-focused |
-| **Registrar Console** | `#059669` (Green) | 📋 Management | Administrative, Efficient |
-| **Verifier UI** | `#7C3AED` (Purple) | ✅ Verification | Clean, Minimal, Fast |
+### 4. 4システム・アーキテクチャ
+1. **Scholar Prover PWA** - 書類所有者向けZKP生成インターフェース
+2. **Executive Console Tauri** - Ledger保護回路デプロイ（責任者向け）
+3. **Registrar Console Tauri** - ローカル書類データ管理（管理者向け）
+4. **Verifier UI SSG** - ドラッグ&ドロップ書類検証（検証者向け）
+
+### 5. 技術制約
+- **バックエンドサーバー禁止** - API、データベース、クラウド依存性なし
+- **ハードウェアセキュリティ必須** - Ledger Nano X による管理者操作
+- **年度別独立性** - 各卒業年度が完全に独立した回路とNFTで動作
+- **オフライン検証対応** - 100%エアギャップ証明書検証
 
 ---
 
-## 🎨 Visual Design Foundation
+## 🤖 AIとの効果的なコミュニケーション戦略
 
-### Color System (セキュリティ重視パレット)
+### 6. プロンプト構造化の原則
 
-#### Primary Colors
-```css
-/* Trust Indicators */
---color-trust-high: #10B981;     /* Verified/Secure状態 */
---color-trust-medium: #F59E0B;   /* Pending/Warning状態 */
---color-trust-low: #EF4444;      /* Error/Insecure状態 */
---color-trust-unknown: #6B7280;  /* Unknown/Loading状態 */
+#### 6.1 コンテキスト設定テンプレート
+```
+### コンテキスト
+- システム: [対象システム名]
+- 目的: [具体的な達成目標]
+- 制約: [技術的・ビジネス制約]
+- 現在の状況: [既存の実装状況]
 
-/* System Colors */
---color-scholar: #2563EB;        /* Scholar Prover */
---color-executive: #DC2626;      /* Executive Console */
---color-registrar: #059669;      /* Registrar Console */
---color-verifier: #7C3AED;       /* Verifier UI */
-
-/* Neutral Foundation */
---color-background: #FFFFFF;
---color-background-secondary: #F9FAFB;
---color-background-tertiary: #F3F4F6;
---color-text-primary: #111827;
---color-text-secondary: #6B7280;
---color-text-tertiary: #9CA3AF;
+### 期待する出力
+- 形式: [コード/ドキュメント/説明等]
+- 詳細レベル: [概要/詳細/実装レベル]
+- 検証方法: [テスト方法/確認手順]
 ```
 
-#### Security State Colors
-```css
-/* Hardware Security States */
---color-ledger-connected: #10B981;
---color-ledger-disconnected: #EF4444;
---color-ledger-signing: #F59E0B;
-
-/* ZKP Process States */
---color-proof-generating: #F59E0B;
---color-proof-valid: #10B981;
---color-proof-invalid: #EF4444;
---color-proof-expired: #6B7280;
-
-/* QR Code States */
---color-qr-scanning: #2563EB;
---color-qr-success: #10B981;
---color-qr-error: #EF4444;
+#### 6.2 段階的タスク分解
+```
+大きなタスクは必ず以下の手順で分解:
+1. 要件定義 → 2. アーキテクチャ設計 → 3. 詳細設計 → 4. 実装 → 5. テスト
 ```
 
-#### Dark Mode Adaptation
-```css
-/* Dark Mode Support (全システム対応) */
-[data-theme="dark"] {
-  --color-background: #0F172A;
-  --color-background-secondary: #1E293B;
-  --color-background-tertiary: #334155;
-  --color-text-primary: #F8FAFC;
-  --color-text-secondary: #CBD5E1;
-  --color-text-tertiary: #64748B;
-}
-```
+### 7. 技術仕様のための明確な指示
 
-### Typography System
-
-#### Font Hierarchy
-```css
-/* Primary Font Stack (システム全体) */
---font-family-primary: 
-  "Inter", 
-  "SF Pro Display", 
-  -apple-system, 
-  BlinkMacSystemFont, 
-  "Segoe UI", 
-  "Roboto", 
-  sans-serif;
-
-/* Monospace Font (コード・ハッシュ表示用) */
---font-family-mono: 
-  "SF Mono", 
-  "Monaco", 
-  "Inconsolata", 
-  "Roboto Mono", 
-  monospace;
-
-/* Font Weights */
---font-weight-light: 300;
---font-weight-normal: 400;
---font-weight-medium: 500;
---font-weight-semibold: 600;
---font-weight-bold: 700;
-```
-
-#### Type Scale (Material Design 3ベース)
-```css
-/* Heading Scale */
---text-display-large: 57px/64px, weight: 400;
---text-display-medium: 45px/52px, weight: 400;
---text-display-small: 36px/44px, weight: 400;
-
---text-headline-large: 32px/40px, weight: 400;
---text-headline-medium: 28px/36px, weight: 400;
---text-headline-small: 24px/32px, weight: 400;
-
---text-title-large: 22px/28px, weight: 400;
---text-title-medium: 16px/24px, weight: 500;
---text-title-small: 14px/20px, weight: 500;
-
-/* Body Scale */
---text-body-large: 16px/24px, weight: 400;
---text-body-medium: 14px/20px, weight: 400;
---text-body-small: 12px/16px, weight: 400;
-
-/* Label Scale */
---text-label-large: 14px/20px, weight: 500;
---text-label-medium: 12px/16px, weight: 500;
---text-label-small: 11px/16px, weight: 500;
-```
-
-### Spacing System (8pt Grid)
-
-#### Base Spacing Scale
-```css
-/* 8pt Grid System (Apple HIG準拠) */
---space-0: 0px;
---space-1: 4px;      /* 0.5 × base */
---space-2: 8px;      /* 1 × base */
---space-3: 12px;     /* 1.5 × base */
---space-4: 16px;     /* 2 × base */
---space-5: 20px;     /* 2.5 × base */
---space-6: 24px;     /* 3 × base */
---space-8: 32px;     /* 4 × base */
---space-10: 40px;    /* 5 × base */
---space-12: 48px;    /* 6 × base */
---space-16: 64px;    /* 8 × base */
---space-20: 80px;    /* 10 × base */
---space-24: 96px;    /* 12 × base */
-```
-
-#### Component Spacing Rules
-```css
-/* Card Padding */
---card-padding-sm: var(--space-4);   /* 16px */
---card-padding-md: var(--space-6);   /* 24px */
---card-padding-lg: var(--space-8);   /* 32px */
-
-/* Form Spacing */
---form-item-gap: var(--space-4);     /* 16px */
---form-section-gap: var(--space-8);  /* 32px */
-
-/* Button Padding */
---button-padding-sm: var(--space-2) var(--space-3);  /* 8px 12px */
---button-padding-md: var(--space-3) var(--space-4);  /* 12px 16px */
---button-padding-lg: var(--space-4) var(--space-6);  /* 16px 24px */
-```
-
----
-
-## 🧩 Component Library Standards
-
-### Button System
-
-#### Button Hierarchy
-```css
-/* Primary Actions (高優先度) */
-.btn-primary {
-  background: var(--color-system-primary);
-  color: white;
-  /* Ledger署名、ZKP生成など重要な操作 */
-}
-
-/* Secondary Actions (中優先度) */
-.btn-secondary {
-  background: transparent;
-  border: 1px solid var(--color-system-primary);
-  color: var(--color-system-primary);
-  /* キャンセル、リセットなど */
-}
-
-/* Destructive Actions (破壊的操作) */
-.btn-destructive {
-  background: var(--color-trust-low);
-  color: white;
-  /* 削除、リセットなど */
-}
-
-/* Hardware Security Button (特別カテゴリ) */
-.btn-hardware {
-  background: linear-gradient(135deg, #1e3a8a, #3730a3);
-  border: 2px solid var(--color-ledger-connected);
-  /* Ledger操作専用ボタン */
-}
-```
-
-#### Security State Indicators
-```css
-/* Security State Button Modifiers */
-.btn--secure::before {
-  content: "🔒";
-  margin-right: var(--space-2);
-}
-
-.btn--hardware-required::before {
-  content: "🔑";
-  margin-right: var(--space-2);
-}
-
-.btn--zk-proof::before {
-  content: "⚡";
-  margin-right: var(--space-2);
-}
-```
-
-### Form System
-
-#### Input Components
-```css
-/* Standard Input */
-.input-field {
-  border: 1px solid var(--color-text-tertiary);
-  border-radius: 8px;
-  padding: var(--space-3);
-  transition: border-color 0.2s ease;
-}
-
-.input-field:focus {
-  border-color: var(--color-system-primary);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-system-primary) 20%, transparent);
-}
-
-/* Secure Input (パスフレーズ等) */
-.input-secure {
-  background: linear-gradient(135deg, #f8fafc, #f1f5f9);
-  border: 2px solid var(--color-trust-high);
-}
-
-/* Hash Display Input (読み取り専用) */
-.input-hash {
-  font-family: var(--font-family-mono);
-  background: var(--color-background-tertiary);
-  border: 1px dashed var(--color-text-tertiary);
-}
-```
-
-#### Validation States
-```css
-/* Success State */
-.input--success {
-  border-color: var(--color-trust-high);
-}
-
-/* Error State */
-.input--error {
-  border-color: var(--color-trust-low);
-}
-
-/* Warning State */
-.input--warning {
-  border-color: var(--color-trust-medium);
-}
-```
-
-### Card System
-
-#### Card Hierarchy
-```css
-/* Basic Card */
-.card {
-  background: var(--color-background);
-  border: 1px solid var(--color-background-tertiary);
-  border-radius: 12px;
-  padding: var(--card-padding-md);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-/* Security Card (重要な情報表示) */
-.card--security {
-  border: 2px solid var(--color-trust-high);
-  background: linear-gradient(135deg, #f0fdf4, #f7fee7);
-}
-
-/* Warning Card */
-.card--warning {
-  border: 2px solid var(--color-trust-medium);
-  background: linear-gradient(135deg, #fffbeb, #fef3c7);
-}
-
-/* Error Card */
-.card--error {
-  border: 2px solid var(--color-trust-low);
-  background: linear-gradient(135deg, #fef2f2, #fee2e2);
-}
-```
-
----
-
-## 🔐 Security-First UX Patterns
-
-### Trust Indicators Design
-
-#### Hardware Security Status
+#### 7.1 コード生成時の必須項目
 ```typescript
-// Ledger Connection状態の視覚表現
-interface LedgerStatus {
-  connected: {
-    icon: "🔗";
-    color: "var(--color-ledger-connected)";
-    label: "Ledger Connected";
-    description: "Hardware security active";
-  };
-  disconnected: {
-    icon: "⚠️";
-    color: "var(--color-ledger-disconnected)";
-    label: "Ledger Required";
-    description: "Connect your Ledger Nano X";
-  };
-  signing: {
-    icon: "✍️";
-    color: "var(--color-ledger-signing)";
-    label: "Confirm on Device";
-    description: "Check your Ledger screen";
-  };
-}
+// AIに指示する際の必須要素:
+- 対象ファイル名とパス
+- 依存関係とインポート
+- TypeScript型定義
+- エラーハンドリング
+- テストケース
+- ドキュメントコメント
 ```
 
-#### ZKP Process Visualization
-```css
-/* ZKP生成プロセスの段階的表示 */
-.zkp-progress {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-}
-
-.zkp-step {
-  display: flex;
-  align-items: center;
-  padding: var(--space-2) var(--space-4);
-  border-radius: 20px;
-  background: var(--color-background-secondary);
-}
-
-.zkp-step--active {
-  background: var(--color-trust-medium);
-  color: white;
-}
-
-.zkp-step--completed {
-  background: var(--color-trust-high);
-  color: white;
-}
+#### 7.2 アーキテクチャ決定時の構造化指示
 ```
-
-### Error Handling & Feedback
-
-#### Error State Hierarchy
-```css
-/* Critical Error (システム機能に影響) */
-.alert--critical {
-  background: linear-gradient(135deg, #fef2f2, #fee2e2);
-  border: 2px solid var(--color-trust-low);
-  border-left: 6px solid var(--color-trust-low);
-}
-
-/* Warning (注意喚起) */
-.alert--warning {
-  background: linear-gradient(135deg, #fffbeb, #fef3c7);
-  border: 2px solid var(--color-trust-medium);
-  border-left: 6px solid var(--color-trust-medium);
-}
-
-/* Info (情報提供) */
-.alert--info {
-  background: linear-gradient(135deg, #eff6ff, #dbeafe);
-  border: 2px solid var(--color-scholar);
-  border-left: 6px solid var(--color-scholar);
-}
-
-/* Success (成功通知) */
-.alert--success {
-  background: linear-gradient(135deg, #f0fdf4, #dcfce7);
-  border: 2px solid var(--color-trust-high);
-  border-left: 6px solid var(--color-trust-high);
-}
+### アーキテクチャ決定要求テンプレート
+- 問題: [解決すべき技術的課題]
+- 選択肢: [検討する技術的選択肢]
+- 評価基準: [Trust Minimized原則への適合性など]
+- 推奨決定: [根拠とトレードオフを含む]
 ```
 
 ---
 
-## 📱 Responsive Design Rules
+## 🔧 開発フローとAI活用ガイドライン
 
-### Breakpoint System
-```css
-/* Mobile First Approach */
---breakpoint-sm: 640px;   /* タブレット縦 */
---breakpoint-md: 768px;   /* タブレット横 */
---breakpoint-lg: 1024px;  /* デスクトップ */
---breakpoint-xl: 1280px;  /* 大型デスクトップ */
---breakpoint-2xl: 1536px; /* ウルトラワイド */
+### 8. 開発フェーズ別AI活用戦略
+
+#### 8.1 要件分析フェーズ
+```
+AI活用目的: 要件の構造化と矛盾チェック
+推奨プロンプト形式:
+- "以下の要件を分析し、矛盾や曖昧さを特定してください"
+- "Trust Minimized原則に違反する要件がないか確認してください"
+- "実装可能性の観点から要件をレビューしてください"
 ```
 
-### Component Responsive Behavior
-```css
-/* Card Grid Responsive */
-.card-grid {
-  display: grid;
-  gap: var(--space-4);
-  grid-template-columns: 1fr;
-}
-
-@media (min-width: 640px) {
-  .card-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (min-width: 1024px) {
-  .card-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
-/* Navigation Responsive */
-.nav-desktop {
-  display: none;
-}
-
-@media (min-width: 768px) {
-  .nav-desktop {
-    display: flex;
-  }
-  
-  .nav-mobile {
-    display: none;
-  }
-}
+#### 8.2 設計フェーズ
+```
+AI活用目的: アーキテクチャの最適化と設計パターンの提案
+推奨プロンプト形式:
+- "以下の制約下で最適なアーキテクチャを提案してください"
+- "セキュリティ要件を満たす設計パターンを示してください"
+- "パフォーマンス要件を考慮した実装方法を提案してください"
 ```
 
----
-
-## 🎭 Component-Specific Design Rules
-
-### 1. Scholar Prover PWA Design Rules
-
-#### Consumer-Friendly Interface
-```css
-/* PWA特化のデザイン要素 */
-.scholar-interface {
-  /* モバイルファースト */
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-  
-  /* 大きなタッチターゲット */
-  min-height: 44px;
-  min-width: 44px;
-}
-
-/* ドラッグ&ドロップエリア */
-.pdf-drop-zone {
-  border: 2px dashed var(--color-scholar);
-  border-radius: 12px;
-  padding: var(--space-8);
-  text-align: center;
-  transition: all 0.3s ease;
-}
-
-.pdf-drop-zone--active {
-  border-style: solid;
-  background: color-mix(in srgb, var(--color-scholar) 5%, transparent);
-}
+#### 8.3 実装フェーズ
+```
+AI活用目的: 高品質なコードの生成とレビュー
+必須指示事項:
+- Clean Code原則の適用
+- SOLID原則の遵守
+- セキュリティベストプラクティスの実装
+- 包括的なエラーハンドリング
+- テスタビリティの確保
 ```
 
-#### WebAuthn Interface
-```css
-/* Passkey登録インターフェース */
-.passkey-setup {
-  background: linear-gradient(135deg, #eff6ff, #dbeafe);
-  border: 2px solid var(--color-scholar);
-  border-radius: 16px;
-  padding: var(--space-6);
-}
+### 9. 品質保証のためのAI活用
 
-.passkey-button {
-  background: linear-gradient(135deg, var(--color-scholar), #1d4ed8);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  padding: var(--space-4) var(--space-6);
-  font-weight: var(--font-weight-medium);
-}
+#### 9.1 コードレビュー指示テンプレート
+```
+### コードレビュー要求
+対象: [ファイル名/機能名]
+観点: 
+- セキュリティ脆弱性の有無
+- パフォーマンスボトルネックの特定
+- 可読性・保守性の評価
+- テストカバレッジの確認
+- Trust Minimized原則への適合性
+
+出力形式: 
+- 問題点の一覧（優先度付き）
+- 改善提案（具体的な修正案）
+- ベストプラクティスとの比較
 ```
 
-### 2. Executive Console Design Rules
-
-#### Enterprise Security Interface
-```css
-/* Enterprise級のセキュリティ表示 */
-.executive-interface {
-  background: var(--color-background);
-  min-height: 100vh;
-}
-
-/* Ledger Integration Panel */
-.ledger-panel {
-  background: linear-gradient(135deg, #1e3a8a, #1e40af);
-  color: white;
-  border-radius: 12px;
-  padding: var(--space-6);
-  margin-bottom: var(--space-6);
-}
-
-.ledger-status {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  font-weight: var(--font-weight-semibold);
-}
-
-/* Circuit Deployment Interface */
-.deployment-steps {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.deployment-step {
-  display: flex;
-  align-items: center;
-  padding: var(--space-4);
-  border: 1px solid var(--color-background-tertiary);
-  border-radius: 8px;
-}
-
-.deployment-step--completed {
-  background: var(--color-trust-high);
-  color: white;
-}
+#### 9.2 セキュリティ監査指示
 ```
+### セキュリティ監査要求
+スコープ: [監査対象の範囲]
+基準: OWASP SCP-QRG + Trust Minimized原則
+確認項目:
+- 入力検証の適切性
+- 秘密情報の取り扱い
+- 暗号化実装の正確性
+- サイドチャネル攻撃への対策
+- ハードウェアセキュリティの活用
 
-### 3. Registrar Console Design Rules
-
-#### Administrative Efficiency Interface
-```css
-/* 管理者向け効率重視インターフェース */
-.registrar-interface {
-  display: grid;
-  grid-template-columns: 250px 1fr;
-  gap: var(--space-6);
-  min-height: 100vh;
-}
-
-/* Sidebar Navigation */
-.registrar-sidebar {
-  background: var(--color-background-secondary);
-  padding: var(--space-6);
-  border-right: 1px solid var(--color-background-tertiary);
-}
-
-/* QR Scanner Interface */
-.qr-scanner {
-  position: relative;
-  border-radius: 12px;
-  overflow: hidden;
-  aspect-ratio: 1;
-  background: #000;
-}
-
-.qr-overlay {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 200px;
-  height: 200px;
-  border: 2px solid var(--color-registrar);
-  border-radius: 8px;
-}
-
-/* Data Management Tables */
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-  background: var(--color-background);
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.data-table th {
-  background: var(--color-background-secondary);
-  padding: var(--space-3);
-  text-align: left;
-  font-weight: var(--font-weight-semibold);
-}
-
-.data-table td {
-  padding: var(--space-3);
-  border-top: 1px solid var(--color-background-tertiary);
-}
-```
-
-### 4. Verifier UI Design Rules
-
-#### Minimal Verification Interface
-```css
-/* 検証者向けミニマルインターフェース */
-.verifier-interface {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: var(--space-6);
-}
-
-/* Verification Drop Zone */
-.verify-drop-zone {
-  border: 3px dashed var(--color-verifier);
-  border-radius: 16px;
-  padding: var(--space-12);
-  text-align: center;
-  margin-bottom: var(--space-8);
-  transition: all 0.3s ease;
-}
-
-.verify-drop-zone--active {
-  border-style: solid;
-  background: color-mix(in srgb, var(--color-verifier) 5%, transparent);
-  transform: scale(1.02);
-}
-
-/* Verification Results */
-.verification-result {
-  padding: var(--space-6);
-  border-radius: 12px;
-  text-align: center;
-}
-
-.verification-result--valid {
-  background: linear-gradient(135deg, #f0fdf4, #dcfce7);
-  border: 2px solid var(--color-trust-high);
-}
-
-.verification-result--invalid {
-  background: linear-gradient(135deg, #fef2f2, #fee2e2);
-  border: 2px solid var(--color-trust-low);
-}
-
-.verification-result--expired {
-  background: linear-gradient(135deg, #f9fafb, #f3f4f6);
-  border: 2px solid var(--color-trust-unknown);
-}
+出力形式: セキュリティレポート（リスクレベル付き）
 ```
 
 ---
 
-## ♿ Accessibility & Inclusivity Standards
+## 📚 技術参照情報とベストプラクティス
 
-### WCAG 2.1 AA準拠要件
+### 10. プロジェクト固有の技術ガイドライン
 
-#### Color Contrast Requirements
-```css
-/* 最小コントラスト比 4.5:1 */
---color-contrast-normal: 4.5;   /* 通常テキスト */
---color-contrast-large: 3.0;    /* 大きいテキスト (18pt+) */
-
-/* 色だけに依存しない情報伝達 */
-.status-indicator {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.status-indicator::before {
-  content: attr(data-icon);
-  font-size: 1.2em;
-}
+#### 10.1 Circom回路開発
+```circom
+// AIが生成すべき回路の特徴
+- Poseidon256ハッシュの使用
+- 効率的な制約数（目標: 65,000制約以下）
+- Merkle Tree検証の最適化
+- ECDSA署名検証の実装
+- 適切なコメントとドキュメント
 ```
 
-#### Keyboard Navigation
-```css
-/* フォーカス表示の強化 */
-:focus-visible {
-  outline: 3px solid var(--color-system-primary);
-  outline-offset: 2px;
-  border-radius: 4px;
-}
-
-/* スキップリンク */
-.skip-link {
-  position: absolute;
-  top: -40px;
-  left: 6px;
-  background: var(--color-system-primary);
-  color: white;
-  padding: 8px;
-  text-decoration: none;
-  border-radius: 4px;
-  z-index: 1000;
-}
-
-.skip-link:focus {
-  top: 6px;
-}
-```
-
-#### Screen Reader Support
-```css
-/* スクリーンリーダー専用テキスト */
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-
-/* ARIAラベルの視覚的表現 */
-[aria-pressed="true"] {
-  background: var(--color-system-primary);
-  color: white;
-}
-
-[aria-expanded="true"] .chevron {
-  transform: rotate(180deg);
-}
-```
-
----
-
-## 🎬 Animation & Interaction Guidelines
-
-### Micro-interactions
-```css
-/* 基本トランジション */
-.transition-base {
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* ホバー効果 */
-.interactive:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-/* ボタンプレス効果 */
-.button:active {
-  transform: scale(0.98);
-}
-
-/* Loading アニメーション */
-.loading-spinner {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-```
-
-### Security Process Animations
-```css
-/* ZKP生成プロセス */
-.zkp-generating {
-  animation: pulse 2s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
-
-/* Ledger接続状態 */
-.ledger-connecting {
-  animation: breathe 3s ease-in-out infinite;
-}
-
-@keyframes breathe {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.05); }
-}
-```
-
-### Reduced Motion Support
-```css
-/* motion減少の配慮 */
-@media (prefers-reduced-motion: reduce) {
-  * {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-}
-```
-
----
-
-## 🎯 AI Development Assistant Integration
-
-### Prompt-Optimized Design Tokens
+#### 10.2 TypeScript/React実装基準
 ```typescript
-// AI読み込み用設計トークン
-export const DESIGN_TOKENS = {
-  // 必ず使用すべき値
-  REQUIRED: {
-    colors: {
-      trust: {
-        high: '#10B981',      // 検証済み・安全
-        medium: '#F59E0B',    // 警告・保留
-        low: '#EF4444',       // エラー・危険
-        unknown: '#6B7280',   // 不明・読み込み中
-      },
-      system: {
-        scholar: '#2563EB',   // Scholar Prover PWA
-        executive: '#DC2626', // Executive Console  
-        registrar: '#059669', // Registrar Console
-        verifier: '#7C3AED',  // Verifier UI
-      },
-    },
-    spacing: {
-      base: 8,              // 8pt grid base
-      component: 16,        // コンポーネント内余白
-      section: 32,          // セクション間隔
-    },
-    typography: {
-      scale: 1.25,          // Type scale ratio
-      lineHeight: 1.5,      // Base line height
-    },
-  },
-  
-  // コンポーネント別推奨値
-  COMPONENTS: {
-    button: {
-      minHeight: 44,        // タッチターゲット
-      padding: '12px 16px', // 標準パディング
-      borderRadius: 8,      // 角丸
-    },
-    card: {
-      padding: 24,          // 内側余白
-      borderRadius: 12,     // 角丸
-      shadow: '0 1px 3px rgba(0, 0, 0, 0.1)', // 影
-    },
-    form: {
-      fieldGap: 16,         // フィールド間隔
-      sectionGap: 32,       // セクション間隔
-    },
-  },
-} as const;
+// AI生成コードの必須要件
+- strict TypeScriptモード
+- 適切な型定義とインターフェース
+- React 18のベストプラクティス
+- エラー境界の実装
+- パフォーマンス最適化（useMemo, useCallback）
+- アクセシビリティ対応（ARIA属性）
 ```
 
-### Component Generation Templates
+#### 10.3 セキュリティ実装要件
 ```typescript
-// AI用コンポーネントテンプレート
-interface SecurityComponentProps {
-  variant: 'trust-high' | 'trust-medium' | 'trust-low' | 'trust-unknown';
-  system: 'scholar' | 'executive' | 'registrar' | 'verifier';
-  size: 'sm' | 'md' | 'lg';
-  isLoading?: boolean;
-  isSecure?: boolean;
-  requiresHardware?: boolean;
-}
+// セキュリティ関連の必須実装事項
+- 入力検証（Zod/Yupによるスキーマ検証）
+- CSP (Content Security Policy) 対応
+- XSS/CSRF対策
+- ハードウェアセキュリティの活用
+- 秘密情報の適切な管理
+```
 
-// 使用例：AI指示用
-/*
-SecurityButton生成時の必須指示:
-1. variant は trust レベルに応じて選択
-2. system は対象システムに応じて選択  
-3. requiresHardware=true の場合は Ledger アイコン追加
-4. isLoading=true の場合はスピナー表示
-5. アクセシビリティ属性を必ず含める
-*/
+### 11. 外部リソースとの整合性
+
+#### 11.1 デザインシステム準拠
+```
+参照先デザインシステム:
+- Apple Human Interface Guidelines
+- Material Design 3
+- Microsoft Fluent 2
+- AWS Cloudscape Design
+
+適用原則:
+- 一貫性のあるUI/UX
+- アクセシビリティ準拠
+- レスポンシブデザイン
+- プラットフォーム固有の最適化
+```
+
+#### 11.2 技術標準準拠
+```
+準拠すべき標準:
+- WebAuthn Level 2
+- EIP-191 (Ethereum署名標準)
+- PDF/A-3 (ISO 19005-3)
+- Circom 2.1.4仕様
+- SnarkJS 0.7.x API
 ```
 
 ---
 
-## 🏆 Success Metrics & Quality Gates
+## 🔄 継続的改善とフィードバック
 
-### Design Quality Checklist
-```yaml
-Visual Consistency:
-  - [ ] 全システムで統一された色使用
-  - [ ] 8pt gridに準拠したスペーシング
-  - [ ] タイポグラフィスケールの一貫性
-  - [ ] コンポーネントライブラリからの選択
+### 12. AI出力の評価基準
 
-Security UX:
-  - [ ] Trust Minimization原則の視覚的表現
-  - [ ] ハードウェアセキュリティ状態の明確な表示
-  - [ ] ZKPプロセスの段階的フィードバック
-  - [ ] エラー状態の適切な分類と表示
-
-Accessibility:
-  - [ ] WCAG 2.1 AA準拠
-  - [ ] キーボードナビゲーション対応
-  - [ ] スクリーンリーダー対応
-  - [ ] 色覚多様性への配慮
-
-Performance:
-  - [ ] CSSバンドルサイズ最適化
-  - [ ] クリティカルCSSの分離
-  - [ ] アニメーション性能の確認
-  - [ ] モバイル最適化
+#### 12.1 技術的品質基準
+```
+コード品質指標:
+- 実行可能性: 100% (即座に実行可能)
+- テストカバレッジ: 80%以上
+- パフォーマンス: 指定要件内
+- セキュリティ: 脆弱性ゼロ
+- 保守性: Clean Code原則準拠
 ```
 
-### Design Review Process
-```typescript
-// AIコードレビュー用チェックポイント
-export const DESIGN_REVIEW_CRITERIA = {
-  // 必須チェック項目
-  CRITICAL: [
-    'セキュリティ状態が明確に表示されているか',
-    'Trust Minimization原則に従っているか', 
-    'ハードウェア要件が適切に表示されているか',
-    'エラー状態が適切に分類されているか',
-  ],
-  
-  // 推奨チェック項目
-  RECOMMENDED: [
-    'デザイントークンを正しく使用しているか',
-    'レスポンシブデザインに対応しているか',
-    'アクセシビリティ要件を満たしているか',
-    'アニメーションが適切に実装されているか',
-  ],
-  
-  // 最適化項目
-  OPTIMIZATION: [
-    'パフォーマンスが最適化されているか',
-    'バンドルサイズが適切か',
-    '再利用可能なコンポーネントになっているか',
-    '国際化対応ができているか',
-  ],
-} as const;
+#### 12.2 ドキュメント品質基準
+```
+ドキュメント指標:
+- 完全性: 全必要事項の網羅
+- 正確性: 技術的事実の正確性
+- 明確性: 曖昧さの排除
+- 実用性: 実装に直接活用可能
+- 一貫性: プロジェクト全体との整合性
+```
+
+### 13. フィードバックループの構築
+
+#### 13.1 レビューサイクル
+```
+1. AI出力の即座レビュー
+2. 品質基準との比較
+3. 改善点の特定と優先順位付け
+4. 修正指示の具体化
+5. 再生成と検証
+```
+
+#### 13.2 学習の蓄積
+```
+改善ポイントの記録:
+- 効果的だったプロンプト手法
+- 回避すべきアンチパターン
+- プロジェクト固有の最適解
+- 品質向上のためのチェックリスト
 ```
 
 ---
 
-## 📚 References & Resources
+## 🚀 実践的活用例
 
-### Design System References
-- [Apple Human Interface Guidelines](https://developer.apple.com/design/human-interface-guidelines/) - iOS/macOS design principles
-- [Material Design 3](https://m3.material.io/) - Google's design system
-- [Cloudscape Design](https://cloudscape.design/) - AWS enterprise design system  
-- [Fluent 2](https://fluent2.microsoft.design/) - Microsoft's modern design system
-- [The Design System Guide](https://thedesignsystem.guide/) - Comprehensive design system resources
-- [Nielsen Norman Group Design Systems](https://www.nngroup.com/articles/design-systems-vs-style-guides/) - UX research and guidelines
+### 14. 具体的なプロンプト例
 
-### Technical Implementation
-- CSS Grid Layout
-- CSS Custom Properties (CSS Variables)
-- Container Queries
-- Web Components
-- CSS-in-JS solutions
-- Design Tokens format
+#### 14.1 新機能実装の場合
+```
+### 機能実装要求
+機能: WebAuthn Passkey登録機能
+対象システム: Scholar Prover PWA
+技術制約: 
+- React 18 + TypeScript
+- WebAuthn Level 2準拠
+- IndexedDB永続化
+- エラーハンドリング必須
+
+期待する出力:
+- React Hooks実装
+- TypeScript型定義
+- エラーハンドリング
+- ユニットテスト
+- 使用例とドキュメント
+
+セキュリティ要件:
+- CSP対応
+- 入力検証
+- 秘密情報の適切な処理
+```
+
+#### 14.2 バグ修正の場合
+```
+### バグ修正要求
+問題: [具体的な問題の説明]
+再現手順: [ステップバイステップ]
+期待する動作: [正しい動作の説明]
+現在の動作: [問題のある動作の説明]
+影響範囲: [影響を受ける機能]
+
+要求する出力:
+- 根本原因の分析
+- 修正方法の提案
+- 修正後のテスト方法
+- 回帰テストの追加
+```
+
+### 15. 効率的なデバッグとトラブルシューティング
+
+#### 15.1 問題解決のためのAI活用
+```
+デバッグプロンプトテンプレート:
+1. 問題の具体的な症状
+2. エラーメッセージ（ある場合）
+3. 発生条件と再現手順
+4. 関連するコード部分
+5. 試行した解決策
+6. 使用している技術スタック
+
+期待する診断:
+- 問題の根本原因特定
+- 段階的な解決手順
+- 予防策の提案
+- 関連する潜在的問題の指摘
+```
 
 ---
 
-**このDESIGN_RULE.mdは、AI開発アシスタントが最大限のパフォーマンスを発揮し、Trust Minimizedな高品質UIを構築するための完全な指針です。全ての設計決定は、セキュリティファースト、ユーザーコントロール、そして検証可能性の原則に基づいています。** 
+## 📊 成功指標と改善サイクル
+
+### 16. AI協働開発の成功指標
+
+#### 16.1 開発効率指標
+```
+測定項目:
+- 初回実装成功率: 目標 80%以上
+- レビュー修正回数: 目標 2回以下
+- 実装時間短縮率: 目標 50%以上
+- バグ発見率: 目標 90%以上
+```
+
+#### 16.2 品質指標
+```
+測定項目:
+- コード品質スコア: 目標 A評価以上
+- セキュリティ脆弱性: 目標 0件
+- パフォーマンス基準達成率: 目標 100%
+- ユーザビリティスコア: 目標 4.5/5.0以上
+```
+
+### 17. 継続的改善プロセス
+
+#### 17.1 週次レビュー
+```
+レビュー項目:
+- AI活用効果の測定
+- 問題点と改善点の特定
+- プロンプト手法の最適化
+- 新たなベストプラクティスの発見
+```
+
+#### 17.2 月次改善
+```
+改善活動:
+- デザインルールの更新
+- プロンプトテンプレートの改良
+- 品質基準の見直し
+- チーム知識の共有
+```
+
+---
+
+## 🎯 まとめ：AI協働開発の極意
+
+### 18. 成功のための7つの黄金律
+
+1. **明確性**: 曖昧さを排除し、具体的で実行可能な指示を提供
+2. **構造化**: 情報を段階的に整理し、AIの理解を最大化
+3. **検証性**: 全ての出力が検証・テスト可能な形で要求
+4. **反復性**: 継続的なフィードバックループによる品質向上
+5. **専門性**: プロジェクト固有の知識とコンテキストの活用
+6. **効率性**: 開発速度とコード品質の両立
+7. **革新性**: AI協働による新たな開発手法の探求
+
+### 19. プロジェクト成功への道筋
+
+```
+Trust Minimized × AI協働開発 = 革新的なゼロトラスト証明システム
+
+最終目標:
+- 開発効率の劇的向上
+- 極めて高いコード品質
+- 完全なセキュリティ
+- 優れたユーザーエクスペリエンス
+- プロジェクトの確実な成功
+```
+
+---
+
+**このデザインルールは、AIパートナーと共に継続的に進化し、zk-CertFrameworkプロジェクトの成功を支える基盤となります。** 

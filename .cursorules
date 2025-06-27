@@ -1,0 +1,356 @@
+# ZK-CertFramework Cursor Rules
+# Zero-Knowledge Document Authenticity Framework - Trust Minimized Architecture
+# Created by: AI Prompt Engineering Professional for Maximum Development Velocity
+
+## 🎯 Project Core Mission
+You are developing a **Trust Minimized, Completely Backendless Zero-Knowledge Document Authenticity System**. This is a universal document authenticity system adaptable to any document type, with graduation certificates as the example implementation.
+
+### Trust Minimization Principles (Nakamoto-style Design)
+- **ZERO external dependencies** except public blockchain (Polygon zkEVM)
+- **NO servers, databases, APIs, or cloud services**
+- **Hardware security mandatory** for all admin operations (Ledger Nano X)
+- **Complete year-by-year independence** (2025, 2026, etc.)
+- **100% offline verification capability**
+
+## 🏗️ Architecture Overview
+
+### Four-Component System Architecture
+1. **Scholar Prover PWA** (React 18 + Vite) - Document owner ZKP generation interface
+2. **Executive Console Tauri** (React 18 + TypeScript + Tauri v2) - Ledger-secured circuit deployment
+3. **Registrar Console Tauri** (React 18 + TypeScript + Tauri v2) - Local document owner management + QR scanning
+4. **Verifier UI SSG** (Next.js 15 SSG + App Router) - Drag & drop document verification
+
+### Technology Stack Requirements
+- **ZKP**: Circom 2.1.4 + SnarkJS 0.7 (Groth16 proofs)
+- **Blockchain**: Polygon zkEVM (mainnet/Amoy testnet)
+- **Hardware Security**: Ledger Nano X + EIP-191 signatures
+- **PDF Standard**: PDF/A-3 with embedded proofs
+- **Desktop Framework**: Tauri v2 (Rust + OS WebView)
+- **Auth**: WebAuthn Level 2 (FIDO2 passkeys)
+- **Storage**: Local JSON files + browser localStorage/IndexedDB only
+
+## 📋 Development Standards & Best Practices
+
+### Code Quality Standards
+- Follow **Clean Code principles** and **SOLID design patterns**
+- Apply **OWASP Secure Coding practices** as minimum baseline
+- **TypeScript strict mode** + exactOptionalPropertyTypes enabled
+- **ESLint (Airbnb config)** + Prettier formatting
+- **2 spaces indentation** for TS/JS, **4 spaces** for other languages
+- **camelCase** for variables, **PascalCase** for types/components
+
+### Security Requirements (Critical)
+- **NO hardcoded secrets, API keys, or credentials**
+- Use `.env` files + CI secrets for sensitive data
+- **All admin operations MUST require Ledger Nano X hardware confirmation**
+- **SHA-3-512 hashes** for quantum resistance (256-bit post-quantum security)
+- **Input validation on all user inputs** following OWASP guidelines
+- **Minimal external dependencies** - justify each addition with threat model
+
+### Performance Targets
+- **Circom proof generation**: ≤ 10s on M1/1-core
+- **SnarkJS verification**: ≤ 100ms in browser
+- **QR code generation/scanning**: ≤ 500ms
+- **Bundle size optimization** for all web components
+
+## 🔧 Component-Specific Rules
+
+### 1. Scholar Prover PWA (scholar-prover/)
+```typescript
+// File structure MUST follow:
+src/
+├── components/         // React components
+├── hooks/             // Custom React hooks
+├── utils/             // Utility functions
+├── crypto/            // ZKP and crypto utilities
+├── storage/           // IndexedDB/localStorage wrappers
+└── types/             // TypeScript definitions
+
+// Key requirements:
+- PWA with offline capability
+- WebAuthn passkey registration/authentication
+- Circom circuit integration with SnarkJS
+- PDF/A-3 proof embedding with pdf-lib
+- QR code generation for passkey export
+- NO external API calls except blockchain RPC
+```
+
+### 2. Executive Console Tauri (executive-console/)
+```typescript
+// File structure MUST follow:
+src/
+├── components/        // React components
+├── hooks/            // Custom React hooks  
+├── ledger/           // Ledger Nano X integration
+├── contracts/        // Smart contract interfaces
+├── utils/            // Utility functions
+└── types/            // TypeScript definitions
+
+// Key requirements:
+- Tauri v2 desktop application
+- Ledger Nano X integration (@ledgerhq/hw-transport-node-hid)
+- EIP-191 personal message signing
+- Yearly circuit deployment to Polygon zkEVM
+- Local JSON file management (NO databases)
+- Circuit compilation with circom CLI
+```
+
+### 3. Registrar Console Tauri (registrar-console/)
+```typescript
+// File structure MUST follow:
+src/
+├── components/        // React components
+├── hooks/            // Custom React hooks
+├── camera/           // QR code scanning components
+├── merkle/           // Poseidon Merkle tree implementation
+├── pdf/              // PDF generation utilities
+├── utils/            // Utility functions
+└── types/            // TypeScript definitions
+
+// Key requirements:
+- QR code scanning with device camera (no external services)
+- Poseidon Merkle tree construction
+- Batch PDF/A-3 generation
+- Local JSON file management
+- Duplicate detection for QR scanning
+- Privacy-first camera usage (local processing only)
+```
+
+### 4. Verifier UI SSG (verifier-ui/)
+```typescript
+// File structure MUST follow:
+app/
+├── components/        // React components
+├── lib/              // Utility libraries
+├── verify/           // Verification logic
+└── types/            // TypeScript definitions
+
+// Key requirements:
+- Next.js 15 App Router with static export
+- SnarkJS verification in browser
+- PDF/A-3 proof extraction
+- Polygon zkEVM VK queries (read-only)
+- 100% client-side verification
+- NO persistent storage
+```
+
+## 🔐 Cryptographic Implementation Guidelines
+
+### Circom Circuit Standards
+```circom
+// Template naming: Document{Year}.circom
+// Must include these exact components:
+- Poseidon hash functions (ZK-friendly)
+- ECDSA signature verification (ES-256)
+- Merkle tree inclusion proofs (8-level depth)
+- Input validation constraints
+- Time expiration checks
+
+// Circuit parameters:
+- Constraints: ~65,000 (browser-optimized)
+- Proof size: ~2KB JSON (Groth16)
+- Public inputs: vkHash, schemaHash, merkleRoot, pdfHash, destHash, expireTs
+- Private inputs: privateKey, signature[2], merkleProof[8], merkleIndex
+```
+
+### Smart Contract Requirements
+```solidity
+// Contract naming: YearlyDeploymentManager.sol
+// Must implement:
+- Year-independent deployment tracking
+- VK hash storage and validation
+- Merkle root management
+- Deployer authentication via EIP-191
+- Event logging for all operations
+- Gas optimization for read operations
+```
+
+## 🧪 Testing Strategy (Test Pyramid)
+
+### Testing Distribution
+- **Unit Tests**: 70% (Vitest ≥ 3 for TS/JS)
+- **Integration Tests**: 20% (Component + API integration)
+- **E2E Tests**: 10% (Playwright for critical user flows)
+
+### Critical Test Cases (Must Implement)
+```typescript
+// Test IDs from specifications:
+TC-P01: PDF/A-3 proof embedding verification
+TC-P02: Circom circuit signature + Merkle inclusion
+TC-N03: Proof expiration validation
+TC-N04: VK hash mismatch rejection
+TC-P05: Ledger Nano X EIP-191 signature requirement
+TC-P06: Year independence verification
+TC-P07: Zero backend operation validation
+TC-Q01-Q05: QR code generation/scanning functionality
+
+// Performance benchmarks:
+- Circuit proving time benchmarks
+- Verification time measurements
+- QR code scanning success rate (≥95%)
+```
+
+## 📁 File Organization & Naming Conventions
+
+### Directory Structure (Root Level)
+```
+zk-CertFramework/
+├── scholar-prover/          # PWA for document owners
+├── executive-console/       # Tauri app for responsible parties
+├── registrar-console/       # Tauri app for administrators
+├── verifier-ui/            # Static site for verifiers
+├── circuits/               # Circom circuit files
+├── contracts/              # Solidity smart contracts
+├── docs/                   # Documentation
+└── shared/                 # Shared utilities/types
+```
+
+### File Naming Standards
+- **React components**: PascalCase (`DocumentUpload.tsx`)
+- **Hooks**: camelCase with 'use' prefix (`usePasskeyAuth.ts`)
+- **Utilities**: camelCase (`generateMerkleTree.ts`)
+- **Types**: PascalCase with 'Types' suffix (`DocumentTypes.ts`)
+- **Constants**: SCREAMING_SNAKE_CASE (`CIRCUIT_CONSTANTS.ts`)
+- **Config files**: kebab-case (`vite.config.ts`, `tauri.conf.json`)
+
+## 🚀 Development Workflow & Git Standards
+
+### Commit Message Format (Conventional Commits v1.0.0)
+```
+<type>[optional scope]: <description>
+
+[optional body]
+
+[optional footer(s)]
+
+Types:
+feat: new feature
+fix: bug fix
+docs: documentation changes
+style: formatting changes
+refactor: code restructuring
+test: test additions/modifications
+chore: maintenance tasks
+security: security improvements
+```
+
+### Branch Strategy
+- **main**: production-ready code
+- **develop**: integration branch
+- **feature/**: new features (`feature/qr-scanning`)
+- **fix/**: bug fixes (`fix/ledger-connection`)
+- **security/**: security improvements (`security/input-validation`)
+
+### PR Requirements (Definition of Done)
+- [ ] Code follows style guidelines (ESLint + Prettier)
+- [ ] All tests pass (unit + integration + E2E)
+- [ ] Security review completed
+- [ ] Documentation updated
+- [ ] Performance benchmarks meet targets
+- [ ] Hardware security requirements verified (where applicable)
+- [ ] Trust minimization principles maintained
+
+## ⚡ Performance Optimization Guidelines
+
+### Bundle Optimization
+- **Tree shaking** enabled for all builds
+- **Dynamic imports** for large dependencies (Circom WASM)
+- **Service Worker** caching for PWA
+- **Static asset optimization** (images, fonts)
+- **Critical CSS** inline for faster rendering
+
+### Crypto Performance
+- **WASM optimization** for SnarkJS in browser
+- **Web Workers** for heavy computation (proof generation)
+- **Circuit constraint optimization** (target: ≤65k constraints)
+- **Memory management** for large circuit files
+
+## 🔍 Code Review Checklist
+
+### Security Review Points
+- [ ] No external API dependencies beyond blockchain RPC
+- [ ] All user inputs properly validated and sanitized
+- [ ] Cryptographic implementations follow specifications
+- [ ] Hardware security requirements enforced
+- [ ] Local file operations use secure practices
+- [ ] Camera/device access permissions minimal and justified
+
+### Architecture Review Points
+- [ ] Trust minimization principles maintained
+- [ ] Year independence preserved
+- [ ] Local-first data storage strategy followed
+- [ ] Component boundaries clearly defined
+- [ ] Error handling comprehensive and user-friendly
+
+## 📖 Documentation Requirements
+
+### Code Documentation
+- **JSDoc comments** for all public APIs
+- **README.md** for each component with setup instructions
+- **Architecture decisions** documented in ADR format
+- **Security considerations** explicitly documented
+- **Performance characteristics** measured and documented
+
+### User Documentation
+- **Setup guides** for each component
+- **Hardware requirements** (Ledger Nano X setup)
+- **Troubleshooting guides** for common issues
+- **Security best practices** for end users
+
+## 🎯 AI Assistant Guidelines
+
+### Response Format
+1. **TL;DR** summary first, then detailed explanation
+2. **Diff format** for existing code modifications
+3. **Test code** and security verification included
+4. **Performance considerations** addressed
+5. **Response in Japanese** unless specifically requested otherwise
+
+### Code Generation Rules
+- **Maximum 200 lines** per file/function
+- **Comprehensive error handling** included
+- **TypeScript strict mode** compliance
+- **Security-first** implementation approach
+- **Trust minimization** principles enforced
+
+### When Uncertain
+- **Confirm steps** with official documentation references
+- **Security implications** must be explicitly addressed
+- **Performance impact** should be measured
+- **Alternative approaches** considered and explained
+
+## 💡 Innovation Guidelines
+
+### When Proposing Improvements
+- **Value > Effort** analysis required
+- **Trust minimization** impact assessment
+- **Backward compatibility** considerations
+- **Security implications** fully analyzed
+- **Performance benchmarks** provided
+
+### Rejection Criteria (Red Flags)
+- Introduces external service dependencies
+- Compromises hardware security requirements
+- Violates year independence principle
+- Requires centralized infrastructure
+- Degrades offline functionality
+
+---
+
+## 🏆 Success Metrics
+
+### Development Speed Targets
+- **Bug fix time**: < 15 minutes for primary fixes
+- **PR merge lead time**: < 1 day
+- **Critical vulnerability count**: Zero
+- **Code review efficiency**: Same-day turnaround
+
+### Quality Targets
+- **Test coverage**: ≥ 90% for critical paths
+- **Security score**: OWASP Level A
+- **Performance targets**: All met consistently
+- **Trust minimization**: 100% compliance
+
+---
+
+**Remember: Every decision must prioritize Trust Minimization, Security, and User Control. When in doubt, choose the solution that gives users maximum control and minimizes external dependencies.** 

@@ -1,5 +1,5 @@
 # Software Requirements Specification (SRS) — Zero‑Knowledge Document Authenticity Framework 
-**Version 2.2 – 2025‑06‑21**
+**Version 2.2 – 2025‑07‑10**
 
 > **Universal Document Authenticity System** - Adaptable to any document type with graduation certificates as example implementation
 

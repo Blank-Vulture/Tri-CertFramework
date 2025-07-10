@@ -1,4 +1,5 @@
 # ZK-CertFramework 🎓⚡
+**Version 2.2 – 最終更新: 2025-07-10**
 
 <div align="center">
 

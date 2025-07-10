@@ -1,7 +1,7 @@
  # zk-CertFramework AI協働開発デザインルール v4.0
 
 **Universal Document Authenticity System Design Guidelines**  
-**最終更新: 2025-01-27 | Version 4.0 — AI最適化版**
+**最終更新: 2025-07-10 | Version 4.0 — AI最適化版**
 
 ---
 

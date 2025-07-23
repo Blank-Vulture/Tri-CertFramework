@@ -1,35 +1,36 @@
 # 技術設計書 (TSD) — ZK-CertFramework プロトタイプ版
-**バージョン 1.1 最終更新: 2025‑07‑10**
+**バージョン 1.2 最終更新: 2025-07-23**
 
-> **教授向けデモンストレーション用プロトタイプ** - 技術的複雑性を削減し、コアコンセプト実証に特化
+> **段階的移行対応プロトタイプ** - 技術的複雑性を段階的に導入し、完全Trust Minimizedシステム実証に特化
 
 ---
 
-## 1. プロトタイプ技術スタック（簡素化・PROTOTYPE.md準拠）
+## 1. 段階的技術スタック（dev-plan準拠）
 
-| 層 | 技術 | バージョン | プロトタイプ調整 |
-|----|------|-----------|-----------------|
-| デスクトップ | Tauri v2 + React 18 | 2.0+ / 18.0+ | 基本機能のみ |
-| データ管理 | JSON Files | Native | DB・複雑な管理なし |
-| 認証 | Ledger Nano X | @ledgerhq/hw-* | 基本EIP-191のみ |
-| ブロックチェーン | Polygon zkEVM Amoy | ethers.js 6.0+ | **テストネット限定（経費節約）** |
-| ZKP | Circom 2.1.4 + SnarkJS 0.7 | Latest | 2025年度回路のみ |
-| 配布 | GitHub Releases/Pages | - | **IPFS代替・VK直接保存** |
-| VK配布 | **スマートコントラクト直接保存** | - | **URL配布代替** |
+| 層 | 技術 | バージョン | 段階的対応 |
+|----|------|-----------|-----------|
+| デスクトップ | Tauri v2 + React 18 | 2.0+ / 18.0+ | Phase 1～2で追加 |
+| フロントエンド | React 18 + TypeScript | 18.0+ / 5.0+ | 全Phase対応 |
+| データ管理 | JSON Files + Blockchain | Native + ethers.js | Phase 0: JSON、Phase 1+: Blockchain |
+| 認証 | WebAuthn + Ledger Nano X | @ledgerhq/hw-* | Phase 0: WebAuthn、Phase 1+: Ledger |
+| ブロックチェーン | Polygon zkEVM Cardona | ethers.js 6.0+ | **Phase 1から導入** |
+| ZKP | Circom 2.1.4 + SnarkJS 0.7 | Latest | 全Phase共通 |
+| 配布 | GitHub Releases/Pages | - | 変更なし |
+| VK管理 | **段階的VK取得システム** | - | **ローカル → ブロックチェーン → ハイブリッド** |
 
-## 2. プロトタイプ用暗号プリミティブ選定
+## 2. 段階的暗号プリミティブ設計
 
-| 目的 | アルゴリズム | 出力 | プロトタイプ理由 |
-|------|-------------|------|-----------------|
-| 外部ハッシュ | SHA‑3‑512 | 512 bit | 本番と同等（変更なし） |
-| 内部ハッシュ | Poseidon‑256 | 256 bit | ZK最適化（変更なし） |
-| Passkey署名 | ES‑256 | r,s 32 B | WebAuthn標準（変更なし） |
-| 管理者認証 | EIP‑191（Ledger） | 65 B | 簡素化検証 |
-| ZKPシステム | Groth16 | ~2KB JSON | 2025年度固定 |
+| 目的 | アルゴリズム | 出力 | 段階的対応 |
+|------|-------------|------|-----------|
+| 外部ハッシュ | SHA-3-512 | 512 bit | 全Phase共通 |
+| 内部ハッシュ | Poseidon-256 | 256 bit | 全Phase共通 |
+| Passkey署名 | ES-256 | r,s 32 B | Phase 0から対応 |
+| 管理者認証 | EIP-191（Ledger） | 65 B | Phase 1から追加 |
+| ZKPシステム | Groth16 | ~2KB JSON | 全Phase共通 |
 
-## 3. Circom回路設計 - プロトタイプ版
+## 3. 段階的Circom回路設計
 
-### 3.1 Document2025.circom（固定年度）
+### 3.1 共通回路（Document2025.circom）
 ```circom
 pragma circom 2.1.4;
 
@@ -37,9 +38,9 @@ include "poseidon.circom";
 include "ecdsa.circom";
 include "merkle-tree.circom";
 
-// プロトタイプ用固定回路
+// 段階的対応回路
 template Document2025Proof() {
-    // 公開入力（本番と同等）
+    // 公開入力（全Phase共通）
     signal input vkHash;
     signal input schemaHash; 
     signal input merkleRoot;
@@ -47,7 +48,7 @@ template Document2025Proof() {
     signal input destHash;
     signal input expireTs;
     
-    // 秘密入力（本番と同等）
+    // 秘密入力（全Phase共通）
     signal input privateKey;
     signal input signature[2];
     signal input merkleProof[8];
@@ -56,7 +57,7 @@ template Document2025Proof() {
     // 出力
     signal output valid;
     
-    // 簡素化された検証（エラーハンドリング最小限）
+    // 段階的検証（基本→高度）
     component ecdsa = ECDSAVerify();
     ecdsa.publicKey <== privateKey;
     ecdsa.signature <== signature;
@@ -74,494 +75,778 @@ template Document2025Proof() {
 component main = Document2025Proof();
 ```
 
-### 3.2 プロトタイプ回路仕様
-| パラメータ | 値 | プロトタイプ調整 |
-|-----------|----|--------------------|
-| 制約数 | ~65,000 | 最適化は最小限 |
-| 証明サイズ | ~2KB JSON | 本番と同等 |
-| 証明時間 | 15-30s | 性能目標緩和 |
-| 検証時間 | 100-200ms | 詳細最適化なし |
+### 3.2 段階的回路仕様
+| パラメータ | Phase 0 | Phase 1 | Phase 2 |
+|-----------|---------|---------|---------|
+| 制約数 | ~45,000 | ~55,000 | ~65,000 |
+| 証明サイズ | ~2KB JSON | ~2KB JSON | ~2KB JSON |
+| 証明時間 | 30秒以内 | 20秒以内 | 15秒以内 |
+| 検証時間 | 200ms | 150ms | 100ms |
 
-## 4. システム実装 - プロトタイプ版
+## 4. 段階的システム実装
 
-### 4.1 証明者システム (Scholar Prover PWA) - 簡素版
+### 4.1 Phase 0: 基盤システム実装
 ```typescript
-// プロトタイプ設定
-const PROTOTYPE_CONFIG = {
+// 基盤設定
+const PHASE_0_CONFIG = {
   TARGET_YEAR: 2025,
-  NETWORK: 'amoy',
-  MAX_PROOF_TIME: 30000, // 30秒
-  VK_CONTRACT: '0x...', // 固定コントラクト
-  CIRCUIT_GITHUB_REPO: 'your-org/zk-cert-circuits'
+  VK_SOURCE: 'local',
+  SYSTEMS: ['Scholar Prover', 'Verifier UI'],
+  BLOCKCHAIN: false,
+  MAX_PROOF_TIME: 30000 // 30秒
 };
 
-// 簡素化された証明生成
-class SimplifiedProver {
-  async generateProof(pdfFile: File, destination: string, expiryDays: number = 30): Promise<ProofResult> {
-    try {
-      // 1. PDF基本検証（詳細チェックなし）
-      const pdfHash = await this.hashPDF(pdfFile);
-      const destHash = await this.hashDestination(destination);
-      const expireTs = Math.floor(Date.now() / 1000) + (expiryDays * 24 * 60 * 60);
-      
-      // 2. WebAuthn署名（エラーハンドリング最小限）
-      const assertion = await navigator.credentials.get({
-        publicKey: {
-          challenge: new TextEncoder().encode(`${pdfHash}${destHash}${expireTs}`),
-          allowCredentials: [{ id: this.credentialId, type: 'public-key' }]
+// ローカルVK管理
+class LocalVKManager {
+  async selectVKFile(): Promise<VerifyingKey> {
+    return new Promise((resolve, reject) => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.json';
+      input.onchange = async (e) => {
+        const file = (e.target as HTMLInputElement).files?.[0];
+        if (file) {
+          const text = await file.text();
+          resolve(JSON.parse(text));
+        } else {
+          reject(new Error('No file selected'));
         }
-      });
-      
-      // 3. VK取得（ブロックチェーン直接 - PROTOTYPE.md準拠）
-      const vkData = await this.getVKFromBlockchain2025();
-      
-      // 4. 回路ファイル取得（GitHub Releases固定）
-      const circuitFiles = await this.loadCircuit2025();
-      
-      // 5. ZKP生成（タイムアウト30秒）
-      const { proof, publicSignals } = await Promise.race([
-        snarkjs.groth16.fullProve(
-          {
-            vkHash: vkData.hash,
-            pdfHash,
-            destHash,
-            expireTs,
-            privateKey: assertion.response.signature,
-            // ... その他の入力
-          },
-          circuitFiles.wasm,
-          circuitFiles.zkey
-        ),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Proof generation timeout')), 30000)
-        )
-      ]);
-      
-      return { proof, publicSignals, pdfHash };
-    } catch (error) {
-      // 簡素化されたエラー処理
-      throw new Error(`Proof generation failed: ${error.message}`);
-    }
-  }
-  
-  private async getVKFromBlockchain2025(): Promise<{ vk: VerifyingKey; hash: string }> {
-    // PROTOTYPE.md準拠：ブロックチェーンから直接VK取得
-    const contract = new ethers.Contract(
-      PROTOTYPE_CONFIG.VK_CONTRACT,
-      [
-        "function getVK2025() view returns (string)",
-        "function getVKHash2025() view returns (bytes32)"
-      ],
-      this.provider
-    );
-    
-    const [vkData, vkHash] = await Promise.all([
-      contract.getVK2025(),
-      contract.getVKHash2025()
-    ]);
-    
-    const vk = JSON.parse(vkData);
-    
-    // VKハッシュ検証（PROTOTYPE.md要件）
-    const computedHash = this.calculateVKHash(vk);
-    if (computedHash !== vkHash) {
-      throw new Error('VK hash mismatch - blockchain data integrity compromised');
-    }
-    
-    return { vk, hash: vkHash };
-  }
-  
-  private async loadCircuit2025(): Promise<CircuitFiles> {
-    // GitHub Releasesから固定URLで取得（PROTOTYPE.md準拠）
-    const baseUrl = `https://github.com/${PROTOTYPE_CONFIG.CIRCUIT_GITHUB_REPO}/releases/download/v1.0`;
-    
-    const [wasmResponse, zkeyResponse] = await Promise.all([
-      fetch(`${baseUrl}/Document2025.wasm`),
-      fetch(`${baseUrl}/Document2025.zkey`)
-    ]);
-    
-    return {
-      wasm: await wasmResponse.arrayBuffer(),
-      zkey: await zkeyResponse.arrayBuffer()
-    };
-  }
-}
-```
-
-### 4.2 責任者システム (Executive Console) - 基本版
-```typescript
-// 2025年度固定デプロイメント
-class SimplifiedExecutiveConsole {
-  async deploy2025YearlySet(circuitPath: string, ledgerService: LedgerService): Promise<string> {
-    try {
-      // 1. 事前配置されたPtauファイル使用
-      const ptauPath = './assets/powersOfTau_16.ptau';
-      
-      // 2. 回路コンパイル（基本チェックのみ）
-      const compiledCircuit = await this.compileCircuit(circuitPath, ptauPath);
-      
-      // 3. VKハッシュ計算
-      const vkHash = this.calculateVKHash(compiledCircuit.vk);
-      
-      // 4. 簡素化Ledger署名
-      const deploymentData = {
-        year: 2025,
-        vkHash,
-        circuitHash: this.calculateCircuitHash(circuitPath),
-        timestamp: Date.now()
       };
-      
-      const signature = await ledgerService.signDeployment2025(deploymentData);
-      
-      // 5. Amoyテストネットにデプロイ + VK直接保存（PROTOTYPE.md準拠）
-      const contract = new ethers.Contract(
-        PROTOTYPE_CONFIG.DEPLOYMENT_MANAGER_AMOY,
-        [
-          "function deployYearlySet2025(bytes32 vkHash, string vkData, bytes32 circuitHash, bytes signature)"
-        ],
-        this.provider
-      );
-      
-      const tx = await contract.deployYearlySet2025(
-        deploymentData.vkHash,
-        JSON.stringify(compiledCircuit.vk), // VKデータ直接保存
-        deploymentData.circuitHash,
-        signature
-      );
-      
-      // 6. 結果保存（簡単なJSON）
-      await this.saveDeploymentResult2025(tx.hash, deploymentData);
-      
-      return tx.hash;
-    } catch (error) {
-      throw new Error(`Deployment failed: ${error.message}`);
-    }
+      input.click();
+    });
   }
-  
-  private async compileCircuit(circuitPath: string, ptauPath: string): Promise<CompiledCircuit> {
-    // circom + snarkjs基本コンパイル（詳細検証なし）
-    const commands = [
-      `circom ${circuitPath} --r1cs --wasm --sym`,
-      `snarkjs groth16 setup Document2025.r1cs ${ptauPath} Document2025.zkey`,
-      `snarkjs zkey export verificationkey Document2025.zkey Document2025_vk.json`
-    ];
+}
+
+// 基本証明生成
+class Phase0Prover {
+  async generateProof(
+    pdfFile: File, 
+    destination: string, 
+    expiryDays: number = 30
+  ): Promise<ProofResult> {
+    // 1. ローカルVK選択
+    const vkManager = new LocalVKManager();
+    const vk = await vkManager.selectVKFile();
     
-    for (const cmd of commands) {
-      await this.executeCommand(cmd);
-    }
+    // 2. 基本ZKP生成
+    const inputs = await this.prepareInputs(pdfFile, destination, expiryDays);
+    const proof = await this.generateZKP(inputs);
     
-    return {
-      wasm: await fs.readFile('./Document2025.wasm'),
-      zkey: await fs.readFile('./Document2025.zkey'),
-      vk: JSON.parse(await fs.readFile('./Document2025_vk.json', 'utf-8'))
-    };
+    // 3. PDF埋め込み
+    const embeddedPdf = await this.embedProofInPDF(pdfFile, proof);
+    
+    return { proof, embeddedPdf };
   }
 }
 ```
 
-### 4.3 管理者システム (Registrar Console) - 簡素版
+### 4.2 Phase 1: ブロックチェーン統合実装
 ```typescript
-// 2025年度固定データ管理
-class SimplifiedRegistrarConsole {
-  async importStudents2025(jsonFile: File): Promise<StudentData[]> {
-    try {
-      const data = JSON.parse(await jsonFile.text());
-      
-      // 基本検証のみ
-      if (data.year !== 2025) {
-        throw new Error('Only 2025 data supported in prototype');
-      }
-      
-      if (data.students.length > 100) {
-        throw new Error('Prototype supports max 100 students');
-      }
-      
-      return data.students;
-    } catch (error) {
-      throw new Error(`Import failed: ${error.message}`);
-    }
+// ブロックチェーン統合設定
+const PHASE_1_CONFIG = {
+  TARGET_YEAR: 2025,
+  VK_SOURCE: 'blockchain',
+  SYSTEMS: ['Scholar Prover', 'Verifier UI', 'Executive Console'],
+  BLOCKCHAIN: true,
+  NETWORK: 'cardona',
+  VK_CONTRACT: '0x...',
+  MAX_PROOF_TIME: 25000 // 25秒
+};
+
+// ブロックチェーンVK管理
+class BlockchainVKManager {
+  private contract: ethers.Contract;
+  
+  constructor(contractAddress: string) {
+    const provider = new ethers.JsonRpcProvider('https://rpc.cardona.zkevm-rpc.com');
+    this.contract = new ethers.Contract(
+      contractAddress,
+      VK_MANAGER_ABI,
+      provider
+    );
   }
   
-  async buildMerkleTree2025(students: StudentData[]): Promise<MerkleTreeResult> {
-    // 簡素化Merkle Tree構築
-    const leaves = students.map(student => 
-      poseidon([BigInt(student.passkey.publicKey)])
+  async getLatestVK(): Promise<VerifyingKey> {
+    const vkData = await this.contract.getLatestVK();
+    return JSON.parse(vkData.vkJson);
+  }
+  
+  async deployVK(vkJson: string, version: string, ledgerSigner: LedgerSigner): Promise<number> {
+    const contractWithSigner = this.contract.connect(ledgerSigner);
+    const tx = await contractWithSigner.deployVK(vkJson, version);
+    const receipt = await tx.wait();
+    
+    const event = receipt.logs.find(log => 
+      log.topics[0] === this.contract.interface.getEventTopic('VKDeployed')
     );
     
-    // depth=8固定、ゼロパディング
-    while (leaves.length < 256) {
-      leaves.push(BigInt(0));
+    if (event) {
+      const decoded = this.contract.interface.decodeEventLog('VKDeployed', event.data);
+      return decoded.vkId;
     }
     
-    const tree = this.buildTree(leaves);
-    const merkleRoot = tree[tree.length - 1][0];
+    throw new Error('VK deployment failed');
+  }
+}
+
+// Ledger認証統合
+class LedgerAuthManager {
+  private transport: TransportWebUSB | null = null;
+  private ethApp: Eth | null = null;
+
+  async connect(): Promise<boolean> {
+    try {
+      this.transport = await TransportWebUSB.create();
+      this.ethApp = new Eth(this.transport);
+      return true;
+    } catch (error) {
+      console.error('Ledger connection failed:', error);
+      return false;
+    }
+  }
+
+  async getAddress(path: string = "44'/60'/0'/0/0"): Promise<string> {
+    if (!this.ethApp) {
+      throw new Error('Ledger not connected');
+    }
     
-    // 簡単なファイル保存
-    await this.saveMerkleData2025({
-      year: 2025,
-      merkleRoot: merkleRoot.toString(16),
-      totalStudents: students.length,
-      tree
+    const result = await this.ethApp.getAddress(path);
+    return result.address;
+  }
+
+  async signTransaction(path: string, transactionHex: string): Promise<LedgerSignature> {
+    if (!this.ethApp) {
+      throw new Error('Ledger not connected');
+    }
+    
+    const result = await this.ethApp.signTransaction(path, transactionHex);
+    return {
+      r: result.r,
+      s: result.s,
+      v: result.v
+    };
+  }
+}
+
+// ハイブリッドVK取得
+class HybridVKManager {
+  constructor(
+    private blockchainManager: BlockchainVKManager,
+    private localManager: LocalVKManager
+  ) {}
+
+  async getVK(): Promise<VerifyingKey> {
+    try {
+      // まずブロックチェーンから取得を試行
+      return await this.blockchainManager.getLatestVK();
+    } catch (error) {
+      console.warn('Blockchain VK取得失敗、ローカルVKを使用:', error);
+      // フォールバック: ローカルファイル選択
+      return await this.localManager.selectVKFile();
+    }
+  }
+}
+```
+
+### 4.3 Phase 2: 完全システム統合実装
+```typescript
+// 完全統合設定
+const PHASE_2_CONFIG = {
+  TARGET_YEAR: 2025,
+  VK_SOURCE: 'hybrid',
+  SYSTEMS: ['Scholar Prover', 'Verifier UI', 'Executive Console', 'Registrar Console'],
+  BLOCKCHAIN: true,
+  NETWORK: 'cardona',
+  VK_CONTRACT: '0x...',
+  MERKLE_CONTRACT: '0x...',
+  MAX_PROOF_TIME: 20000 // 20秒
+};
+
+// 学生データ管理
+class StudentDataManager {
+  private students: StudentData[] = [];
+
+  async loadStudentsFromFile(): Promise<StudentData[]> {
+    // Tauriファイルシステム統合
+    const filePath = await invoke('select_file', {
+      filters: [{ name: 'JSON Files', extensions: ['json'] }]
     });
     
-    return { merkleRoot, tree };
-  }
-  
-  async generatePDFs2025(students: StudentData[], template: string): Promise<void> {
-    // 基本的なPDF生成（並列化なし）
-    for (const student of students) {
-      const pdf = await this.generateSinglePDF(student, template);
-      await this.savePDF(pdf, `./generated-pdfs/student_${student.id}.pdf`);
+    if (filePath) {
+      const content = await invoke('read_file', { path: filePath });
+      this.students = JSON.parse(content);
+      return this.students;
     }
+    return [];
+  }
+
+  async saveStudentsToFile(students: StudentData[]): Promise<void> {
+    const filePath = await invoke('save_file', {
+      filters: [{ name: 'JSON Files', extensions: ['json'] }]
+    });
+    
+    if (filePath) {
+      await invoke('write_file', { 
+        path: filePath, 
+        contents: JSON.stringify(students, null, 2) 
+      });
+    }
+  }
+
+  async addStudent(student: Omit<StudentData, 'merkleIndex'>): Promise<void> {
+    const newStudent: StudentData = {
+      ...student,
+      merkleIndex: this.students.length
+    };
+    this.students.push(newStudent);
   }
 }
-```
 
-### 4.4 検証者システム (Verifier UI) - 基本版
-```typescript
-// 簡素化PDF検証
-class SimplifiedVerifier {
-  async verifyPDF(pdfFile: File): Promise<VerificationResult> {
-    try {
-      // 1. PDF/A-3から証明抽出（基本処理）
-      const proofData = await this.extractProofFromPDF(pdfFile);
+// Merkle Tree構築
+class MerkleTreeBuilder {
+  private leaves: string[] = [];
+  private tree: string[][] = [];
+
+  constructor(students: StudentData[]) {
+    this.buildTree(students);
+  }
+
+  private buildTree(students: StudentData[]): void {
+    // 学生データからリーフを生成
+    this.leaves = students.map(student => 
+      ethers.keccak256(ethers.toUtf8Bytes(JSON.stringify(student)))
+    );
+
+    // Merkle Treeを構築
+    this.tree = [this.leaves];
+    let currentLevel = this.leaves;
+
+    while (currentLevel.length > 1) {
+      const nextLevel: string[] = [];
       
-      // 2. 2025年度VK取得（ブロックチェーンから直接）
-      const vk = await this.getVK2025FromBlockchain();
+      for (let i = 0; i < currentLevel.length; i += 2) {
+        const left = currentLevel[i];
+        const right = i + 1 < currentLevel.length ? currentLevel[i + 1] : left;
+        
+        const combined = ethers.keccak256(ethers.concat([left, right]));
+        nextLevel.push(combined);
+      }
       
-      // 3. SnarkJS検証
-      const isValid = await snarkjs.groth16.verify(
-        vk,
-        proofData.publicSignals,
-        proofData.proof
-      );
-      
-      // 4. 有効期限チェック
-      const expireTs = parseInt(proofData.publicSignals[5]);
-      const isExpired = expireTs < Math.floor(Date.now() / 1000);
-      
-      // 5. 簡単な結果表示
-      return {
-        isValid: isValid && !isExpired,
-        expired: isExpired,
-        year: 2025,
-        expiryDate: new Date(expireTs * 1000)
-      };
-    } catch (error) {
-      return {
-        isValid: false,
-        error: error.message
-      };
+      this.tree.push(nextLevel);
+      currentLevel = nextLevel;
     }
   }
-  
-  private async getVK2025FromBlockchain(): Promise<VerifyingKey> {
-    // ブロックチェーンから直接VK取得
-    const contract = new ethers.Contract(
-      PROTOTYPE_CONFIG.VK_CONTRACT,
-      ["function getVK2025() view returns (string)"],
-      this.provider
+
+  getRoot(): string {
+    if (this.tree.length === 0) {
+      throw new Error('Merkle tree not built');
+    }
+    return this.tree[this.tree.length - 1][0];
+  }
+
+  getProof(index: number): MerkleProof {
+    if (index >= this.leaves.length) {
+      throw new Error('Index out of bounds');
+    }
+
+    const proof: string[] = [];
+    let currentIndex = index;
+
+    for (let level = 0; level < this.tree.length - 1; level++) {
+      const currentLevel = this.tree[level];
+      const isRightNode = currentIndex % 2 === 1;
+      const siblingIndex = isRightNode ? currentIndex - 1 : currentIndex + 1;
+
+      if (siblingIndex < currentLevel.length) {
+        proof.push(currentLevel[siblingIndex]);
+      }
+
+      currentIndex = Math.floor(currentIndex / 2);
+    }
+
+    return {
+      leaf: this.leaves[index],
+      proof,
+      index
+    };
+  }
+}
+
+// システム統合マネージャー
+class SystemIntegrationManager {
+  constructor(
+    private studentManager: StudentDataManager,
+    private merkleBuilder: MerkleTreeBuilder,
+    private vkManager: BlockchainVKManager,
+    private merkleManager: MerkleManager
+  ) {}
+
+  async performCompleteIntegration(): Promise<IntegrationResult> {
+    // 1. 学生データ読み込み
+    const students = await this.studentManager.loadStudentsFromFile();
+    
+    // 2. Merkle Tree構築
+    const merkleTree = new MerkleTreeBuilder(students);
+    const merkleRoot = merkleTree.getRoot();
+    
+    // 3. Merkle Rootをブロックチェーンにデプロイ
+    const merkleRootId = await this.merkleManager.deployMerkleRoot(
+      merkleRoot,
+      '1.0',
+      students.length
     );
     
-    const vkJson = await contract.getVK2025();
-    return JSON.parse(vkJson);
+    // 4. VKもブロックチェーンに保存済みであることを確認
+    const vk = await this.vkManager.getLatestVK();
+    
+    return {
+      students,
+      merkleRoot,
+      merkleRootId,
+      vk,
+      timestamp: new Date().toISOString()
+    };
   }
 }
 ```
 
-## 5. スマートコントラクト - プロトタイプ版
+## 5. 段階的スマートコントラクト実装
 
-### 5.1 YearlyDeploymentManager2025.sol（簡素版）
+### 5.1 Phase 1: VKManager.sol
 ```solidity
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-// プロトタイプ用簡素化コントラクト
-contract YearlyDeploymentManager2025 {
-    struct YearlySet2025 {
-        bytes32 vkHash;
-        bytes32 circuitHash;
-        bytes32 merkleRoot;
-        uint256 deployedAt;
-        string vkJson; // VKを直接保存
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+
+contract VKManager is Ownable, ReentrancyGuard {
+    struct VKData {
+        string vkJson;
+        uint256 timestamp;
+        address deployer;
+        bool isValid;
+        string version;
     }
     
-    YearlySet2025 public yearlySet2025;
-    address public immutable deployer;
-    bool public deployed;
+    mapping(uint256 => VKData) public vkRegistry;
+    mapping(address => bool) public authorizedDeployers;
+    uint256 public currentVKId;
     
-    event YearlySet2025Deployed(bytes32 vkHash, bytes32 circuitHash);
+    event VKDeployed(uint256 indexed vkId, address indexed deployer, string version);
+    event VKInvalidated(uint256 indexed vkId, address indexed invalidator);
+    event DeployerAuthorized(address indexed deployer);
+    event DeployerRevoked(address indexed deployer);
+    
+    modifier onlyAuthorized() {
+        require(authorizedDeployers[msg.sender] || msg.sender == owner(), "Not authorized");
+        _;
+    }
     
     constructor() {
-        deployer = msg.sender;
+        currentVKId = 0;
     }
     
-    // プロトタイプ用簡素化デプロイ
-    function deployYearlySet2025(
-        bytes32 vkHash,
-        bytes32 circuitHash,
-        string calldata vkJson,
-        bytes calldata signature
-    ) external {
-        require(msg.sender == deployer, "Unauthorized");
-        require(!deployed, "Already deployed");
+    function deployVK(
+        string memory vkJson,
+        string memory version
+    ) external onlyAuthorized nonReentrant returns (uint256) {
+        require(bytes(vkJson).length > 0, "VK JSON cannot be empty");
+        require(bytes(version).length > 0, "Version cannot be empty");
         
-        // 基本的な署名検証のみ
-        bytes32 messageHash = keccak256(abi.encodePacked(vkHash, circuitHash));
-        // EIP-191検証（簡素版）
+        currentVKId++;
         
-        yearlySet2025 = YearlySet2025({
-            vkHash: vkHash,
-            circuitHash: circuitHash,
-            merkleRoot: bytes32(0), // 後で更新
-            deployedAt: block.timestamp,
-            vkJson: vkJson
+        vkRegistry[currentVKId] = VKData({
+            vkJson: vkJson,
+            timestamp: block.timestamp,
+            deployer: msg.sender,
+            isValid: true,
+            version: version
         });
         
-        deployed = true;
-        emit YearlySet2025Deployed(vkHash, circuitHash);
+        emit VKDeployed(currentVKId, msg.sender, version);
+        return currentVKId;
     }
     
-    // VK直接取得
-    function getVK2025() external view returns (string memory) {
-        require(deployed, "Not deployed yet");
-        return yearlySet2025.vkJson;
+    function getVK(uint256 vkId) external view returns (VKData memory) {
+        require(vkId > 0 && vkId <= currentVKId, "Invalid VK ID");
+        VKData memory vk = vkRegistry[vkId];
+        require(vk.isValid, "VK is invalid");
+        return vk;
     }
     
-    // VKハッシュ取得（PROTOTYPE.md準拠・整合性検証用）
-    function getVKHash2025() external view returns (bytes32) {
-        require(deployed, "Not deployed yet");
-        return yearlySet2025.vkHash;
+    function getLatestVK() external view returns (VKData memory) {
+        require(currentVKId > 0, "No VK deployed");
+        VKData memory vk = vkRegistry[currentVKId];
+        require(vk.isValid, "Latest VK is invalid");
+        return vk;
     }
     
-    // Merkle Root更新（プロトタイプ用）
-    function updateMerkleRoot2025(bytes32 merkleRoot) external {
-        require(msg.sender == deployer, "Unauthorized");
-        require(deployed, "Not deployed yet");
+    function invalidateVK(uint256 vkId) external onlyOwner {
+        require(vkId > 0 && vkId <= currentVKId, "Invalid VK ID");
+        require(vkRegistry[vkId].isValid, "VK already invalid");
         
-        yearlySet2025.merkleRoot = merkleRoot;
+        vkRegistry[vkId].isValid = false;
+        emit VKInvalidated(vkId, msg.sender);
+    }
+    
+    function authorizeDeployer(address deployer) external onlyOwner {
+        require(deployer != address(0), "Invalid deployer address");
+        authorizedDeployers[deployer] = true;
+        emit DeployerAuthorized(deployer);
+    }
+    
+    function revokeDeployer(address deployer) external onlyOwner {
+        require(deployer != address(0), "Invalid deployer address");
+        authorizedDeployers[deployer] = false;
+        emit DeployerRevoked(deployer);
+    }
+    
+    function isAuthorized(address deployer) external view returns (bool) {
+        return authorizedDeployers[deployer] || deployer == owner();
     }
 }
 ```
 
-## 6. データ形式 - プロトタイプ版
+### 5.2 Phase 2: MerkleManager.sol
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.19;
 
-### 6.1 学生データ（students-2025.json）
-```json
-{
-  "version": "1.0-prototype",
-  "year": 2025,
-  "generatedAt": "2025-01-20T10:00:00Z",
-  "maxStudents": 100,
-  "students": [
-    {
-      "id": "2025001",
-      "name": "田中太郎",
-      "email": "tanaka@university.edu",
-      "passkey": {
-        "publicKey": "pQECAyYgASFYI...",
-        "credentialId": "AQIDBAUGBwgJ...",
-        "algorithm": -7
-      },
-      "commit": "0x1a2b3c4d...",
-      "merkleIndex": 0
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+
+contract MerkleManager is Ownable, ReentrancyGuard {
+    struct MerkleRoot {
+        bytes32 root;
+        uint256 timestamp;
+        address deployer;
+        bool isValid;
+        string version;
+        uint256 studentCount;
     }
-  ]
+    
+    mapping(uint256 => MerkleRoot) public merkleRoots;
+    mapping(address => bool) public authorizedRegistrars;
+    uint256 public currentRootId;
+    
+    event MerkleRootDeployed(uint256 indexed rootId, address indexed deployer, string version, uint256 studentCount);
+    event MerkleRootInvalidated(uint256 indexed rootId, address indexed invalidator);
+    event RegistrarAuthorized(address indexed registrar);
+    event RegistrarRevoked(address indexed registrar);
+    
+    modifier onlyAuthorized() {
+        require(authorizedRegistrars[msg.sender] || msg.sender == owner(), "Not authorized");
+        _;
+    }
+    
+    constructor() {
+        currentRootId = 0;
+    }
+    
+    function deployMerkleRoot(
+        bytes32 root,
+        string memory version,
+        uint256 studentCount
+    ) external onlyAuthorized nonReentrant returns (uint256) {
+        require(root != bytes32(0), "Root cannot be zero");
+        require(bytes(version).length > 0, "Version cannot be empty");
+        require(studentCount > 0, "Student count must be positive");
+        
+        currentRootId++;
+        
+        merkleRoots[currentRootId] = MerkleRoot({
+            root: root,
+            timestamp: block.timestamp,
+            deployer: msg.sender,
+            isValid: true,
+            version: version,
+            studentCount: studentCount
+        });
+        
+        emit MerkleRootDeployed(currentRootId, msg.sender, version, studentCount);
+        return currentRootId;
+    }
+    
+    function getMerkleRoot(uint256 rootId) external view returns (MerkleRoot memory) {
+        require(rootId > 0 && rootId <= currentRootId, "Invalid root ID");
+        MerkleRoot memory root = merkleRoots[rootId];
+        require(root.isValid, "Root is invalid");
+        return root;
+    }
+    
+    function getLatestMerkleRoot() external view returns (MerkleRoot memory) {
+        require(currentRootId > 0, "No merkle root deployed");
+        MerkleRoot memory root = merkleRoots[currentRootId];
+        require(root.isValid, "Latest root is invalid");
+        return root;
+    }
+    
+    function verifyMerkleProof(
+        bytes32 root,
+        bytes32 leaf,
+        bytes32[] memory proof
+    ) external pure returns (bool) {
+        bytes32 computedHash = leaf;
+        
+        for (uint256 i = 0; i < proof.length; i++) {
+            bytes32 proofElement = proof[i];
+            
+            if (computedHash <= proofElement) {
+                computedHash = keccak256(abi.encodePacked(computedHash, proofElement));
+            } else {
+                computedHash = keccak256(abi.encodePacked(proofElement, computedHash));
+            }
+        }
+        
+        return computedHash == root;
+    }
+    
+    function invalidateMerkleRoot(uint256 rootId) external onlyOwner {
+        require(rootId > 0 && rootId <= currentRootId, "Invalid root ID");
+        require(merkleRoots[rootId].isValid, "Root already invalid");
+        
+        merkleRoots[rootId].isValid = false;
+        emit MerkleRootInvalidated(rootId, msg.sender);
+    }
+    
+    function authorizeRegistrar(address registrar) external onlyOwner {
+        require(registrar != address(0), "Invalid registrar address");
+        authorizedRegistrars[registrar] = true;
+        emit RegistrarAuthorized(registrar);
+    }
+    
+    function revokeRegistrar(address registrar) external onlyOwner {
+        require(registrar != address(0), "Invalid registrar address");
+        authorizedRegistrars[registrar] = false;
+        emit RegistrarRevoked(registrar);
+    }
+    
+    function isAuthorized(address registrar) external view returns (bool) {
+        return authorizedRegistrars[registrar] || registrar == owner();
+    }
 }
 ```
 
-### 6.2 回路デプロイ結果（yearly-set-2025.json）
-```json
-{
-  "version": "1.0-prototype",
-  "year": 2025,
-  "network": "amoy",
-  "deployedAt": "2025-01-20T11:00:00Z",
-  "contractAddress": "0x...",
-  "vkHash": "0x...",
-  "circuitHash": "0x...",
-  "deployTxHash": "0x...",
-  "merkleRoot": "0x...",
-  "status": "deployed"
+## 6. 段階的パフォーマンス最適化
+
+### 6.1 Phase 0パフォーマンス
+```typescript
+// 基本的なキャッシュ機能
+class Phase0Cache {
+  private circuitCache = new Map<string, ArrayBuffer>();
+  
+  async getCircuitFile(path: string): Promise<ArrayBuffer> {
+    if (this.circuitCache.has(path)) {
+      return this.circuitCache.get(path)!;
+    }
+    
+    const response = await fetch(path);
+    const buffer = await response.arrayBuffer();
+    this.circuitCache.set(path, buffer);
+    return buffer;
+  }
 }
 ```
 
-## 7. プロトタイプ配布・デプロイメント
-
-### 7.1 GitHub Releases構成
-```
-zk-cert-framework/releases/v1.0-prototype/
-├── circuits/
-│   ├── Document2025.wasm
-│   ├── Document2025.zkey
-│   ├── Document2025_vk.json
-│   └── powersOfTau_16.ptau
-├── executive-console/
-│   ├── ExecutiveConsole-prototype-1.0.0.dmg
-│   ├── ExecutiveConsole-prototype-1.0.0.exe
-│   └── ExecutiveConsole-prototype-1.0.0.AppImage
-├── registrar-console/
-│   ├── RegistrarConsole-prototype-1.0.0.dmg
-│   ├── RegistrarConsole-prototype-1.0.0.exe
-│   └── RegistrarConsole-prototype-1.0.0.AppImage
-└── scholar-prover/
-    └── scholar-prover-prototype.zip
+### 6.2 Phase 1パフォーマンス
+```typescript
+// ブロックチェーン接続プーリング
+class Phase1Optimization {
+  private connectionPool: ethers.JsonRpcProvider[] = [];
+  
+  constructor() {
+    // 複数RPC接続でロードバランシング
+    this.connectionPool = [
+      new ethers.JsonRpcProvider('https://rpc.cardona.zkevm-rpc.com'),
+      new ethers.JsonRpcProvider('https://rpc2.cardona.zkevm-rpc.com')
+    ];
+  }
+  
+  getProvider(): ethers.JsonRpcProvider {
+    return this.connectionPool[Math.floor(Math.random() * this.connectionPool.length)];
+  }
+}
 ```
 
-### 7.2 GitHub Pages (Verifier UI)
+### 6.3 Phase 2パフォーマンス
+```typescript
+// 並列処理最適化
+class Phase2Optimization {
+  async parallelVKAndMerkleRetrieval(
+    vkManager: BlockchainVKManager,
+    merkleManager: MerkleManager
+  ): Promise<[VerifyingKey, MerkleRoot]> {
+    const [vkData, merkleData] = await Promise.all([
+      vkManager.getLatestVK(),
+      merkleManager.getLatestMerkleRoot()
+    ]);
+    
+    return [vkData, merkleData];
+  }
+}
+```
+
+## 7. 段階的エラーハンドリング
+
+### 7.1 段階的エラー定義
+```typescript
+export enum PhaseError {
+  // Phase 0エラー
+  LOCAL_VK_NOT_FOUND = 'LOCAL_VK_NOT_FOUND',
+  CIRCUIT_LOAD_FAILED = 'CIRCUIT_LOAD_FAILED',
+  PROOF_GENERATION_FAILED = 'PROOF_GENERATION_FAILED',
+  
+  // Phase 1エラー
+  LEDGER_NOT_CONNECTED = 'LEDGER_NOT_CONNECTED',
+  BLOCKCHAIN_CONNECTION_FAILED = 'BLOCKCHAIN_CONNECTION_FAILED',
+  VK_CONTRACT_NOT_FOUND = 'VK_CONTRACT_NOT_FOUND',
+  VK_DEPLOYMENT_FAILED = 'VK_DEPLOYMENT_FAILED',
+  
+  // Phase 2エラー
+  STUDENT_DATA_LOAD_FAILED = 'STUDENT_DATA_LOAD_FAILED',
+  MERKLE_TREE_BUILD_FAILED = 'MERKLE_TREE_BUILD_FAILED',
+  SYSTEM_INTEGRATION_FAILED = 'SYSTEM_INTEGRATION_FAILED'
+}
+
+export class PhaseErrorHandler {
+  static handleError(error: PhaseError, phase: string): string {
+    const errorMessages = {
+      [PhaseError.LOCAL_VK_NOT_FOUND]: 'ローカルVKファイルが見つかりません。VKファイルを選択してください。',
+      [PhaseError.LEDGER_NOT_CONNECTED]: 'Ledger Nano Xが接続されていません。デバイスを接続してEthereumアプリを開いてください。',
+      [PhaseError.BLOCKCHAIN_CONNECTION_FAILED]: 'ブロックチェーン接続に失敗しました。ネットワーク設定を確認してください。',
+      [PhaseError.SYSTEM_INTEGRATION_FAILED]: '4システム統合に失敗しました。各システムの状態を確認してください。'
+    };
+    
+    return errorMessages[error] || '不明なエラーが発生しました。';
+  }
+}
+```
+
+## 8. 段階的テスト実装
+
+### 8.1 Phase 0テスト
+```typescript
+describe('Phase 0: 基盤システム', () => {
+  test('ローカルVK選択・ZKP生成', async () => {
+    const prover = new Phase0Prover();
+    const result = await prover.generateProof(testPdf, 'テスト提出先', 30);
+    
+    expect(result.proof).toBeDefined();
+    expect(result.embeddedPdf).toBeDefined();
+  });
+  
+  test('VK取得方法選択UI', () => {
+    const phaseManager = new PhaseManager('local');
+    expect(phaseManager.getVKSource()).toBe('local');
+    
+    phaseManager.setPhase('blockchain');
+    expect(phaseManager.getVKSource()).toBe('blockchain');
+  });
+});
+```
+
+### 8.2 Phase 1テスト
+```typescript
+describe('Phase 1: ブロックチェーン統合', () => {
+  test('VKManagerデプロイ', async () => {
+    const deployer = new ContractDeployer(ledgerManager);
+    const contractAddress = await deployer.deployVKManager();
+    
+    expect(ethers.isAddress(contractAddress)).toBe(true);
+  });
+  
+  test('ブロックチェーンVK取得', async () => {
+    const vkManager = new BlockchainVKManager(contractAddress);
+    const vk = await vkManager.getLatestVK();
+    
+    expect(vk).toBeDefined();
+    expect(vk.protocol).toBe('groth16');
+  });
+});
+```
+
+### 8.3 Phase 2テスト
+```typescript
+describe('Phase 2: 完全システム統合', () => {
+  test('4システム統合', async () => {
+    const integrationManager = new SystemIntegrationManager(
+      studentManager,
+      merkleBuilder,
+      vkManager,
+      merkleManager
+    );
+    
+    const result = await integrationManager.performCompleteIntegration();
+    
+    expect(result.students.length).toBeGreaterThan(0);
+    expect(result.merkleRoot).toBeDefined();
+    expect(result.vk).toBeDefined();
+  });
+});
+```
+
+## 9. 段階的デプロイメント
+
+### 9.1 Phase 0デプロイ
 ```bash
-# プロトタイプ用静的サイト生成
-npm run build:prototype
-npm run export:github-pages
+# Phase 0: 基盤システムのみ
+cd scholar-prover
+npm run build:phase0
+npm run deploy:github-pages
 
-# デプロイ
-gh-pages -d out -b gh-pages-prototype
+cd ../verifier-ui
+npm run build:phase0
+npm run deploy:github-pages
 ```
 
-## 8. プロトタイプ制約・最適化
-
-### 8.1 技術制約
-- **年度**: 2025年度ハードコード
-- **ネットワーク**: Polygon zkEVM Amoyのみ
-- **学生数**: 最大100名
-- **並列処理**: 基本レベルのみ
-- **エラー回復**: 最小限
-
-### 8.2 性能最適化の除外
-- **バンドル最適化**: 基本レベル
-- **メモリ管理**: 詳細調整なし
-- **キャッシュ戦略**: 最小限
-- **並列実行**: 複雑な並列化なし
-
-### 8.3 セキュリティの簡素化
-- **Ledger検証**: 基本的なEIP-191のみ
-- **入力検証**: 必要最小限
-- **ログ・監査**: 基本レベル
-- **攻撃対策**: 主要なもののみ
-
-## 9. 開発・テスト戦略
-
-### 9.1 プロトタイプ開発フロー
+### 9.2 Phase 1デプロイ
 ```bash
-# 開発環境セットアップ
-git clone https://github.com/your-org/zk-cert-framework.git
-cd zk-cert-framework
-git checkout prototype-branch
+# Phase 1: ブロックチェーン統合
+cd executive-console
+npm run build:phase1
+npm run tauri:build
 
-# プロトタイプビルド
-npm run setup:prototype
-npm run build:all-prototype
-
-# 手動テスト実行
-npm run test:manual-prototype
+# スマートコントラクトデプロイ
+cd ../shared/contracts
+npx hardhat deploy --network cardona --tags VKManager
 ```
 
-### 9.2 テスト範囲（限定）
-- **単体テスト**: 主要関数のみ
-- **統合テスト**: ハッピーパスのみ
-- **E2Eテスト**: 1つの完全フローのみ
-- **手動テスト**: 教授による実操作確認
+### 9.3 Phase 2デプロイ
+```bash
+# Phase 2: 完全システム
+cd registrar-console
+npm run build:phase2
+npm run tauri:build
+
+# 完全統合スマートコントラクトデプロイ
+cd ../shared/contracts
+npx hardhat deploy --network cardona --tags MerkleManager
+```
+
+## 10. 段階的成功基準
+
+### 10.1 技術的成功基準
+| Phase | 基準 | 検証方法 |
+|-------|------|----------|
+| Phase 0 | 基本ZKP機能動作 | ローカルVK→ZKP生成→PDF検証 |
+| Phase 1 | ブロックチェーン統合 | Ledger認証→VKデプロイ→ブロックチェーン検証 |
+| Phase 2 | 完全システム統合 | 4システム連携→Merkle統合→教授デモ |
+
+### 10.2 パフォーマンス成功基準
+| Phase | 指標 | 目標 |
+|-------|------|------|
+| Phase 0 | ZKP生成時間 | 30秒以内 |
+| Phase 1 | ブロックチェーンVK取得 | 10秒以内 |
+| Phase 2 | 完全統合実行 | 120秒以内 |
+
+### 10.3 ユーザビリティ成功基準
+| Phase | 対象 | 目標 |
+|-------|------|------|
+| Phase 0 | 基本概念理解 | 30分以内 |
+| Phase 1 | Trust Minimized実感 | 教授が価値理解 |
+| Phase 2 | 実用可能性 | 大学採用検討レベル |
 
 ---
 
-**プロトタイプ技術目標**: 教授が30分以内で全機能を理解・操作でき、Trust Minimized設計の有効性を直感的に確認できる技術実装を提供する。 
+**段階的技術実装目標**: Phase 0で基本的なZKPシステムを構築し、Phase 1でブロックチェーン統合によるTrust Minimized設計を実現し、Phase 2で完全な4システム統合により教授向けデモンストレーションを成功させる。 

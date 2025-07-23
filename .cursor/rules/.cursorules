@@ -22,7 +22,7 @@ You are developing a **Trust Minimized, Completely Backendless Zero-Knowledge Do
 
 ### Technology Stack Requirements
 - **ZKP**: Circom 2.1.4 + SnarkJS 0.7 (Groth16 proofs)
-- **Blockchain**: Polygon zkEVM (mainnet/Amoy testnet)
+- **Blockchain**: Polygon zkEVM (mainnet/Cardona testnet)
 - **Hardware Security**: Ledger Nano X + EIP-191 signatures
 - **PDF Standard**: PDF/A-3 with embedded proofs
 - **Desktop Framework**: Tauri v2 (Rust + OS WebView)

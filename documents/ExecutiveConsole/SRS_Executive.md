@@ -167,7 +167,7 @@ Executive Console は教授・研究責任者向けの **Tauri デスクトッ�
 - **OS**: Windows 10+, macOS 12+, Ubuntu 20.04+
 
 ### 12.3 ネットワーク制約
-- **Polygon zkEVM**: メインネット・Amoyテストネット対応
+- **Polygon zkEVM**: メインネット・Cardonaテストネット対応
 - **RPC接続**: 信頼できるPolygon RPC エンドポイント
 - **帯域幅**: 年度セットデプロイ時の安定接続
 

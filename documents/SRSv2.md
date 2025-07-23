@@ -245,7 +245,7 @@ Message Structure:
 - **Hardware**: Device camera required for Administrator System QR scanning
 - **Browser**: Chrome 111+/Edge 111+/Safari 16.4+ (WebAuthn Level 2)
 - **Camera**: Camera access permissions required for QR scanning
-- **Network**: Polygon zkEVM (mainnet for production, Amoy for testing)
+- **Network**: Polygon zkEVM (mainnet for production, Cardona for testing)
 - **File Size**: Circuit files <50MB, proof files <5MB
 - **Yearly Limit**: Maximum 10,000 document owners per issuance year
 - **QR Capacity**: QR codes limited to ~900 characters (Version 3)

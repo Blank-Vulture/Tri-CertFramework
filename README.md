@@ -1,5 +1,5 @@
 # ZK-CertFramework 🎓⚡
-**Version 2.2 – 最終更新: 2025-07-10**
+**Version 2.3 – 最終更新: 2025-07-23**
 
 <div align="center">
 
@@ -146,7 +146,7 @@ graph TD
 
 ### コア技術
 - **ゼロ知識証明**: Circom 2.1.4 + SnarkJS 0.7 (Groth16)
-- **ブロックチェーン**: Polygon zkEVM (メインネット/Amoyテストネット)
+- **ブロックチェーン**: Polygon zkEVM (メインネット/Cardonaテストネット)
 - **ハードウェアセキュリティ**: Ledger Nano X + EIP-191署名
 - **PDF標準**: PDF/A-3 with embedded proofs
 - **デスクトップフレームワーク**: Tauri v2 (Rust + OS WebView)
@@ -403,7 +403,7 @@ graph TD
 
 ### Core Technologies
 - **Zero-Knowledge**: Circom 2.1.4 + SnarkJS 0.7 (Groth16)
-- **Blockchain**: Polygon zkEVM (Mainnet/Amoy Testnet)
+- **Blockchain**: Polygon zkEVM (Mainnet/Cardona Testnet)
 - **Hardware Security**: Ledger Nano X + EIP-191 signing
 - **PDF Standard**: PDF/A-3 with embedded proofs
 - **Desktop Framework**: Tauri v2 (Rust + OS WebView)

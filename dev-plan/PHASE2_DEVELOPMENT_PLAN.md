@@ -1,23 +1,24 @@
-# Phase 2 開発計画書 - ZK-CertFramework プロトタイプ
-**バージョン 1.0 - 最終更新: 2025-01-20**
+# Phase 2 開発計画書 - Tri-CertFramework プロトタイプ
+**バージョン 2.3 - 最終更新: 2025-01-20**
 
-> **完全システム統合フェーズ**: Registrar Console + Merkle Tree + 4システム完全統合
+> **完全システム統合フェーズ**: Registrar Console + 検証鍵レジストリ管理 + Merkle Tree + 4システム完全統合
 
 ---
 
 ## 🎯 **Phase 2 概要**
 
 ### **目標**
-- **Registrar Console**: Tauri v2 + 学生データ管理 + Merkle Tree構築
+- **Registrar Console**: Tauri v2 + 検証鍵レジストリ管理 + IPFS/GitHub公開 + Merkle Tree構築
 - **4システム完全統合**: Scholar Prover + Executive Console + Registrar Console + Verifier UI
-- **Merkle Tree統合**: 学生データの効率的な管理・検証
-- **教授向けデモ**: 完全なTrust Minimizedシステムの実演
+- **検証鍵レジストリ統合**: 検証鍵の効率的な管理・配布・検証
+- **教授向けデモ**: 完全なTrust Minimized三層認証システムの実演
 
 ### **新規追加機能**
-- **Registrar Console**: 学務職員向け管理システム
-- **Merkle Tree**: 学生データの効率的な管理
+- **Registrar Console**: 学務職員向け検証鍵レジストリ管理システム
+- **検証鍵配布**: IPFS/GitHub公開リポジトリ管理
+- **Merkle Tree**: 検証鍵データの効率的な管理
 - **完全統合**: 4システム間の連携
-- **デモンストレーション**: 教授向け完全デモ
+- **デモンストレーション**: 教授向け三層認証完全デモ
 
 ### **技術制約**
 - **バックエンド**: なし（完全フロントエンド）
@@ -30,7 +31,7 @@
 ## 🏗️ **プロジェクト構造（Phase 2）**
 
 ```
-zk-CertFramework/
+Tri-CertFramework/
 ├── dev-plan/
 │   ├── PHASE0_DEVELOPMENT_PLAN.md
 │   ├── PHASE1_DEVELOPMENT_PLAN.md
@@ -68,12 +69,14 @@ zk-CertFramework/
 │   │   └── tauri.conf.json
 │   ├── src/
 │   │   ├── components/
-│   │   │   ├── StudentManager.tsx
+│   │   │   ├── VerificationKeyManager.tsx
+│   │   │   ├── RepositoryManager.tsx
 │   │   │   ├── MerkleTreeBuilder.tsx
 │   │   │   ├── DataExporter.tsx
 │   │   │   └── SystemIntegrator.tsx
 │   │   ├── utils/
-│   │   │   ├── student-data-manager.ts
+│   │   │   ├── verification-key-manager.ts
+│   │   │   ├── repository-manager.ts
 │   │   │   ├── merkle-tree-builder.ts
 │   │   │   └── data-exporter.ts
 │   │   └── config/
@@ -100,12 +103,12 @@ zk-CertFramework/
     │       └── IMerkleManager.sol
     ├── utils/
     │   ├── merkle-tree.ts
-    │   ├── student-data.ts
+    │   ├── verification-key.ts
     │   └── system-integration.ts
     └── types/
         ├── blockchain.ts
         ├── merkle.ts
-        └── student.ts
+        └── verification-key.ts
 ```
 
 ---
@@ -334,32 +337,34 @@ npm install -D @types/node
 
 ### **Day 3-4: 学生データ管理システム**
 
-#### **1.3 学生データ管理**
+#### **1.3 検証鍵レジストリ管理**
 ```typescript
-// registrar-console/src/utils/student-data-manager.ts
+// registrar-console/src/utils/verification-key-manager.ts
 import { invoke } from '@tauri-apps/api/tauri';
 import { open } from '@tauri-apps/api/dialog';
 import { readTextFile, writeTextFile } from '@tauri-apps/api/fs';
 
-export interface StudentData {
+export interface VerificationKeyData {
   id: string;
   name: string;
   email: string;
   department: string;
   graduationYear: number;
-  passkey: {
-    publicKey: string;
-    credentialId: string;
-    algorithm: number;
+  verificationKey: {
+    kty: string;
+    crv: string;
+    x: string;
+    y: string;
+    keyHash: string;
   };
   commit: string;
   merkleIndex: number;
 }
 
-export class StudentDataManager {
-  private students: StudentData[] = [];
+export class VerificationKeyManager {
+  private keys: VerificationKeyData[] = [];
 
-  async loadStudentsFromFile(): Promise<StudentData[]> {
+  async loadVerificationKeysFromFile(): Promise<VerificationKeyData[]> {
     try {
       const filePath = await open({
         multiple: false,
@@ -371,17 +376,17 @@ export class StudentDataManager {
 
       if (filePath) {
         const content = await readTextFile(filePath as string);
-        this.students = JSON.parse(content);
-        return this.students;
+        this.keys = JSON.parse(content);
+        return this.keys;
       }
       return [];
     } catch (error) {
-      console.error('Failed to load students:', error);
+      console.error('Failed to load verification keys:', error);
       return [];
     }
   }
 
-  async saveStudentsToFile(students: StudentData[]): Promise<void> {
+  async saveVerificationKeysToFile(keys: VerificationKeyData[]): Promise<void> {
     try {
       const filePath = await open({
         multiple: false,
@@ -392,46 +397,46 @@ export class StudentDataManager {
       });
 
       if (filePath) {
-        await writeTextFile(filePath as string, JSON.stringify(students, null, 2));
+        await writeTextFile(filePath as string, JSON.stringify(keys, null, 2));
       }
     } catch (error) {
-      console.error('Failed to save students:', error);
+      console.error('Failed to save verification keys:', error);
     }
   }
 
-  async addStudent(student: Omit<StudentData, 'merkleIndex'>): Promise<void> {
-    const newStudent: StudentData = {
-      ...student,
-      merkleIndex: this.students.length
+  async addVerificationKey(keyData: Omit<VerificationKeyData, 'merkleIndex'>): Promise<void> {
+    const newKeyData: VerificationKeyData = {
+      ...keyData,
+      merkleIndex: this.keys.length
     };
-    this.students.push(newStudent);
+    this.keys.push(newKeyData);
   }
 
-  async updateStudent(id: string, updates: Partial<StudentData>): Promise<void> {
-    const index = this.students.findIndex(s => s.id === id);
+  async updateVerificationKey(id: string, updates: Partial<VerificationKeyData>): Promise<void> {
+    const index = this.keys.findIndex(k => k.id === id);
     if (index !== -1) {
-      this.students[index] = { ...this.students[index], ...updates };
+      this.keys[index] = { ...this.keys[index], ...updates };
     }
   }
 
-  async removeStudent(id: string): Promise<void> {
-    this.students = this.students.filter(s => s.id !== id);
+  async removeVerificationKey(id: string): Promise<void> {
+    this.keys = this.keys.filter(k => k.id !== id);
     // Merkle indexを再計算
-    this.students.forEach((student, index) => {
-      student.merkleIndex = index;
+    this.keys.forEach((keyData, index) => {
+      keyData.merkleIndex = index;
     });
   }
 
-  getStudents(): StudentData[] {
-    return this.students;
+  getVerificationKeys(): VerificationKeyData[] {
+    return this.keys;
   }
 
-  getStudentById(id: string): StudentData | undefined {
-    return this.students.find(s => s.id === id);
+  getVerificationKeyById(id: string): VerificationKeyData | undefined {
+    return this.keys.find(k => k.id === id);
   }
 
-  getStudentCount(): number {
-    return this.students.length;
+  getVerificationKeyCount(): number {
+    return this.keys.length;
   }
 }
 ```

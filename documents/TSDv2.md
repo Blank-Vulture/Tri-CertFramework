@@ -1,7 +1,7 @@
-# Technical Design Specification (TSD) — ZK Document Authenticity Framework
-**Version 2.2 – 2025‑07‑10**
+# Technical Design Specification (TSD) — Tri-CertFramework
+**Version 2.3 – 2025‑01‑21**
 
-> **Universal Document Authenticity System** - Adaptable to any document type with graduation certificates as example implementation
+> **Tri-Certification Framework** - ZKP + Blockchain + Digital Signature for Universal Document Authenticity
 
 ---
 
@@ -11,9 +11,11 @@
 |---------|-----------|--------|-----------|  
 | External hash | SHA‑3‑512 | 512 bit | Grover ⇒ 256‑bit quantum security |  
 | Internal hash | Poseidon‑256 | 256 bit | ZK‑friendly; low constraints |  
-| Passkey sign | ES‑256 | r,s 32 B | WebAuthn L2 standard |  
+| Digital signature | ES‑256 (ECDSA) | r,s 32 B | WebAuthn L2 + RFC 7515 |  
+| Verification key | P‑256 public key | 64 B | RFC 7517 JWK format |
 | Admin auth | EIP‑191 (Ledger) | 65 B | Hardware personal message signing |
 | ZKP system | Groth16 | ~2KB JSON | Circom + SnarkJS standard |
+| Key integrity | SHA‑3‑512 | 512 bit | Registry integrity verification |
 
 ---
 
@@ -36,29 +38,29 @@ template DocumentProof() {
     signal input destHash;
     signal input expireTs;
     
-    // Private inputs
+    // Private inputs (for ZKP)
     signal input privateKey;
-    signal input signature[2]; // [r, s]
+    signal input signature[2]; // [r, s] - digital signature
     signal input merkleProof[8];
     signal input merkleIndex;
     
     // Outputs
     signal output valid;
     
-    // 1. Verify passkey signature
+    // 1. Verify digital signature (ES256/ECDSA)
     component ecdsa = ECDSAVerify();
     ecdsa.publicKey <== privateKey;
     ecdsa.signature <== signature;
     ecdsa.message <== poseidon4([pdfHash, destHash, expireTs, 0]);
     
-    // 2. Verify Merkle inclusion
+    // 2. Verify Merkle inclusion (verification key in registry)
     component merkle = MerkleTreeChecker(8);
-    merkle.leaf <== poseidon1([privateKey]);
+    merkle.leaf <== poseidon1([privateKey]); // verification key hash
     merkle.root <== merkleRoot;
     merkle.pathElements <== merkleProof;
     merkle.pathIndices <== merkleIndex;
     
-    // 3. Combine verifications
+    // 3. Combine ZKP and signature verifications
     valid <== ecdsa.valid * merkle.valid;
 }
 ```
@@ -83,18 +85,35 @@ template DocumentProof() {
 - PDF: pdf-lib + PDF/A-3 embedder
 - Storage: IndexedDB + localStorage
 - Auth: WebAuthn Level 2
+- Digital Signature: Web Crypto API + JWK format
 - Build: Vite PWA plugin
 
-// Circuit Integration
+// Circuit Integration with Digital Signature
 import { groth16 } from "snarkjs";
 
-const generateProof = async (inputs: CircuitInputs) => {
+const generateProofWithSignature = async (
+  inputs: CircuitInputs,
+  pdfHash: string
+) => {
+  // Generate ZKP
   const { proof, publicSignals } = await groth16.fullProve(
     inputs,
     "/circuit.wasm",
     "/circuit_final.zkey"
   );
-  return { proof, publicSignals };
+  
+  // Generate digital signature of PDF hash
+  const signature = await generateDigitalSignature(pdfHash);
+  
+  return { proof, publicSignals, digitalSignature: signature };
+};
+
+// Digital Signature Implementation
+const generateDigitalSignature = async (data: string) => {
+  const credential = await navigator.credentials.get({
+    publicKey: { challenge: new TextEncoder().encode(data) }
+  });
+  return credential.response.signature;
 };
 ```
 
@@ -132,20 +151,51 @@ const signWithLedger = async (message: string) => {
 - PDF: puppeteer + PDF/A-3 templates
 - Storage: Tauri fs API + JSON files
 - Merkle: Custom Poseidon Merkle tree
+- Repository: IPFS HTTP API + GitHub API
+- Crypto: Web Crypto API for key validation
 
-// Merkle Tree Implementation
+// Verification Key Registry Management
 import { poseidon2 } from "@noble/hashes/poseidon";
 
-class PoseidonMerkleTree {
-  private depth = 8;
-  private zeroValue = BigInt(0);
+class VerificationKeyRegistry {
+  private keys: VerificationKey[] = [];
   
-  buildTree(leaves: bigint[]): MerkleTree {
-    // Pad to 2^8 = 256 leaves
-    while (leaves.length < 256) {
-      leaves.push(this.zeroValue);
-    }
-    
+  async loadKeys(filePath: string): Promise<void> {
+    const content = await invoke('read_file', { path: filePath });
+    this.keys = JSON.parse(content);
+    await this.validateKeys();
+  }
+  
+  async publishToGitHub(repoUrl: string, token: string): Promise<string> {
+    const registry = this.buildRegistry();
+    const response = await fetch(`${repoUrl}/contents/registry.json`, {
+      method: 'PUT',
+      headers: { 'Authorization': `token ${token}` },
+      body: JSON.stringify({
+        message: 'Update verification key registry',
+        content: btoa(JSON.stringify(registry, null, 2))
+      })
+    });
+    return response.url;
+  }
+  
+  async publishToIPFS(apiUrl: string): Promise<string> {
+    const registry = this.buildRegistry();
+    const response = await fetch(`${apiUrl}/api/v0/add`, {
+      method: 'POST',
+      body: JSON.stringify(registry)
+    });
+    const result = await response.json();
+    return result.Hash;
+  }
+}
+
+// Merkle Tree with Verification Keys
+class VerificationKeyMerkleTree {
+  buildTree(keys: VerificationKey[]): MerkleTree {
+    const leaves = keys.map(key => 
+      poseidon2([BigInt(key.keyHash)])
+    );
     return this.computeLevels(leaves);
   }
 }
@@ -158,20 +208,69 @@ class PoseidonMerkleTree {
 - ZKP: SnarkJS 0.7 (verification only)
 - PDF: PDF.js + attachment extraction
 - Web3: ethers.js v6 (read-only)
+- Digital Signature: Web Crypto API for ES256 verification
+- Repository: HTTP client for IPFS/GitHub access
 - Deploy: Static export to GitHub Pages
 
-// Verification Flow
-const verifyProof = async (pdfFile: File) => {
-  // 1. Extract proof from PDF/A-3
-  const { proof, publicSignals } = await extractProofFromPDF(pdfFile);
+// Complete Verification Flow (ZKP + Digital Signature)
+const verifyDocument = async (pdfFile: File) => {
+  // 1. Extract proof and signature from PDF/A-3
+  const { proof, publicSignals, digitalSignature } = await extractFromPDF(pdfFile);
   
   // 2. Get VK from blockchain
-  const vk = await getVerifyingKey(publicSignals.year);
+  const circuitVK = await getCircuitVerifyingKey(publicSignals.year);
   
-  // 3. Verify proof
-  const isValid = await groth16.verify(vk, publicSignals, proof);
+  // 3. Get verification key registry from repository
+  const verificationKeys = await getVerificationKeyRegistry(publicSignals.year);
   
-  return { isValid, expiry: publicSignals.expireTs };
+  // 4. Verify ZKP
+  const zkpValid = await groth16.verify(circuitVK, publicSignals, proof);
+  
+  // 5. Verify digital signature
+  const signatureValid = await verifyDigitalSignature(
+    digitalSignature,
+    publicSignals.pdfHash,
+    verificationKeys
+  );
+  
+  return { 
+    zkpValid, 
+    signatureValid, 
+    expiry: publicSignals.expireTs,
+    isValid: zkpValid && signatureValid
+  };
+};
+
+// Digital Signature Verification
+const verifyDigitalSignature = async (
+  signature: ArrayBuffer,
+  pdfHash: string,
+  keyRegistry: VerificationKeyRegistry
+) => {
+  const publicKey = await findVerificationKey(signature, keyRegistry);
+  if (!publicKey) return false;
+  
+  const cryptoKey = await crypto.subtle.importKey(
+    'jwk',
+    publicKey,
+    { name: 'ECDSA', namedCurve: 'P-256' },
+    false,
+    ['verify']
+  );
+  
+  return await crypto.subtle.verify(
+    { name: 'ECDSA', hash: 'SHA-256' },
+    cryptoKey,
+    signature,
+    new TextEncoder().encode(pdfHash)
+  );
+};
+
+// Repository Access
+const getVerificationKeyRegistry = async (year: number) => {
+  const registryUrl = `https://ipfs.io/ipfs/${getRegistryHash(year)}`;
+  const response = await fetch(registryUrl);
+  return await response.json();
 };
 ```
 
@@ -386,7 +485,7 @@ Circuit Hash: ${auth.parameters.circuitHash || 'N/A'}
 ```typescript
 // yearly-sets.json
 interface YearlySetConfig {
-  version: "2.0";
+  version: "2.3";
   sets: {
     [year: number]: {
       nftContract: string;
@@ -395,24 +494,52 @@ interface YearlySetConfig {
       merkleRoot: string;
       deployedAt: number;
       txHash: string;
+      registryUrl?: string; // IPFS/GitHub registry URL
     };
   };
 }
 
-// owners-{year}.json
-interface OwnerData {
+// verification-keys-{year}.json
+interface VerificationKeyData {
+  version: "2.3";
+  framework: "Tri-CertFramework";
   year: number;
-  owners: {
-    id: string;
-    name: string;
-    passkey: {
-      publicKey: string;  // Base64 COSE_Key
-      credentialId: string;
+  registryMetadata: {
+    totalKeys: number;
+    administrator: string;
+    repositoryType: 'ipfs' | 'github';
+    publishedAt: number;
+    registryHash: string;
+  };
+  verificationKeys: {
+    studentId: string;
+    studentName: string;
+    email: string;
+    verificationKey: {
+      kty: "EC";
+      crv: "P-256";
+      x: string;  // base64url
+      y: string;  // base64url
+      use: "sig";
+      alg: "ES256";
     };
-    commit: string;       // Poseidon(publicKey)
+    keyHash: string;       // SHA-3-512(verification_key)
+    commit: string;        // Poseidon(verification_key)
+    generatedAt: number;
   }[];
-  merkleRoot?: string;
-  generatedAt: number;
+  integrity: {
+    registryHash: string;
+    adminSignature: string;
+  };
+}
+
+// published-registries/{year}/github-{repo}.json
+interface PublicationRecord {
+  repositoryType: 'github' | 'ipfs';
+  url: string;
+  hash: string;
+  publishedAt: number;
+  status: 'published' | 'failed' | 'updating';
 }
 ```
 

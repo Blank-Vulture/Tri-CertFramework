@@ -1,5 +1,5 @@
-# ZK-CertFramework 🎓⚡
-**Version 2.3 – 最終更新: 2025-07-23**
+# Tri-CertFramework 🎓⚡🔐
+**Version 2.4 – 最終更新: 2025-01-21**
 
 <div align="center">
 
@@ -16,11 +16,12 @@
 
 <div id="japanese">
 
-# 🇯🇵 ZK-CertFramework 🎓⚡
+# 🇯🇵 Tri-CertFramework 🎓⚡🔐
 
-> **Trust Minimized・完全バックエンドレス・ゼロ知識書類真正性証明システム**
+> **Trust Minimized・完全バックエンドレス・三層認証書類真正性証明システム**  
+> **ZKP + ブロックチェーン + 電子署名 = 究極の信頼性**
 
-**あらゆる書類に適応可能な汎用的真正性証明システム**として設計され、**例として卒業証書の真正性証明**を実装。書類所有者のみがCircom回路とSnarkJSを使用して時限付きゼロ知識証明を生成し、**Ledger Nano X ハードウェアセキュリティ**による一線を画したセキュリティを実現。検証者はPDFファイルとPolygon zkEVMオンチェーンデータのみで真正性を確認できます。
+**あらゆる書類に適応可能な汎用的真正性証明システム**として設計され、**例として卒業証書の真正性証明**を実装。書類所有者のみがCircom回路・SnarkJS・パスキー電子署名を使用して三層の証明を生成し、**Ledger Nano X ハードウェアセキュリティ**による一線を画したセキュリティを実現。検証者はPDFファイル・Polygon zkEVMオンチェーンデータ・公開検証鍵リポジトリで完全な真正性を確認できます。
 
 <div align="center">
 
@@ -39,19 +40,20 @@
 - **バックエンドサーバーゼロ** - API、データベース、クラウド依存性なし
 - **ハードウェアセキュリティ** - 全管理者操作にLedger Nano X物理確認必須
 - **年度別独立性** - 各卒業年度が完全に独立した回路とNFTで動作
-- **エアギャップ検証** - 100%オフライン証明書検証
+- **分散型検証鍵配布** - IPFS/GitHub公開リポジトリによる透明性確保
 
-### ⚡ **先進暗号技術**
-- **Circom + SnarkJS** - 業界標準ゼロ知識証明システム
+### ⚡ **三層認証技術**
+- **Circom + SnarkJS** - 業界標準ゼロ知識証明システム（第1層）
+- **Polygon zkEVM** - 分散型ブロックチェーン検証（第2層）
+- **パスキー電子署名** - ES256デジタル署名による所有者証明（第3層）
 - **Poseidonハッシュ** - ZK最適化暗号プリミティブ
-- **WebAuthn統合** - 生体認証によるパスワードレス認証
 - **EIP-191署名** - ハードウェア保護管理者操作
 
 ### 🏗️ **4システム・アーキテクチャ**
-- **証明者システム (Scholar Prover PWA)** - 書類所有者向け真正性証明生成インターフェース
+- **証明者システム (Scholar Prover PWA)** - ZKP生成 + 電子署名 + 検証鍵エクスポート
 - **責任者システム (Executive Console Tauri)** - Ledger保護回路デプロイ
-- **管理者システム (Registrar Console Tauri)** - ローカル書類データ管理
-- **検証者システム (Verifier UI SSG)** - ドラッグ&ドロップ書類検証
+- **管理者システム (Registrar Console Tauri)** - 検証鍵レジストリ管理 + 公開リポジトリ運用
+- **検証者システム (Verifier UI SSG)** - 三層認証統合検証
 
 ## 🎯 クイックスタート
 
@@ -115,31 +117,38 @@ npm run dev
 ```mermaid
 graph TD
     subgraph "証明者システム"
-        A[📱 Scholar Prover PWA] --> B[🔐 WebAuthn Passkey]
+        A[📱 Scholar Prover PWA] --> B[🔐 パスキー電子署名]
         B --> C[⚡ Circom ZKP生成]
         C --> D[📄 PDF/A-3埋め込み]
+        E[🔑 検証鍵エクスポート] --> F[📤 検証鍵送信]
     end
     
     subgraph "責任者システム"
-        E[🏛️ Executive Console] --> F[🔐 Ledger Nano X]
-        F --> G[📡 年度回路デプロイ]
-        G --> H[🌐 Polygon zkEVM]
+        G[🏛️ Executive Console] --> H[🔐 Ledger Nano X]
+        H --> I[📡 年度回路デプロイ]
+        I --> J[🌐 Polygon zkEVM]
     end
     
     subgraph "管理者システム"
-        I[📋 Registrar Console] --> J[👥 書類所有者管理]
-        J --> K[🌳 Merkle Tree生成]
-        K --> L[📄 一括PDF作成]
+        K[📋 Registrar Console] --> L[🔑 検証鍵レジストリ管理]
+        L --> M[🌳 Merkle Tree生成]
+        M --> N[📤 IPFS/GitHub公開]
+        N --> O[📄 一括PDF作成]
     end
     
     subgraph "検証者システム"
-        M[✅ Verifier UI] --> N[📄 PDFドラッグ&ドロップ]
-        N --> O[⚡ SnarkJS検証]
-        O --> H
+        P[✅ Verifier UI] --> Q[📄 PDFドラッグ&ドロップ]
+        Q --> R[⚡ ZKP検証]
+        R --> S[🔐 電子署名検証]
+        S --> T[🔑 検証鍵取得]
+        T --> J
+        R --> J
     end
     
-    D -.->|証明書送信| N
-    H -.->|NFTデータ照会| O
+    D -.->|三層認証書類送信| Q
+    F -.->|検証鍵提出| L
+    N -.->|公開検証鍵| T
+    J -.->|ブロックチェーンデータ| R
 ```
 
 ## 🔧 技術スタック
@@ -147,17 +156,19 @@ graph TD
 ### コア技術
 - **ゼロ知識証明**: Circom 2.1.4 + SnarkJS 0.7 (Groth16)
 - **ブロックチェーン**: Polygon zkEVM (メインネット/Cardonaテストネット)
+- **電子署名**: ES256 (ECDSA P-256) + WebAuthn Level 2
+- **検証鍵配布**: IPFS + GitHub (分散型公開リポジトリ)
 - **ハードウェアセキュリティ**: Ledger Nano X + EIP-191署名
-- **PDF標準**: PDF/A-3 with embedded proofs
+- **PDF標準**: PDF/A-3 with embedded proofs + signatures
 - **デスクトップフレームワーク**: Tauri v2 (Rust + OS WebView)
 
 ### コンポーネント技術
 | システム | フレームワーク | 目的 | ストレージ |
 |-----------|-----------|---------|---------|
-| 証明者システム | React 18 + Vite (PWA) | ZKP生成 | IndexedDB + localStorage |
+| 証明者システム | React 18 + Vite (PWA) | ZKP生成 + 電子署名 | IndexedDB + localStorage |
 | 責任者システム | React 18 + TypeScript + Tauri v2 | 回路デプロイ | ローカルJSONファイル |
-| 管理者システム | React 18 + TypeScript + Tauri v2 | 書類所有者管理 | ローカルJSONファイル |
-| 検証者システム | Next.js 15 (SSG) + App Router | 書類検証 | 永続ストレージなし |
+| 管理者システム | React 18 + TypeScript + Tauri v2 | 検証鍵レジストリ管理 | ローカルJSONファイル + 公開リポジトリ |
+| 検証者システム | Next.js 15 (SSG) + App Router | 三層認証検証 | 永続ストレージなし |
 
 ## 📋 使用ワークフロー
 
@@ -172,43 +183,52 @@ graph TD
 
 ### 2. 📋 **管理者システム運用** (Registrar Console)
 ```typescript
-// 1. 書類所有者データインポート (CSV/JSON)
-// 2. Poseidon Merkle Tree構築
-// 3. 一括PDF/A-3書類生成
-// 4. 書類所有者に配布
+// 1. 学生からの検証鍵収集
+// 2. 検証鍵レジストリ構築
+// 3. IPFS/GitHubに公開
+// 4. Poseidon Merkle Tree構築
+// 5. 一括PDF/A-3書類生成
+// 6. 書類所有者に配布
 ```
 
 ### 3. 🎓 **証明者システム利用** (Scholar Prover)
 ```typescript
-// 1. WebAuthn Passkey登録
-// 2. PDF書類ドラッグ + 詳細入力
-// 3. ゼロ知識証明生成
-// 4. PDF/A-3にproof埋め込み
-// 5. 拡張書類ダウンロード
+// 1. WebAuthn Passkey登録 + 電子署名鍵生成
+// 2. 検証鍵エクスポート + 管理者提出
+// 3. PDF書類ドラッグ + 詳細入力
+// 4. ゼロ知識証明生成
+// 5. PDF電子署名生成
+// 6. PDF/A-3にproof + signature埋め込み
+// 7. 三層認証書類ダウンロード
 ```
 
 ### 4. ✅ **検証者システム利用** (Verifier UI)
 ```typescript
 // 1. PDF書類ドラッグ&ドロップ
-// 2. 埋め込みZKP自動抽出
-// 3. SnarkJSでproof検証
-// 4. Polygon zkEVMでVK照会
-// 5. 検証結果表示
+// 2. 埋め込みZKP + 電子署名自動抽出
+// 3. SnarkJSでZKP検証 (第1層)
+// 4. Polygon zkEVMでVK照会 (第2層)
+// 5. 公開リポジトリから検証鍵取得
+// 6. 電子署名検証 (第3層)
+// 7. 三層認証統合結果表示
 ```
 
 ## 🔐 セキュリティ機能
 
 ### Trust Minimization原則
-- **外部依存性なし** (Polygon zkEVM除く)
+- **最小外部依存性** (Polygon zkEVM + 公開リポジトリのみ)
 - **ハードウェア保護管理者操作** (Ledger Nano X必須)
 - **年度別独立性** (年度間依存性なし)
-- **エアギャップ検証** (完全オフライン動作)
+- **分散型検証鍵配布** (IPFS/GitHub透明性)
+- **三層認証検証** (ZKP + ブロックチェーン + 電子署名)
 
 ### 暗号学的セキュリティ
 - **量子耐性**: SHA-3-512ハッシュ (256ビット耐量子セキュリティ)
 - **ZK最適化**: 回路効率のためのPoseidonハッシュ
+- **電子署名**: ES256 ECDSA (RFC 7515準拠)
 - **WebAuthn Level 2**: 生体認証サポート
 - **EIP-191署名**: ハードウェア保護パーソナルメッセージ署名
+- **検証鍵整合性**: SHA-3チェックサムによる改ざん検出
 
 ## 🧪 テスト
 
@@ -273,11 +293,12 @@ npm run build:verifier          # 静的サイトエクスポート
 
 <div id="english">
 
-# 🇺🇸 ZK-CertFramework 🎓⚡
+# 🇺🇸 Tri-CertFramework 🎓⚡🔐
 
-> **Trust-Minimized, Fully Backendless Zero-Knowledge Document Authenticity System**
+> **Trust-Minimized, Fully Backendless Triple-Layer Document Authenticity System**  
+> **ZKP + Blockchain + Digital Signature = Ultimate Trust**
 
-A **universal document authenticity verification system adaptable to any type of document**, with **graduation certificates as an example implementation**. Only document owners can generate time-bound zero-knowledge proofs using Circom circuits and SnarkJS, with **Ledger Nano X hardware security** for responsible party operations. Verifiers can confirm authenticity using only the PDF file and on-chain Polygon zkEVM data.
+A **universal document authenticity verification system adaptable to any type of document**, with **graduation certificates as an example implementation**. Only document owners can generate time-bound zero-knowledge proofs, digital signatures, and verification keys using Circom circuits, SnarkJS, and passkey cryptography, with **Ledger Nano X hardware security** for responsible party operations. Verifiers can confirm authenticity using the PDF file, on-chain Polygon zkEVM data, and public verification key repositories.
 
 <div align="center">
 

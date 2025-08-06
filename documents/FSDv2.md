@@ -1,7 +1,7 @@
-# Functional Design Specification (FSD) — ZK Document Authenticity Framework
-**Version 2.2 – 2025‑07‑10**
+# Functional Design Specification (FSD) — Tri-CertFramework
+**Version 2.3 – 2025‑01‑21**
 
-> **Universal Document Authenticity System** - Adaptable to any document type with graduation certificates as example implementation
+> **Tri-Certification Framework** - ZKP + Blockchain + Digital Signature for Universal Document Authenticity
 
 ---
 
@@ -13,46 +13,52 @@ graph TD
     A[PDF + inputs] --> B[Circom-SnarkJS Prover]
     B --> C{proof.json}
     C --> D[PDF/A‑3 writer]
-    E[QR Code Generator] --> F[Passkey Export QR]
+    E[Passkey Signature] --> F[Digital Signature Generator]
+    F --> G[PDF Hash + Signature]
+    G --> D
   end
   subgraph "Responsible Party System (Executive Console Tauri)"
-    G[Circuit Files] --> H[Ledger Nano X]
-    H --> I[Yearly Set Deployment]
+    H[Circuit Files] --> I[Ledger Nano X]
+    I --> J[Yearly Set Deployment]
   end
   subgraph "Administrator System (Registrar Console Tauri)"
-    J[Document Owner Keys JSON] --> K[Merkle Tree Builder]
-    K --> L[PDF/A-3 Generator]
-    M[QR Scanner] --> N[Passkey Collection]
-    N --> J
+    K[Verification Keys] --> L[IPFS/GitHub Publisher]
+    L --> M[Public Key Repository]
+    N[Student Data] --> O[Merkle Tree Builder]
+    O --> P[PDF/A-3 Generator]
   end
   subgraph "Verifier System (Verifier UI SSG)"
-    O[PDF Input] --> P[SnarkJS Verifier]
-    P --> Q[Verification Result]
+    Q[PDF Input] --> R[ZKP Verifier]
+    R --> S[Digital Signature Verifier]
+    S --> T[Public Key Retrieval]
+    T --> U[Verification Result]
   end
-  D -->|send| O
-  I -->|deploy| R[Polygon zkEVM YearNFT]
-  P -->|query| R
-  F -->|display| M
+  D -->|send| Q
+  J -->|deploy| V[Polygon zkEVM YearNFT]
+  R -->|query| V
+  M -->|publish| T
 ```
 
 ## 2 User‑Interface Specifications  
-### 2.1 Passkey Registration (Prover System)
+### 2.1 Digital Signature Key Generation (Prover System)
 | Element ID | Type | Description |  
 |------------|------|-------------|  
-| `btnRegister` | button | initiates `navigator.credentials.create()` |  
+| `btnGenerateKeys` | button | initiates passkey-based signature key generation |  
 | `txtOwnerId` | input | document owner ID (validation: numeric) |  
-| `localStorageKey` | storage | stores passkey info locally |
-| `btnExportQR` | button | generates QR code for passkey export |
-| `qrDisplay` | canvas | displays QR code with passkey data |
-| `qrInstructions` | text | QR code usage instructions |
+| `localStorageKey` | storage | stores signature key info locally |
+| `btnExportVerificationKey` | button | exports verification key for registrar |
+| `verificationKeyDisplay` | textarea | displays verification key in JSON format |
+| `exportInstructions` | text | instructions for sharing verification key |
 
-### 2.2 Proof Generator (Prover System)
+### 2.2 Proof Generator with Digital Signature (Prover System)
 | ID | Type | Validation |  
 |----|------|------------|  
 | `dropPdf` | drag‑zone | MIME `application/pdf` |  
 | `txtDest` | text | SHA‑3‑512(dest) computed on blur |  
 | `dateExpire` | date | must be ≤ 365 days future |  
-| `btnGenerate` | button | disabled until inputs valid |  
+| `btnGenerate` | button | disabled until inputs valid |
+| `signatureProgress` | progress | shows digital signature generation progress |
+| `signaturePreview` | text | displays generated digital signature |  
 
 ### 2.3 Yearly Set Management (Responsible Party System)
 | ID | Type | Description |
@@ -62,30 +68,29 @@ graph TD
 | `btnLedgerSign` | button | triggers Ledger Nano X EIP-191 signature |
 | `yearInput` | number | document issuance year (2025+) |
 
-### 2.4 Document Owner Key Management (Administrator System)  
+### 2.4 Verification Key Management (Administrator System)  
 | ID | Type | Description |
 |----|------|-------------|
-| `fileOwnerKeys` | file | JSON file with document owner passkey data |
+| `fileVerificationKeys` | file | JSON file with verification keys from students |
 | `btnBuildMerkle` | button | constructs Poseidon Merkle Tree |
 | `btnGeneratePDFs` | button | batch PDF/A-3 generation |
-| `btnStartQRScan` | button | starts QR code scanning mode |
-| `qrScannerView` | video | camera preview for QR scanning |
-| `qrScanStatus` | text | scan status and progress display |
-| `qrCollectedList` | table | collected passkey data from QR scans |
+| `btnPublishKeys` | button | publishes verification keys to IPFS/GitHub |
+| `publicationProgress` | progress | key publication progress |
+| `publicationStatus` | text | publication status display |
+| `keyRepository` | table | published verification key registry |
 
-### 2.5 QR Code Passkey Collection (Administrator System)
+### 2.5 Public Key Repository (Administrator System)
 | ID | Type | Description |
 |----|------|-------------|
-| `yearSelector` | select | select year for passkey collection |
-| `btnCameraStart` | button | start camera for QR scanning |
-| `cameraPreview` | video | live camera feed |
-| `scanOverlay` | div | QR code detection overlay |
-| `collectionProgress` | progress | collection progress bar |
-| `collectedCount` | counter | number of collected passkeys |
-| `duplicateAlert` | alert | duplicate QR code warning |
-| `btnFinishCollection` | button | complete collection session |
+| `yearSelector` | select | select year for key management |
+| `repositoryURL` | input | IPFS/GitHub repository URL |
+| `btnPublishToIPFS` | button | publish to IPFS repository |
+| `btnPublishToGitHub` | button | publish to GitHub repository |
+| `publicationLog` | table | publication history and status |
+| `keyValidation` | text | verification key validation results |
+| `accessTokenInput` | input | GitHub access token for private repos |
 
-## 3 Detailed Workflow – Proof Generation  
+## 3 Detailed Workflow – Proof Generation with Digital Signature  
 
 ```mermaid
 sequenceDiagram
@@ -96,17 +101,18 @@ sequenceDiagram
 
     Owner->>PWA: drag PDF + dest + expiry
     PWA->>PWA: calc pdfHash + destHash
-    PWA->>Owner: WebAuthn getAssertion()
-    Owner-->>PWA: pk, sig
+    PWA->>PWA: generate digital signature of pdfHash
+    PWA->>Owner: WebAuthn getAssertion() for signature
+    Owner-->>PWA: digital signature
     PWA->>LS: load circuit files
     LS-->>PWA: circuit.wasm, circuit.zkey
     PWA->>Circuit: snarkjs.groth16.fullProve()
     Circuit-->>PWA: proof.json + publicSignals
-    PWA->>PWA: embed proof in PDF/A-3
-    PWA-->>Owner: download enhanced PDF
+    PWA->>PWA: embed proof + digital signature in PDF/A-3
+    PWA-->>Owner: download enhanced PDF with ZKP + signature
 ```
 
-## 4 QR Code Passkey Collection Workflow  
+## 4 Verification Key Publication Workflow  
 
 ```mermaid
 sequenceDiagram
@@ -114,28 +120,24 @@ sequenceDiagram
     participant RC as Registrar Console
     participant Students as Students
     participant PWA as Scholar Prover PWA
+    participant Repo as IPFS/GitHub Repository
 
-    Admin->>RC: start QR collection mode
-    RC->>RC: initialize camera
-    RC->>Admin: display QR scanner UI
+    Students->>PWA: generate digital signature keys
+    PWA->>PWA: create verification key
+    PWA->>Students: export verification key (JSON)
+    Students->>Admin: submit verification key file
     
-    loop For each student
-        Students->>PWA: complete passkey registration
-        PWA->>PWA: generate QR code with passkey data
-        PWA->>Students: display QR code on screen
-        Students->>Admin: show QR code to camera
-        RC->>RC: decode QR + validate data
-        alt Valid QR Code
-            RC->>RC: add to collection buffer
-            RC->>Admin: success feedback + count update
-        else Invalid/Duplicate QR
-            RC->>Admin: error alert + skip
-        end
-    end
+    Admin->>RC: import verification keys
+    RC->>RC: validate key formats
+    RC->>RC: compile key registry
     
-    Admin->>RC: finish collection
-    RC->>RC: save to owners-{year}.json
-    RC->>Admin: collection summary
+    Admin->>RC: publish to repository
+    RC->>Repo: upload key registry
+    Repo-->>RC: publication confirmation + URL
+    RC->>Admin: publication complete with access URL
+    
+    RC->>RC: save registry to local storage
+    RC->>Admin: provide public access information
 ```
 
 ## 5 Yearly Set Deployment (Responsible Party System)
@@ -164,50 +166,65 @@ sequenceDiagram
 
 | Field | Type | Notes |  
 |-------|------|-------|  
-| `commit` | hex(64) | Poseidon256(pk) |  
+| `commit` | hex(64) | Poseidon256(verification_key) |  
 | `vkHash` | hex(128) | SHA‑3‑512 of VK |  
 | `merkleRoot` | hex(64) | Poseidon256 |  
 | `yearlySetAddr` | hex(40) | deployed contract address |
 | `circuitHash` | hex(128) | SHA‑3‑512 of circuit file |
 | `ledgerSignature` | hex(130) | EIP-191 signature from Ledger |
-| `qrData` | base64 | QR encoded passkey data |  
-| `qrTimestamp` | unix | QR generation timestamp |
-| `scanSession` | uuid | QR collection session ID |
+| `digitalSignature` | base64 | PDF hash digital signature |  
+| `verificationKey` | json | Public key for signature verification |
+| `repositoryURL` | url | IPFS/GitHub repository URL |
+| `keyRegistryHash` | hex(128) | SHA‑3‑512 of key registry |
 
-## 7 QR Code Data Format
+## 7 Verification Key Data Format
 
-### 7.1 QR Code Payload Structure
+### 7.1 Verification Key Registry Structure
 ```json
 {
-  "version": "2.2",
-  "type": "passkey_export",
-  "studentId": "2025001",
+  "version": "2.3",
+  "framework": "Tri-CertFramework",
   "year": 2025,
-  "passkey": {
-    "publicKey": "pQECAyYgASFYIBwf...rKjY",
-    "credentialId": "AQIDBAUGBwgJ...",
-    "algorithm": -7
-  },
-  "metadata": {
-    "name": "田中太郎",
-    "email": "tanaka@university.edu",
+  "registryMetadata": {
     "generatedAt": 1704067200000,
-    "sessionId": "uuid-v4"
+    "totalKeys": 150,
+    "administrator": "university-admin",
+    "repositoryType": "github"
   },
+  "verificationKeys": [
+    {
+      "studentId": "2025001",
+      "studentName": "田中太郎",
+      "email": "tanaka@university.edu",
+      "verificationKey": {
+        "kty": "EC",
+        "crv": "P-256",
+        "x": "MKBCTNIcKUSDii11ySs3526iDZ8AiTo7Tu6KPAqv7D4",
+        "y": "4Etl6SRW2YiLUrN5vfvVHuhp7x8PxltmWWlbbM4IFyM",
+        "use": "sig",
+        "alg": "ES256"
+      },
+      "generatedAt": 1704067200000,
+      "integrity": {
+        "keyHash": "sha3-512-hash-of-key",
+        "signature": "self-signed-verification"
+      }
+    }
+  ],
   "integrity": {
-    "checksum": "sha3-512-hash",
-    "signature": "self-signed-payload"
+    "registryHash": "sha3-512-hash-of-registry",
+    "adminSignature": "admin-signature"
   }
 }
 ```
 
-### 7.2 QR Code Technical Specifications
-- **Format**: QR Code 2005 (ISO/IEC 18004)
-- **Error Correction**: Level M (15% recovery)
-- **Encoding**: UTF-8 JSON string
-- **Size**: 33x33 modules (Version 3)
-- **Capacity**: ~900 characters
-- **Colors**: Black/White (high contrast)
+### 7.2 Repository Publication Specifications
+- **Format**: JSON with JWK (JSON Web Key) format
+- **Storage**: IPFS/GitHub repository
+- **Access**: Public read-only access
+- **Encoding**: UTF-8 JSON
+- **Size Limit**: 10MB per registry file
+- **Versioning**: Git-based version control
 
 ## 8 Local Storage Architecture
 
@@ -224,22 +241,23 @@ config/
 ### 8.2 Administrator System (Tauri)  
 ```
 data/
-├── owners-{year}.json         # document owner passkey data
-├── merkle-tree-{year}.json    # computed Merkle tree
-├── generated-pdfs/{year}/     # batch generated PDFs
-├── qr-sessions/{year}/        # QR collection session logs
-│   ├── session-{uuid}.json    # individual session data
-│   └── duplicates.log         # duplicate detection log
-└── config.json               # app configuration
+├── verification-keys-{year}.json  # verification key registry
+├── merkle-tree-{year}.json        # computed Merkle tree
+├── generated-pdfs/{year}/         # batch generated PDFs
+├── published-registries/{year}/   # published key registries
+│   ├── ipfs-{hash}.json          # IPFS publication data
+│   └── github-{repo}.json        # GitHub publication data
+└── config.json                   # app configuration
 ```
 
 ### 8.3 Prover System (PWA)
 ```
 localStorage:
-- passkey_info: {publicKey, credentialId}
+- signature_key_info: {privateKey, publicKey, algorithm}
+- verification_key: {jwk, keyId, algorithm}
 - circuit_cache: {wasm, zkey, vk} 
-- proof_history: [{pdfHash, timestamp, proofId}]
-- qr_export_history: [{qrId, timestamp, exported}]
+- proof_history: [{pdfHash, timestamp, proofId, signatureId}]
+- signature_history: [{signatureId, timestamp, pdfHash}]
 ```
 
 ## 9 Error Handling  
@@ -251,26 +269,26 @@ localStorage:
 | 1003 | LEDGER_DISCONNECTED | show connection dialog |
 | 1004 | CIRCUIT_COMPILE_FAILED | show error details |
 | 1005 | SNARKJS_PROOF_FAILED | retry with different inputs |
-| 2001 | QR_GENERATION_FAILED | show QR error message |
-| 2002 | CAMERA_ACCESS_DENIED | show camera permission prompt |
-| 2003 | QR_DECODE_FAILED | show scan retry instruction |
-| 2004 | DUPLICATE_QR_DETECTED | show duplicate warning |
-| 2005 | INVALID_QR_FORMAT | show format error details |
+| 2001 | SIGNATURE_GENERATION_FAILED | show signature error message |
+| 2002 | VERIFICATION_KEY_INVALID | show key validation prompt |
+| 2003 | REPOSITORY_PUBLISH_FAILED | show publication retry options |
+| 2004 | KEY_REGISTRY_CORRUPTED | show registry validation error |
+| 2005 | INVALID_SIGNATURE_FORMAT | show signature format error |
 
 ## 10 Trust Minimization Features
 
-### 10.1 No External Dependencies
+### 10.1 Minimal External Dependencies
 - ✅ Zero backend servers
 - ✅ Zero databases  
 - ✅ Zero cloud APIs
-- ✅ Zero IPFS/external storage
+- 📂 Public repositories only (IPFS/GitHub for key distribution)
 
 ### 10.2 Trusted Components Only
 - 🔐 Polygon zkEVM (public blockchain)
 - 📱 Ledger Nano X (hardware verified)
 - 🌐 npm packages (build-time verified)
 - 💻 Browser standard APIs
-- 📷 Device camera (local processing only)
+- 📂 IPFS/GitHub (decentralized/public repositories)
 
 ### 10.3 Yearly Independence
 - Each year = completely separate circuit + VK + NFT
@@ -278,11 +296,11 @@ localStorage:
 - No cross-year dependencies
 - Simple verification logic
 
-### 10.4 QR Code Security
-- 🔒 Local QR generation (no external QR services)
-- 🔒 Camera processing (no image uploads)
-- 🔒 Session-based collection (time-bounded)
-- 🔒 Integrity verification (checksums + signatures)
+### 10.4 Digital Signature Security
+- 🔒 Local signature generation (passkey-based)
+- 🔒 Public key distribution (IPFS/GitHub)
+- 🔒 Cryptographic verification (ES256)
+- 🔒 Integrity verification (hash-based validation)
 
 ## 11 Traceability Matrix  
 
@@ -293,9 +311,9 @@ localStorage:
 | FR‑03 | TC‑N03 | `verifier-ui/expiry-check.ts` |  
 | FR‑04 | TC‑N04 | `verifier-ui/vk-verification.ts` |
 | FR‑05 | TC‑P05 | `executive-console/ledger-integration.ts` |
-| FR‑06 | TC‑Q01 | `scholar-prover/qr-generator.ts` |
-| FR‑07 | TC‑Q02 | `registrar-console/qr-scanner.ts` |
-| FR‑08 | TC‑Q03 | `registrar-console/camera-integration.ts` |
+| FR‑06 | TC‑S01 | `scholar-prover/digital-signature.ts` |
+| FR‑07 | TC‑S02 | `registrar-console/key-publisher.ts` |
+| FR‑08 | TC‑S03 | `verifier-ui/signature-verifier.ts` |
 
 ---
 

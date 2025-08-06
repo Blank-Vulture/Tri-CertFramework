@@ -1,16 +1,17 @@
-# Phase 0 開発計画書 - ZK-CertFramework プロトタイプ
-**バージョン 2.0 - 最終更新: 2025-01-20**
+# Phase 0 開発計画書 - Tri-CertFramework プロトタイプ
+**バージョン 2.3 - 最終更新: 2025-01-20**
 
-> **段階的移行対応プロトタイプ**: ローカルVK → ブロックチェーンVK の段階的実装
+> **段階的移行対応プロトタイプ**: ローカルVK → ブロックチェーンVK の段階的実装 + パスキー電子署名基盤
 
 ---
 
 ## 🎯 **Phase 0 概要**
 
 ### **目標**
-- **Scholar Prover**: パスキー認証 + ZKP生成 + PDF埋め込み + **段階的VK取得**
-- **Verifier UI**: PDF検証 + **ローカル/ブロックチェーンVK選択** + 有効期限チェック
+- **Scholar Prover**: パスキー電子署名 + ZKP生成 + PDF埋め込み + **段階的VK取得** + **検証鍵エクスポート**
+- **Verifier UI**: PDF検証 + **ローカル/ブロックチェーンVK選択** + **電子署名検証** + 有効期限チェック
 - **段階的移行**: ローカルVK → ブロックチェーンVK のスムーズな移行
+- **電子署名基盤**: ES256電子署名・検証鍵管理の実装
 - **早期成功**: 2週間以内での動作確認
 
 ### **段階的移行機能**
@@ -29,7 +30,7 @@
 ## 🏗️ **プロジェクト構造**
 
 ```
-zk-CertFramework/
+Tri-CertFramework/
 ├── dev-plan/
 │   ├── PHASE0_DEVELOPMENT_PLAN.md
 │   ├── PHASE1_DEVELOPMENT_PLAN.md
@@ -42,7 +43,8 @@ zk-CertFramework/
 │   │   ├── main.tsx
 │   │   ├── App.tsx
 │   │   ├── components/
-│   │   │   ├── PasskeyAuth.tsx
+│   │   │   ├── DigitalSignature.tsx
+│   │   │   ├── VerificationKeyExport.tsx
 │   │   │   ├── PDFUpload.tsx
 │   │   │   ├── ProofGenerator.tsx
 │   │   │   ├── PDFEmbedder.tsx
@@ -52,7 +54,8 @@ zk-CertFramework/
 │   │   │   ├── zkp.ts
 │   │   │   ├── pdf.ts
 │   │   │   ├── crypto.ts
-│   │   │   ├── passkey.ts
+│   │   │   ├── digital-signature.ts
+│   │   │   ├── verification-key.ts
 │   │   │   ├── vk-manager.ts
 │   │   │   └── blockchain.ts
 │   │   ├── config/
@@ -159,10 +162,12 @@ export interface StudentData {
   id: string;
   name: string;
   email: string;
-  passkey: {
-    publicKey: string;
-    credentialId: string;
-    algorithm: number;
+  verificationKey: {
+    kty: string;
+    crv: string;
+    x: string;
+    y: string;
+    keyHash: string;
   };
   commit: string;
 }
@@ -623,12 +628,12 @@ export class PDFEmbedder {
 
 ### **Day 11-12: WebAuthn統合**
 
-#### **4.2 Scholar Prover - Passkey認証（段階的対応）**
+#### **4.2 Scholar Prover - パスキー電子署名（段階的対応）**
 ```typescript
-// scholar-prover/src/utils/passkey.ts
-export class PasskeyManager {
-  async registerPasskey(userId: string, userName: string): Promise<{
-    publicKey: string;
+// scholar-prover/src/utils/digital-signature.ts
+export class DigitalSignatureManager {
+  async generateSigningKey(userId: string, userName: string): Promise<{
+    verificationKey: string;
     credentialId: string;
   }> {
     const challenge = new Uint8Array(32);
@@ -656,21 +661,21 @@ export class PasskeyManager {
       }
     }) as PublicKeyCredential;
 
-    const publicKey = this.arrayBufferToBase64(
+    const verificationKey = this.arrayBufferToBase64(
       (credential.response as AuthenticatorAttestationResponse).getPublicKey()
     );
     const credentialId = this.arrayBufferToBase64(credential.rawId);
 
-    return { publicKey, credentialId };
+    return { verificationKey, credentialId };
   }
 
-  async signWithPasskey(credentialId: string, challenge: string): Promise<{
+  async signDocumentHash(credentialId: string, documentHash: string): Promise<{
     signature: [string, string];
-    publicKey: string;
+    verificationKey: string;
   }> {
     const assertion = await navigator.credentials.get({
       publicKey: {
-        challenge: new TextEncoder().encode(challenge),
+        challenge: new TextEncoder().encode(documentHash),
         allowCredentials: [{
           id: this.base64ToArrayBuffer(credentialId),
           type: 'public-key'
@@ -724,7 +729,8 @@ export class PasskeyManager {
 import React, { useState, useRef } from 'react';
 import { ZKPGenerator } from '../utils/zkp';
 import { PDFEmbedder } from '../utils/pdf';
-import { PasskeyManager } from '../utils/passkey';
+import { DigitalSignatureManager } from '../utils/digital-signature';
+import { VerificationKeyManager } from '../utils/verification-key';
 import { VKManager } from '../utils/vk-manager';
 import { VKSourceSelector } from './VKSourceSelector';
 import { BlockchainStatus } from './BlockchainStatus';
@@ -740,7 +746,8 @@ export const ProofGenerator: React.FC = () => {
   const phaseManager = useRef(new PhaseManager('local'));
   const zkpGenerator = useRef(new ZKPGenerator());
   const pdfEmbedder = useRef(new PDFEmbedder());
-  const passkeyManager = useRef(new PasskeyManager());
+  const digitalSignatureManager = useRef(new DigitalSignatureManager());
+  const verificationKeyManager = useRef(new VerificationKeyManager());
   const vkManager = useRef(new VKManager(phaseManager.current));
 
   const handleVKSourceChange = (source: string) => {
@@ -767,11 +774,11 @@ export const ProofGenerator: React.FC = () => {
       // 4. 有効期限設定
       const expireTs = Math.floor(Date.now() / 1000) + (expiryDays * 24 * 60 * 60);
 
-      // 5. Passkey署名
-      const challenge = `${pdfHash}${destHash}${expireTs}`;
-      const { signature, publicKey } = await passkeyManager.current.signWithPasskey(
+      // 5. パスキー電子署名
+      const documentHash = `${pdfHash}${destHash}${expireTs}`;
+      const { signature, verificationKey } = await digitalSignatureManager.current.signDocumentHash(
         'test-credential-id',
-        challenge
+        documentHash
       );
 
       // 6. ZKP生成
@@ -780,7 +787,7 @@ export const ProofGenerator: React.FC = () => {
         destHash,
         expireTs: expireTs.toString(),
         vkHash: 'test-vk-hash',
-        privateKey: publicKey,
+        privateKey: verificationKey,
         signature,
         currentTs: Math.floor(Date.now() / 1000)
       });

@@ -1,7 +1,7 @@
-# 技術設計書 (TSD) — ZKP 付き書類真正性証明システム
-**バージョン 2.2 最終更新: 2025‑07‑10**
+# 技術設計書 (TSD) — Tri-CertFramework（三層認証書類真正性証明システム）
+**バージョン 2.3 最終更新: 2025‑07‑10**
 
-> **汎用的書類真正性証明システム** - あらゆる書類に適応可能な設計で、例として卒業証書の真正性証明を実装
+> **三層認証書類真正性証明システム** - ZKP + ブロックチェーン + 電子署名による三層認証で、あらゆる書類に適応可能な設計
 
 ---
 
@@ -11,7 +11,8 @@
 |------|-------------|------|----------|
 | 外部ハッシュ | SHA‑3‑512 | 512 bit | Grover攻撃でも実効256bit量子セキュリティ |
 | 内部ハッシュ | Poseidon‑256 | 256 bit | ZK‑SNARK最適化；低制約数 |
-| Passkey署名 | ES‑256 | r,s 32 B | WebAuthn Level‑2規格 |
+| 電子署名 | ES‑256 | r,s 32 B | WebAuthn Level‑2規格・RFC 7515準拠 |
+| 検証鍵 | P‑256公開鍵 | JWK形式 | RFC 7517準拠・分散配布対応 |
 | 管理者認証 | EIP‑191（Ledger） | 65 B | ハードウェアパーソナルメッセージ署名 |
 | ZKPシステム | Groth16 | ~2KB JSON | Circom + SnarkJS標準 |
 
@@ -37,23 +38,23 @@ template DocumentProof() {
     signal input expireTs;
     
     // 秘密入力
-    signal input privateKey;
-    signal input signature[2]; // [r, s]
+    signal input privateKey;  // ZKP用秘密鍵
+    signal input signature[2]; // 電子署名 [r, s]
     signal input merkleProof[8];
     signal input merkleIndex;
     
     // 出力
     signal output valid;
     
-    // 1. Passkey署名検証
+    // 1. パスキー電子署名検証
     component ecdsa = ECDSAVerify();
     ecdsa.publicKey <== privateKey;
     ecdsa.signature <== signature;
     ecdsa.message <== poseidon4([pdfHash, destHash, expireTs, 0]);
     
-    // 2. Merkle包含証明検証
+    // 2. 検証鍵Merkle包含証明検証
     component merkle = MerkleTreeChecker(8);
-    merkle.leaf <== poseidon1([privateKey]);
+    merkle.leaf <== poseidon1([privateKey]);  // 検証鍵ハッシュ
     merkle.root <== merkleRoot;
     merkle.pathElements <== merkleProof;
     merkle.pathIndices <== merkleIndex;
@@ -80,21 +81,27 @@ template DocumentProof() {
 // 技術スタック
 - フレームワーク: React 18 + Vite 4
 - ZKP: Circom 2.1.4 + SnarkJS 0.7
+- 電子署名: WebAuthn Level 2 + Web Crypto API
+- 検証鍵管理: JWK形式 + エクスポート機能
 - PDF: pdf-lib + PDF/A-3埋め込み
 - ストレージ: IndexedDB + localStorage
-- 認証: WebAuthn Level 2
 - ビルド: Vite PWAプラグイン
 
-// 回路統合
+// 回路統合 + 電子署名
 import { groth16 } from "snarkjs";
 
-const generateProof = async (inputs: CircuitInputs) => {
+const generateProofWithSignature = async (inputs: CircuitInputs, pdfHash: string) => {
+  // 1. ZKP生成
   const { proof, publicSignals } = await groth16.fullProve(
     inputs,
     "/circuit.wasm",
     "/circuit_final.zkey"
   );
-  return { proof, publicSignals };
+  
+  // 2. 電子署名生成
+  const digitalSignature = await generateDigitalSignature(pdfHash);
+  
+  return { proof, publicSignals, digitalSignature };
 };
 ```
 
@@ -128,6 +135,8 @@ const signWithLedger = async (message: string) => {
 ```typescript
 // 技術スタック
 - フレームワーク: React 18 + TypeScript + Tauri v2
+- 検証鍵管理: JWK検証 + レジストリ構築
+- 公開リポジトリ: IPFS HTTP API + GitHub API
 - ハッシュ: @noble/hashes (Poseidon実装)
 - PDF: puppeteer + PDF/A-3テンプレート
 - ストレージ: Tauri fs API + JSONファイル
@@ -141,7 +150,7 @@ class PoseidonMerkleTree {
   private zeroValue = BigInt(0);
   
   buildTree(leaves: bigint[]): MerkleTree {
-    // 2^8 = 256葉までパディング
+    // 2^8 = 256学生分の検証鍵までパディング
     while (leaves.length < 256) {
       leaves.push(this.zeroValue);
     }
@@ -156,22 +165,30 @@ class PoseidonMerkleTree {
 // 技術スタック
 - フレームワーク: Next.js 15 (SSGモード) + App Router
 - ZKP: SnarkJS 0.7 (検証のみ)
+- 電子署名: Web Crypto API (ES256検証)
+- 検証鍵取得: IPFS/GitHub HTTP API
 - PDF: PDF.js + 添付ファイル抽出
 - Web3: ethers.js v6 (読み取り専用)
 - デプロイ: GitHub Pagesへ静的エクスポート
 
-// 検証フロー
-const verifyProof = async (pdfFile: File) => {
-  // 1. PDF/A-3から証明抽出
-  const { proof, publicSignals } = await extractProofFromPDF(pdfFile);
+// 三層認証検証フロー
+const verifyTripleAuth = async (pdfFile: File) => {
+  // 1. PDF/A-3から証明 + 電子署名抽出
+  const { proof, publicSignals, digitalSignature } = await extractProofFromPDF(pdfFile);
   
-  // 2. ブロックチェーンからVK取得
+  // 2. ブロックチェーンからVK取得（第1層・第2層）
   const vk = await getVerifyingKey(publicSignals.year);
   
-  // 3. 証明検証
-  const isValid = await groth16.verify(vk, publicSignals, proof);
+  // 3. 公開リポジトリから検証鍵取得（第3層）
+  const verificationKey = await getVerificationKeyFromRepo(publicSignals.studentId);
   
-  return { isValid, expiry: publicSignals.expireTs };
+  // 4. ZKP検証（第1層）
+  const zkpValid = await groth16.verify(vk, publicSignals, proof);
+  
+  // 5. 電子署名検証（第3層）
+  const sigValid = await verifyDigitalSignature(digitalSignature, verificationKey);
+  
+  return { zkpValid, sigValid, expiry: publicSignals.expireTs };
 };
 ```
 
@@ -232,11 +249,11 @@ contract YearlyDeploymentManager {
 
 ---
 
-## 5. Poseidon Merkle Tree
+## 5. Poseidon Merkle Tree（検証鍵用）
 
 | パラメータ | 値 |
 |-----------|-----|
-| depth | 8 (256葉) |
+| depth | 8 (256学生分) |
 | zeroLeaf | `0x0` |
 | hash | Poseidon‑256 |
 

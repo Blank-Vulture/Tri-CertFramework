@@ -1,5 +1,5 @@
-# 機能設計書 (FSD) — ZK-CertFramework プロトタイプ版
-**バージョン 1.2 最終更新: 2025-07-23**
+# 機能設計書 (FSD) — Tri-CertFramework プロトタイプ版
+**バージョン 2.3 最終更新: 2025-07-23**
 
 > **段階的移行対応プロトタイプ** - Phase 0→1→2の段階的開発による完全システム構築
 
@@ -24,7 +24,7 @@ graph TD
     L --> O
   end
   subgraph "Phase 2: 完全システム統合"
-    H[学生データ JSON] --> I[Merkle Tree ビルダー]
+    H[検証鍵レジストリ JSON] --> I[Merkle Tree ビルダー]
     I --> J[MerkleManager.sol デプロイ]
     J --> O
   end
@@ -92,9 +92,9 @@ graph TD
 ### 3.3 管理者システム（Registrar Console）- Phase 2
 | 要素 | ID | 機能 | 段階的対応 |
 |------|----|------|-----------|
-| 学生データ管理 | studentManager | StudentDataManager | Phase 2で実装 |
-| Merkle Tree構築 | merkleTreeBuilder | MerkleTreeBuilder | Phase 2で実装 |
-| データエクスポート | dataExporter | システム統合用データ出力 | Phase 2で実装 |
+| 検証鍵レジストリ管理 | verificationKeyManager | VerificationKeyManager | Phase 2で実装 |
+| 公開リポジトリ管理 | repositoryManager | IPFS/GitHub公開管理 | Phase 2で実装 |
+| Merkle Tree構築 | merkleTreeBuilder | 検証鍵用MerkleTreeBuilder | Phase 2で実装 |
 | システム統合 | systemIntegrator | 4システム統合実行 | Phase 2で実装 |
 
 ### 3.4 検証者システム（Verifier UI SSG）- Phase 0～2対応
@@ -125,10 +125,10 @@ Verifier UI: PDF with Proof → Blockchain VK Fetch → Verification → Result
 ### 4.3 Phase 2: 完全統合データフロー
 ```typescript
 // 4システム完全統合フロー
-Registrar Console: Student Data → Merkle Tree → MerkleManager.sol
+Registrar Console: Verification Key Registry → Merkle Tree → IPFS/GitHub Publication
 Executive Console: VK + Merkle Root → Blockchain Storage
-Scholar Prover: Student Proof → Merkle Proof + ZKP → PDF Embedding
-Verifier UI: PDF → Blockchain VK + Merkle → Complete Verification
+Scholar Prover: Student Digital Signature → Merkle Proof + ZKP → PDF Embedding
+Verifier UI: PDF → Blockchain VK + Public Repository + Digital Signature Verification
 ```
 
 ## 5. 段階的コンポーネント設計

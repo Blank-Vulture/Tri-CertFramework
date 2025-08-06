@@ -1,7 +1,7 @@
-# Phase 1 開発計画書 - ZK-CertFramework プロトタイプ
-**バージョン 1.0 - 最終更新: 2025-01-20**
+# Phase 1 開発計画書 - Tri-CertFramework プロトタイプ
+**バージョン 2.3 - 最終更新: 2025-01-20**
 
-> **ブロックチェーン統合フェーズ**: Executive Console + スマートコントラクト + Ledger Nano X認証
+> **ブロックチェーン統合フェーズ**: Executive Console + スマートコントラクト + Ledger Nano X認証 + 電子署名統合
 
 ---
 
@@ -9,9 +9,9 @@
 
 ### **目標**
 - **Executive Console**: Tauri v2 + Ledger Nano X認証 + スマートコントラクトデプロイ
-- **Scholar Prover**: ブロックチェーンVK取得機能の完全実装
-- **Verifier UI**: ブロックチェーンVK検証機能の完全実装
-- **スマートコントラクト**: Polygon zkEVM CardonaでのVK管理
+- **Scholar Prover**: ブロックチェーンVK取得機能 + 電子署名機能の完全実装
+- **Verifier UI**: ブロックチェーンVK検証 + 電子署名検証機能の完全実装
+- **スマートコントラクト**: Polygon zkEVM CardonaでのVK管理 + 検証鍵ハッシュ管理
 
 ### **新規追加機能**
 - **Ledger Nano X認証**: 責任者の身元確認
@@ -30,7 +30,7 @@
 ## 🏗️ **プロジェクト構造（Phase 1）**
 
 ```
-zk-CertFramework/
+Tri-CertFramework/
 ├── dev-plan/
 │   ├── PHASE0_DEVELOPMENT_PLAN.md
 │   ├── PHASE1_DEVELOPMENT_PLAN.md

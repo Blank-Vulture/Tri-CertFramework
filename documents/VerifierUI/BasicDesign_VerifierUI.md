@@ -1,5 +1,5 @@
 # 基本設計書 (Basic Design) — 検証者システム (Verifier UI)
-**Tri-CertFramework / 検証者システム** 最終更新: 2025-06-21 Version 2.3
+**Tri-CertFramework / 検証者システム** 最終更新: 2025-08-09 Version 2.4
 
 > **三層認証書類真正性証明システム** - ZKP + ブロックチェーン + 電子署名による三層認証で、あらゆる書類に適応可能な設計
 
@@ -348,7 +348,7 @@ interface WorkerTasks {
 ```json
 {
   "version": "2.0.0",
-  "buildDate": "2025-06-16T10:00:00Z",
+  "buildDate": "2025-08-09T10:00:00Z",
   "commitHash": "abc123def456",
   "circuitVersion": "2.1.4",
   "compatibleContracts": [

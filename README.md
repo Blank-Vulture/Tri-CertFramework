@@ -1,5 +1,5 @@
 # Tri-CertFramework 🎓⚡🔐
-**Version 2.4 – 最終更新: 2025-01-21**
+**Version 2.4 – 最終更新: 2025-08-09**
 
 <div align="center">
 

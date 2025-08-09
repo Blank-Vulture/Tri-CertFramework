@@ -1,8 +1,8 @@
 # 責任者システム 詳細設計書（Tauri v2・バックエンドレス版）
 
 ## バージョン情報
-- **Version**: 2.1
-- **Last Updated**: 2025-06-21
+- **Version**: 2.4
+- **Last Updated**: 2025-08-09
 - **Target**: プロトタイプ 2025年10月
 
 ## 1. アーキテクチャ概要
@@ -263,7 +263,7 @@ executive-console-app/
 ```json
 // config/app-config.json
 {
-  "version": "1.0.0",
+  "version": "2.4.0",
   "network": {
     "chainId": 1101,
     "rpcUrl": "https://zkevm-rpc.com",
@@ -607,7 +607,7 @@ export class ConfigService {
 
   private getDefaultConfig() {
     return {
-      version: "1.0.0",
+      version: "2.4.0",
       network: {
         chainId: 1101,
         rpcUrl: "https://zkevm-rpc.com"

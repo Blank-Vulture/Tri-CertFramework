@@ -1,5 +1,5 @@
 # 要件定義書 (SRS) — Registrar Console  
-**zk‑CertFramework / 学務管理システム** 最終更新: 2025-07-10 (Version 2.2)
+**zk‑CertFramework / 学務管理システム** 最終更新: 2025-08-09 (Version 2.4)
 
 ## 1. 目的  
 Registrar Console は学務職員が **Tauri デスクトップアプリ** として、①書類所有者 Passkey 公開鍵の年度別管理、②**QR コードスキャンによる効率的なデータ収集**、③Poseidon Merkle Tree 構築、④PDF/A-3 証明書の一括生成を**完全ローカル環境**で実行する。**Trust Minimized 設計**により外部データベース・API依存を排除し、**年度別独立データ管理**により簡潔かつ監査可能な運用を実現する。
@@ -146,7 +146,7 @@ Registrar Console は学務職員が **Tauri デスクトップアプリ** と�
 - **QR‑06**: 認識失敗時の自動リトライ
 
 ### 8.3 データ検証要求
-- **VAL‑01**: JSON スキーマ検証（version 2.2）
+- **VAL‑01**: JSON スキーマ検証（version 2.4）
 - **VAL‑02**: SHA-3 チェックサム整合性確認
 - **VAL‑03**: 学生 ID 重複検出・防止
 - **VAL‑04**: 年度一致性チェック

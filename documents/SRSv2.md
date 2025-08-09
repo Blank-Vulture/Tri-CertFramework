@@ -1,5 +1,5 @@
 # Software Requirements Specification (SRS) — Tri-CertFramework 
-**Version 2.3 – 2025‑01‑21**
+**Version 2.4 – 2025‑08‑09**
 
 > **Tri-Certification Framework** - ZKP + Blockchain + Digital Signature for Universal Document Authenticity
 
@@ -193,7 +193,7 @@ Message Structure:
 ### 10.3 Verification Key Registry Requirements
 ```json
 {
-  "version": "2.3",
+  "version": "2.4",
   "framework": "Tri-CertFramework",
   "year": 2025,
   "registryMetadata": {

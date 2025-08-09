@@ -1,5 +1,5 @@
 # Functional Design Specification (FSD) — Tri-CertFramework
-**Version 2.3 – 2025‑01‑21**
+**Version 2.4 – 2025‑08‑09**
 
 > **Tri-Certification Framework** - ZKP + Blockchain + Digital Signature for Universal Document Authenticity
 
@@ -182,7 +182,7 @@ sequenceDiagram
 ### 7.1 Verification Key Registry Structure
 ```json
 {
-  "version": "2.3",
+  "version": "2.4",
   "framework": "Tri-CertFramework",
   "year": 2025,
   "registryMetadata": {

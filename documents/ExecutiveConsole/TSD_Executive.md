@@ -1,5 +1,5 @@
 # 技術設計書 (TSD) — Executive Console  
-最終更新: 2025-07-10 Version 2.2
+最終更新: 2025-08-09 Version 2.4
 
 ---
 

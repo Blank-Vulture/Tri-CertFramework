@@ -1,8 +1,8 @@
 # 管理者システム 詳細設計書（React + TypeScript + Tauri v2・バックエンドレス版）
 
 ## バージョン情報
-- **Version**: 2.1
-- **Last Updated**: 2025-06-21
+- **Version**: 2.4
+- **Last Updated**: 2025-08-09
 - **Target**: プロトタイプ 2025年10月
 
 ## 1. アーキテクチャ概要
@@ -85,7 +85,7 @@ registrar-console-app/
 {
   "year": 2025,
   "documentType": "graduation_certificate",
-  "lastUpdated": "2025-03-01T10:30:00Z",
+  "lastUpdated": "2025-08-09T10:30:00Z",
   "totalOwners": 150,
   "owners": [
     {
@@ -101,7 +101,7 @@ registrar-console-app/
         "format": "secp256r1"
       },
       "enrollmentDate": "2021-04-01",
-      "expectedIssueDate": "2025-03-31",
+      "expectedIssueDate": "2025-08-31",
       "documentType": "graduation_certificate",
       "status": "active",
       "documentGenerated": false,
@@ -135,7 +135,7 @@ registrar-console-app/
     "level1": ["0xabc...", "0xdef...", "..."],
     "level7": ["0xabcdef1234567890..."]
   },
-  "generatedAt": "2025-02-15T10:00:00Z"
+  "generatedAt": "2025-08-09T10:00:00Z"
 }
 ```
 

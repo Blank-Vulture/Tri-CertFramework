@@ -1,5 +1,5 @@
 # Technical Design Specification (TSD) — Tri-CertFramework
-**Version 2.3 – 2025‑01‑21**
+**Version 2.4 – 2025‑08‑09**
 
 > **Tri-Certification Framework** - ZKP + Blockchain + Digital Signature for Universal Document Authenticity
 
@@ -485,7 +485,7 @@ Circuit Hash: ${auth.parameters.circuitHash || 'N/A'}
 ```typescript
 // yearly-sets.json
 interface YearlySetConfig {
-  version: "2.3";
+  version: "2.4";
   sets: {
     [year: number]: {
       nftContract: string;
@@ -501,7 +501,7 @@ interface YearlySetConfig {
 
 // verification-keys-{year}.json
 interface VerificationKeyData {
-  version: "2.3";
+  version: "2.4";
   framework: "Tri-CertFramework";
   year: number;
   registryMetadata: {

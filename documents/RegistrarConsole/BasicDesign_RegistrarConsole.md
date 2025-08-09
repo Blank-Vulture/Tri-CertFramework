@@ -1,5 +1,5 @@
 # 基本設計書 (Basic Design) — 管理者システム (Registrar Console)
-**Tri-CertFramework / 管理者システム** 最終更新: 2025-06-21 Version 2.3
+**Tri-CertFramework / 管理者システム** 最終更新: 2025-08-09 Version 2.4
 
 > **三層認証書類真正性証明システム** - ZKP + ブロックチェーン + 電子署名による三層認証で、あらゆる書類に適応可能な設計
 
@@ -87,7 +87,7 @@ registrar-console-app/
 {
   "version": "2.0",
   "year": 2025,
-  "lastUpdated": "2025-06-16T10:30:00Z",
+  "lastUpdated": "2025-08-09T10:30:00Z",
   "totalStudents": 150,
   "institution": {
     "name": "○○大学",
@@ -110,14 +110,14 @@ registrar-console-app/
       },
       "commitment": "0x789abc...",
       "enrollmentDate": "2021-04-01",
-      "graduationDate": "2025-03-31",
+      "graduationDate": "2025-08-31",
       "gpa": 3.75,
       "status": "graduated",
       "certificateGenerated": true,
       "certificatePath": "./certificates/2025/tanaka_taro_certificate.pdf",
       "merkleIndex": 0,
       "addedAt": "2024-12-01T09:00:00Z",
-      "updatedAt": "2025-03-15T14:30:00Z"
+      "updatedAt": "2025-08-09T14:30:00Z"
     }
   ]
 }
@@ -148,7 +148,7 @@ registrar-console-app/
     "level1": ["0xabc...", "0xdef...", "..."],
     "level7": ["0xabcdef1234567890..."]
   },
-  "generatedAt": "2025-03-15T10:00:00Z",
+  "generatedAt": "2025-08-09T10:00:00Z",
   "exportedTo": "./exports/merkle_proof_2025.json"
 }
 ```

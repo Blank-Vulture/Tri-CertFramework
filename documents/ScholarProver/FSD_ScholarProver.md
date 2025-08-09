@@ -1,5 +1,5 @@
 # 機能設計書 (FSD) — Scholar Prover  
-最終更新: 2025-07-10 (Version 2.2)
+最終更新: 2025-08-09 (Version 2.4)
 
 ## 1. システム構成 (C4 コンテキスト)  
 ```mermaid
@@ -99,7 +99,7 @@ sequenceDiagram
 ## 6. QR コード データ形式
 ```json
 {
-  "version": "2.2",
+  "version": "2.4",
   "type": "passkey_export",
   "studentId": "2025001",
   "year": 2025,
@@ -140,7 +140,7 @@ sequenceDiagram
     "1704067200000" // expireTs
   ],
   "metadata": {
-    "version": "2.2",
+    "version": "2.4",
     "year": 2025,
     "generatedAt": 1688140800000,
     "proofId": "uuid-v4"
@@ -180,7 +180,7 @@ class PasskeyQRExporter {
   ): Promise<QRCodeResult> {
     // 1. QR ペイロード構築
     const payload = {
-      version: "2.2",
+      version: "2.4",
       type: "passkey_export",
       studentId,
       year,

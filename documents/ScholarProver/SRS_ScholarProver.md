@@ -1,5 +1,5 @@
 # 要件定義書 (SRS) — Scholar Prover  
-**zk‑CertFramework / 証明者システム** 最終更新: 2025-07-10 (Version 2.2)
+**zk‑CertFramework / 証明者システム** 最終更新: 2025-08-09 (Version 2.4)
 
 ## 1. 目的  
 Scholar Prover は学生が **ブラウザのみで完結する PWA** として
@@ -138,7 +138,7 @@ Scholar Prover は学生が **ブラウザのみで完結する PWA** として
 ### 9.2 QR データ構造要求
 ```json
 {
-  "version": "2.2",
+  "version": "2.4",
   "type": "passkey_export",
   "studentId": "string",
   "year": "number", 

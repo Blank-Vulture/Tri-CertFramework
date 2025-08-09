@@ -1,5 +1,5 @@
 # 技術設計書 (TSD) — Scholar Prover  
-最終更新: 2025-06-21 (Version 2.0)
+最終更新: 2025-08-09 (Version 2.4)
 
 ## 1. 技術スタック (PWA完全バックエンドレス版)  
 | 層 | 技術 | バージョン | 目的 |
@@ -112,7 +112,7 @@ class CircomProofGenerator {
         proof: formattedProof,
         publicSignals: publicSignals.map(String),
         metadata: {
-          version: "2.0",
+          version: "2.4",
           year: inputs.year,
           circuitHash: await this.computeCircuitHash(),
           generatedAt: Date.now(),
@@ -437,7 +437,7 @@ async function generateProofInWorker(inputs: CircuitInputs): Promise<ProofResult
     proof,
     publicSignals: publicSignals.map(String),
     metadata: {
-      version: "2.0",
+      version: "2.4",
       year: inputs.year,
       generatedAt: Date.now(),
       proofId: crypto.randomUUID()

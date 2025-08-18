@@ -1,429 +1,187 @@
-# Phase 0 開発計画書 v3.0 - Tri-CertFramework 最小実装
-**バージョン 2.4 - 最終更新: 2025-08-09**
+# Tri-CertFramework — Phase 0 統合仕様（最小プロトタイプ）
+このフェーズの目的は「**PDF → ZKP 生成 → PDF/A-3 添付 → ローカル検証**」の縦切り導線を最短で成立させ、5分デモができる状態を作ること。
 
-> **4システム最小実装**: 全システムの基本機能を実装し、ZKP証明書システムの全体像を理解
+## 実装機能
+- Scholar Proverの機能は
+  - ZKPファイル生成/PDFへの添付
+  - ZKP回路からVK生成/ローカルへエクスポート
+  - パスキーを使ったPDFへの電子署名添付
+  - パスキーの電子署名の検証鍵をローカルへエクスポート
 
----
+- Verifier UIの機能は
+  - VKをファイル指定してZKP検証
+  - 電子署名の検証鍵を指定して電子署名検証
 
-## 🎯 **Phase 0 概要**
+詳細仕様は[Phase0-Spec](Phase0-Spec.md)
+## 1. スコープ / 目標（Phase 0）
 
-### **目標**
-- **4システム最小実装**: Scholar Prover + Executive Console + Registrar Console + Verifier UI
-- **基本ZKP機能**: 証明生成・検証の基本動作
-- **全体理解**: Trust Minimized三層認証システムの概念実装
-- **早期成功**: 1週間以内での動作確認
-
-### **最小機能定義**
-- **Scholar Prover**: PDF証明書 + 基本ZKP生成 + ローカルVK使用
-- **Executive Console**: 簡易ZKP回路作成 + VK出力のみ
-- **Registrar Console**: Scholar Prover出力の検証鍵JSONリスト化のみ  
-- **Verifier UI**: PDF検証 + ローカルVK選択 + 基本検証
-
-### **技術制約**
-- **バックエンド**: なし（完全フロントエンド）
-- **データベース**: なし（ローカルJSONファイルのみ）
-- **ブロックチェーン**: なし（Phase 1で追加）
-- **外部依存**: 最小限（Circom + SnarkJS + PDF-lib）
+- **必須コンポーネント**: Scholar Prover / Verifier UI（完全フロントエンド・ローカルJSON）
+- **到達点**:
+  1) 入力PDFから **ZKP（Groth16）** を生成し、`proof.json` を **PDF/A-3に添付**  
+  2) **WebAuthn ES256** による JWS 署名 `sig.jws` を生成・PDFに添付  
+  3) Verifier UI で **VK指定**して ZKP 検証、**公開鍵指定**して署名検証  
+- **非スコープ（Phase 0では扱わない）**: ブロックチェーン統合、MPC、PAdES ネイティブ署名（Phase 1 以降で分岐）
 
 ---
 
-## 🏗️ **プロジェクト構造**
+## 2. 機能定義
+
+### 2.1 Scholar Prover（必須）
+- **ZKPファイル生成／PDFへの添付**  
+  - Circom/snarkjs(Groth16) で `proof.json` を生成し PDF に添付
+- **ZKP回路から VK 生成／ローカルへエクスポート**  
+  - `vkey.json` と `vkey_hash(SHA3-256)` を出力（`proof.json` にも `vkey_hash` を埋め込む）
+- **パスキー（WebAuthn ES256）で JWS 署名生成／PDFへ添付**  
+  - 署名対象 `sig_target.json` を ES256(JWS) で署名 → `sig.jws` を添付
+- **パスキーの検証鍵エクスポート**  
+  - **JWK（EC P-256, alg: ES256）** もしくは **COSE_Key(JSON)** を出力（`kid` = credentialId 由来）
+
+### 2.2 Verifier UI（必須）
+- **VKファイル指定（またはPDF内添付抽出）で ZKP 検証**
+- **公開鍵ファイル指定（またはPDF内添付抽出）で JWS 検証**
+
+> **Phase 0 のハッシュ規則（自己参照回避）**  
+> `pdf_sha3_512` は **「添付ファイルを除去したPDF本文」** に対する SHA3-512。  
+> - Prover: 入力PDF（添付なし）をハッシュ化  
+> - Verifier: 受領PDFから添付を一時除去 → 本文をハッシュ化 → `proof.json.public_signals.pdf_sha3_512` と一致確認
+
+---
+
+## 3. 成果物（実際の出力）
+
+### 3.1 Scholar Prover の出力
+- `out.pdf`（PDF/A-3）  
+  - **必須添付**: `proof.json`, `sig.jws`  
+  - **推奨添付**: `webauthn_pub.jwk.json`, `vkey.json`
+- `proof.json`（例）
+```json
+{
+  "schema": "tri-cert/proof@0",
+  "circuit_id": "commitment_poseidon_v1",
+  "vkey_hash": "sha3-256:...",
+  "public_signals": {
+    "pdf_sha3_512": "hex:...",
+    "commit": "field:..."
+  },
+  "proof": { "pi_a": "...", "pi_b": "...", "pi_c": "..." }
+}
+```
+- `vkey.json` / `vkey_hash.txt`（snarkjs 形式 + ハッシュ）
+- `sig.jws`（ES256 / JWS compact 推奨）
+- `sig_target.json`（署名対象；例）
+```json
+{
+  "schema": "tri-cert/sig-target@0",
+  "circuit_id": "commitment_poseidon_v1",
+  "vkey_hash": "sha3-256:...",
+  "pdf_sha3_512": "hex:...",
+  "commit": "field:...",
+  "issued_at": "2025-08-18T00:00:00Z"
+}
+```
+- `webauthn_pub.jwk.json`（または COSE_Key JSON）
+
+### 3.2 Verifier UI の出力（任意）
+- `verify_report.json` — `ZKP: OK/NG`, `Signature: OK/NG`, 使用 `vkey_hash` / `kid` / 理由
+
+---
+
+## 4. 回路とデータ結合（最小方針）
+
+- **回路（概念）**: `commit = Poseidon(owner_secret, pdf_sha3_512)`  
+  - Poseidon（ZKフレンドリ）で **本文ハッシュ** と **秘密** を結合  
+  - 公開シグナル: `pdf_sha3_512`, `commit`
+- **結合規則**:  
+  - Verifier で PDF から添付を除去 → `pdf_sha3_512` を再計算し、`proof.json` と一致確認  
+  - `vkey_hash` を `proof.json` と `sig_target.json` に記録し、VKすり替えを検出
+
+---
+
+## 5. 検証フロー（Verifier UI）
+
+1. PDFを受領 → **添付を一時除去** → 本文の `pdf_sha3_512` を計算  
+2. PDFから `proof.json`（および `vkey.json`, `webauthn_pub.jwk.json`）を抽出  
+3. `groth16.verify(vkey.json, proof.json)` を実行（snarkjs 互換）  
+4. `sig.jws` を `webauthn_pub.jwk.json`（または指定鍵）で検証  
+5. `pdf_sha3_512` / `vkey_hash` / `commit` の整合性をチェック → `verify_report.json`（任意）
+
+---
+
+## 6. ディレクトリ構成（統合案）
 
 ```
 Tri-CertFramework/
-├── scholar-prover/                 # React + Vite
-│   ├── package.json
-│   ├── src/
-│   │   ├── App.tsx
-│   │   ├── components/
-│   │   │   ├── PDFUpload.tsx
-│   │   │   ├── ProofGenerator.tsx
-│   │   │   └── ResultDisplay.tsx
-│   │   ├── utils/
-│   │   │   ├── zkp.ts
-│   │   │   ├── pdf.ts
-│   │   │   └── hash.ts
-│   │   └── types/
-│   │       └── index.ts
-│   └── public/
-│       └── circuits/
-│           ├── simple.circom
-│           ├── simple.wasm
-│           ├── simple.zkey
-│           └── simple_vk.json
-├── executive-console/              # React + Vite (簡易版)
-│   ├── package.json
-│   ├── src/
-│   │   ├── App.tsx
-│   │   ├── components/
-│   │   │   ├── CircuitBuilder.tsx
-│   │   │   └── VKExporter.tsx
-│   │   └── utils/
-│   │       ├── circuit-generator.ts
-│   │       └── vk-generator.ts
-│   └── public/
-│       └── templates/
-│           └── circuit-template.circom
-├── registrar-console/              # React + Vite (簡易版)
-│   ├── package.json
-│   ├── src/
-│   │   ├── App.tsx
-│   │   ├── components/
-│   │   │   ├── VKImporter.tsx
-│   │   │   └── JSONListManager.tsx
-│   │   └── utils/
-│   │       └── vk-processor.ts
-│   └── data/
-│       └── vk-registry.json
-├── verifier-ui/                    # Next.js
-│   ├── package.json
-│   ├── src/
-│   │   ├── app/
-│   │   │   └── page.tsx
-│   │   ├── components/
-│   │   │   ├── PDFDropZone.tsx
-│   │   │   ├── VKSelector.tsx
-│   │   │   └── VerificationResult.tsx
-│   │   └── utils/
-│   │       ├── verification.ts
-│   │       └── pdf-extractor.ts
-│   └── public/
-│       └── vk-files/
-└── shared/
-    ├── circuits/
-    │   ├── simple.circom
-    │   └── build/
-    ├── types/
-    │   └── common.ts
-    └── utils/
-        └── hash.ts
+├─ circuits/
+│  ├─ commitment.circom
+│  ├─ poseidon/            # 依存（サブモジュール可）
+│  └─ build/               # wasm, zkey, vkey
+├─ prover/                 # Scholar Prover（PWA/Tauri）
+├─ verifier-ui/            # Next.js（ローカル検証）
+├─ scripts/
+│  ├─ hash-pdf.ts          # 添付除去 → SHA3-512
+│  └─ pdf-attach.ts        # pdfcpu 呼び出し
+└─ dev-plan/
+   └─ Phase0-Integrated.md # 本ファイル
 ```
+
+> **補足（v3の構成要素）**: Executive/Registrar コンソールは Phase 0 では任意（**VKの生成・JSONリスト管理のみ**なら軽量追加可）。実装する場合は `executive-console/`, `registrar-console/` を並置。
 
 ---
 
-## 🔧 **最小回路設計**
+## 7. コマンド例
 
-### **Simple.circom - 最小限回路**
-```circom
-// shared/circuits/simple.circom
-pragma circom 2.1.4;
-
-include "node_modules/circomlib/circuits/poseidon.circom";
-
-template SimpleProof() {
-    // 公開入力
-    signal input pdfHash;
-    signal input destHash;
-    
-    // 秘密入力
-    signal input secret;
-    
-    // 出力
-    signal output valid;
-    
-    // ハッシュ計算
-    component hasher = Poseidon(3);
-    hasher.inputs[0] <== pdfHash;
-    hasher.inputs[1] <== destHash;
-    hasher.inputs[2] <== secret;
-    
-    // 簡単な検証
-    valid <== 1;
-}
-
-component main = SimpleProof();
-```
-
----
-
-## 📋 **実装スケジュール（1週間）**
-
-### **Day 1-2: 基盤セットアップ**
-
-#### **1.1 全プロジェクト作成**
+- **ZKP 検証（snarkjs 互換）**
 ```bash
-# Scholar Prover
-npm create vite@latest scholar-prover -- --template react-ts
-cd scholar-prover && npm install pdf-lib snarkjs
-
-# Executive Console (簡易版)
-npm create vite@latest executive-console -- --template react-ts
-cd executive-console && npm install
-
-# Registrar Console (簡易版)  
-npm create vite@latest registrar-console -- --template react-ts
-cd registrar-console && npm install
-
-# Verifier UI
-npx create-next-app@latest verifier-ui --typescript --tailwind
-cd verifier-ui && npm install snarkjs pdf-lib
+snarkjs groth16 verify vkey.json public.json proof.json
 ```
-
-#### **1.2 簡単な回路作成**
+- **PDF 添付操作（pdfcpu）**
 ```bash
-# 最小限のCircom回路
-mkdir -p shared/circuits
-# Simple.circomを作成
-circom shared/circuits/simple.circom --r1cs --wasm --sym
-```
-
-### **Day 3-4: 各システム最小実装**
-
-#### **2.1 Scholar Prover - 基本機能**
-```typescript
-// scholar-prover/src/App.tsx
-import React, { useState } from 'react';
-import { PDFUpload } from './components/PDFUpload';
-import { ProofGenerator } from './components/ProofGenerator';
-import { ResultDisplay } from './components/ResultDisplay';
-
-export default function App() {
-  const [pdfFile, setPdfFile] = useState<File | null>(null);
-  const [destination, setDestination] = useState('');
-  const [proof, setProof] = useState<any>(null);
-
-  return (
-    <div className="max-w-4xl mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-8">Scholar Prover - 最小実装</h1>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div>
-          <PDFUpload onFileSelect={setPdfFile} />
-          <div className="mt-4">
-            <label className="block text-sm font-medium mb-2">提出先</label>
-            <input
-              type="text"
-              value={destination}
-              onChange={(e) => setDestination(e.target.value)}
-              className="w-full p-2 border rounded"
-              placeholder="提出先を入力"
-            />
-          </div>
-        </div>
-        
-        <div>
-          <ProofGenerator 
-            pdfFile={pdfFile}
-            destination={destination}
-            onProofGenerated={setProof}
-          />
-          {proof && <ResultDisplay proof={proof} />}
-        </div>
-      </div>
-    </div>
-  );
-}
-```
-
-#### **2.2 Executive Console - 簡易版**
-```typescript
-// executive-console/src/App.tsx
-import React, { useState } from 'react';
-import { CircuitBuilder } from './components/CircuitBuilder';
-import { VKExporter } from './components/VKExporter';
-
-export default function App() {
-  const [circuitCode, setCircuitCode] = useState('');
-  const [vk, setVK] = useState<any>(null);
-
-  return (
-    <div className="max-w-6xl mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-8">Executive Console - 回路作成</h1>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <CircuitBuilder 
-          onCircuitGenerated={setCircuitCode}
-          onVKGenerated={setVK}
-        />
-        <VKExporter vk={vk} />
-      </div>
-    </div>
-  );
-}
-```
-
-#### **2.3 Registrar Console - 簡易版**
-```typescript
-// registrar-console/src/App.tsx
-import React, { useState } from 'react';
-import { VKImporter } from './components/VKImporter';
-import { JSONListManager } from './components/JSONListManager';
-
-export default function App() {
-  const [vkList, setVKList] = useState<any[]>([]);
-
-  return (
-    <div className="max-w-6xl mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-8">Registrar Console - VK管理</h1>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <VKImporter onVKImported={(vk) => setVKList([...vkList, vk])} />
-        <JSONListManager vkList={vkList} onListUpdated={setVKList} />
-      </div>
-    </div>
-  );
-}
-```
-
-#### **2.4 Verifier UI - 基本検証**
-```typescript
-// verifier-ui/src/app/page.tsx
-'use client';
-import React, { useState } from 'react';
-import { PDFDropZone } from '../components/PDFDropZone';
-import { VKSelector } from '../components/VKSelector';
-import { VerificationResult } from '../components/VerificationResult';
-
-export default function Home() {
-  const [pdfFile, setPdfFile] = useState<File | null>(null);
-  const [selectedVK, setSelectedVK] = useState<any>(null);
-  const [result, setResult] = useState<any>(null);
-
-  return (
-    <div className="max-w-6xl mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-8">Verifier UI - 検証システム</h1>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <PDFDropZone onFileSelect={setPdfFile} />
-        <VKSelector onVKSelect={setSelectedVK} />
-        <VerificationResult 
-          pdfFile={pdfFile}
-          vk={selectedVK}
-          onVerificationComplete={setResult}
-        />
-      </div>
-    </div>
-  );
-}
-```
-
-### **Day 5-7: 統合・テスト**
-
-#### **3.1 システム間連携**
-```typescript
-// shared/types/common.ts
-export interface ProofData {
-  proof: any;
-  publicSignals: string[];
-  metadata: {
-    pdfHash: string;
-    destHash: string;
-    timestamp: number;
-    version: string;
-  };
-}
-
-export interface VerifyingKey {
-  protocol: string;
-  curve: string;
-  nPublic: number;
-  vk_alpha_1: [string, string];
-  vk_beta_2: [[string, string], [string, string]];
-  vk_gamma_2: [[string, string], [string, string]];
-  vk_delta_2: [[string, string], [string, string]];
-  vk_alphabeta_12: any;
-  IC: [string, string][];
-}
-
-export interface VKRegistry {
-  id: string;
-  name: string;
-  version: string;
-  vk: VerifyingKey;
-  createdAt: string;
-}
-```
-
-#### **3.2 統合テストシナリオ**
-```typescript
-// 統合テストフロー
-const minimumViableTest = async () => {
-  console.log("=== 最小実装統合テスト ===");
-  
-  // 1. Executive Console: 回路・VK作成
-  const vk = await createCircuitAndVK();
-  console.log("VK作成完了");
-  
-  // 2. Registrar Console: VKをJSONリストに追加
-  const vkRegistry = await addVKToRegistry(vk);
-  console.log("VKレジストリ更新完了");
-  
-  // 3. Scholar Prover: ZKP生成
-  const proof = await generateProof("test.pdf", "university");
-  console.log("証明生成完了");
-  
-  // 4. Verifier UI: 検証
-  const result = await verifyProof(proof, vk);
-  console.log("検証完了:", result);
-};
+# 添付
+pdfcpu attachments add input.pdf proof.json sig.jws webauthn_pub.jwk.json -o out.pdf
+# 添付一覧
+pdfcpu attachments list out.pdf
+# 添付除去（本文ハッシュ再計算時）
+pdfcpu attachments remove out.pdf -o out_noattach.pdf
 ```
 
 ---
 
-## 🎯 **成功基準**
+## 8. スケジュール（1週間目安）
 
-### **技術的成功基準**
-- [ ] 4システムすべてが基本動作する
-- [ ] ZKP生成・検証の基本フローが動作する
-- [ ] ローカルファイルでの VK 管理が動作する
-- [ ] システム間でのデータ受け渡しが動作する
-
-### **理解度成功基準**
-- [ ] **基本概念**: ZKP証明書システムの仕組み理解
-- [ ] **システム構成**: 4システムの役割理解
-- [ ] **Trust Minimized**: 分散化設計の基本理解
-- [ ] **実用性**: 大学での利用イメージ理解
-
-### **デモンストレーション成功基準**
-- [ ] **5分デモ**: 4システム連携の基本動作
-- [ ] **概念説明**: ZKP + ブロックチェーンの価値説明
-- [ ] **実用性**: 実際の大学での利用可能性説明
+- **Day 1–2**: Circom/snarkjs セットアップ、`commitment.circom` 実装、`vkey.json`/`proof.json` 生成  
+- **Day 3–4**: Scholar Prover（PDF添付・JWS 署名生成）/ Verifier UI（抽出・検証UI）  
+- **Day 5–7**: 統合テスト（同一PDF成功・1バイト改変失敗・添付横流し失敗・VKすり替え失敗）
 
 ---
 
-## 🚀 **開発開始手順**
+## 9. 受け入れ基準（Acceptance Criteria）
 
-### **1. 環境セットアップ（30分）**
-```bash
-# 各システムのセットアップ
-./setup-all.sh
-
-# 基本回路コンパイル
-cd shared/circuits
-circom simple.circom --r1cs --wasm --sym
-```
-
-### **2. 開発実行（並列開発）**
-```bash
-# 4つのターミナルで並列実行
-cd scholar-prover && npm run dev      # ポート 5173
-cd executive-console && npm run dev   # ポート 5174  
-cd registrar-console && npm run dev   # ポート 5175
-cd verifier-ui && npm run dev         # ポート 3000
-```
-
-### **3. 統合テスト（1時間）**
-```bash
-npm run test:integration
-npm run demo:prepare
-```
+- **同一PDF**（本文同一）: ZKP/署名とも ✅ 成功  
+- **本文1バイト改変**: ZKP/署名とも ❌ 失敗  
+- **添付横流し**（他PDFの `proof.json`/`sig.jws` を流用）: ❌ 失敗（`pdf_sha3_512` 不一致）  
+- **VKすり替え**（別回路の VK）: ❌ 失敗（`vkey_hash` 不一致）
 
 ---
 
-## 📝 **Phase 1準備**
+## 10. セキュリティ観点（Phase 0）
 
-Phase 0完了後、以下の機能を Phase 1 で追加：
-
-### **ブロックチェーン統合**
-- Polygon zkEVM Cardona 統合
-- スマートコントラクト（VK管理）
-- メタマスク連携
-
-### **Trust Minimized拡張**
-- ブロックチェーンVK取得
-- 分散検証
-- 透明性向上
+- **添付差し替え**: 本文ハッシュ結合（`pdf_sha3_512`）で検知  
+- **VK/回路不整合**: `vkey_hash` の二重記録（proof & sig_target）で検知  
+- **見た目同一・内部改変**: 添付除去後ハッシュで検出  
+- **PAdES 互換**: Phase 0 では JWS 外部署名。公的PDF署名互換は後続フェーズで分岐
 
 ---
 
-**Phase 0目標**: 4システム最小実装を完成させ、ZKP証明書システムの全体像と価値を実感する。
+## 11. 5分デモ手順（サンプル）
+
+1. PDF をドラッグ＆ドロップ → Prover が `proof.json` 生成 & `sig.jws` 署名 → `out.pdf` 生成  
+2. Verifier UI へ `out.pdf` を投入 → 添付抽出 → VK/鍵指定 → ZKP & 署名検証 → 結果表示
+
+---
+
+## 12. 参考（仕様・ツール）
+
+- Circom/snarkjs（Groth16） / Poseidon（ZK向けハッシュ）  
+- JWS / RFC 7515（ES256） / WebAuthn × COSE（alg=-7）  
+- pdfcpu（attachments add/list/remove） / PDF/A-3（任意型埋め込み）
+

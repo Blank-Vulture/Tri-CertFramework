@@ -25,3 +25,5 @@ tauri = { version = "2.8.5", features = ["macos-private-api"] }
 tauri-plugin-log = "2"
 tauri-plugin-fs = "2"
 tauri-plugin-dialog = "2"
+# Security fix: Force glib to version 0.20.0+ to fix VariantStrIter vulnerability
+glib = ">=0.20.0"

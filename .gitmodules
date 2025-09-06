@@ -1,0 +1,3 @@
+[submodule "circuits/circom"]
+	path = circuits/circom
+	url = https://github.com/iden3/circom.git

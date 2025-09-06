@@ -1,0 +1,106 @@
+@import "tailwindcss";
+
+:root {
+  --executive-blue: #3b82f6;
+  --executive-indigo: #6366f1;
+  --executive-purple: #8b5cf6;
+  /* Theme tokens (light) */
+  --color-bg: #f8fafc;         /* slate-50 */
+  --color-surface: #ffffff;     /* white */
+  --color-fg: #0f172a;          /* slate-900 */
+  --color-muted: #475569;       /* slate-600 */
+  --color-border: #e2e8f0;      /* slate-200 */
+  --color-accent: #38bdf8;      /* sky-400 */
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, var(--executive-blue), var(--executive-indigo));
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #2563eb, #4f46e5);
+}
+
+/* Glass morphism effects */
+.glass {
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, var(--executive-blue), var(--executive-indigo), var(--executive-purple));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Card hover effects */
+.card-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* Dark theme base fallback (ensures visible change even if utilities are purged/cached) */
+html.dark {
+  color-scheme: dark;
+}
+html.dark {
+  /* Theme tokens (dark) */
+  --color-bg: #0f172a;        /* slate-900 */
+  --color-surface: #111827;   /* gray-900 */
+  --color-fg: #e5e7eb;        /* slate-200 */
+  --color-muted: #94a3b8;     /* slate-400 */
+  --color-border: #1f2937;    /* gray-800 */
+  --color-accent: #38bdf8;    /* sky-400 */
+}
+
+/* Apply tokens */
+body {
+  background: var(--color-bg);
+  color: var(--color-fg);
+}
+
+.app-theme {
+  background: var(--color-bg);
+  color: var(--color-fg);
+}
+.surface { background: var(--color-surface); }
+.muted { color: var(--color-muted); }
+.border-subtle { border-color: var(--color-border) !important; }
+.text-fg { color: var(--color-fg); }
+.bg-app { background: var(--color-bg); }
+
+/* Ensure app root also flips fully in dark mode */
+html.dark #root,
+html.dark .app-shell {
+  background-color: var(--color-bg) !important;
+  background-image: none !important;
+}
+
+/* Empty state readability guard */
+[data-empty-state] h1,
+[data-empty-state] h2,
+[data-empty-state] h3 { color: var(--color-fg) !important; }
+[data-empty-state] p { color: var(--color-muted) !important; }

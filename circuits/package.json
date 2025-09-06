@@ -1,0 +1,21 @@
+{
+  "name": "circuits",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "compile": "circom commitment.circom --r1cs --wasm --sym -o build/",
+    "compile:2024": "circom commitment.circom --r1cs --wasm --sym -o build/2024/",
+    "compile:2025": "circom commitment.circom --r1cs --wasm --sym -o build/2025/",
+    "compile:2026": "circom commitment.circom --r1cs --wasm --sym -o build/2026/",
+    "setup": "node setup.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "circomlib": "^2.0.5",
+    "snarkjs": "^0.7.5"
+  }
+}

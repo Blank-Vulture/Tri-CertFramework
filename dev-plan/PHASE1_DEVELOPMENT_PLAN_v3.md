@@ -1,5 +1,5 @@
 # Phase 1 開発計画書 v3.0 - Tri-CertFramework ブロックチェーン統合
-**バージョン 2.4 - 最終更新: 2025-08-09**
+**バージョン 2.4 - 最終更新: 2025-08-09（更新: Hardhat/Hardhat Network をデフォルトに）**
 
 > **ブロックチェーン統合**: Phase 0の4システムにブロックチェーン機能を追加し、Trust Minimized設計を実現
 
@@ -22,7 +22,7 @@
 ### **技術制約**
 - **バックエンド**: なし（完全フロントエンド）
 - **データベース**: なし（ブロックチェーンストレージ）
-- **ブロックチェーン**: 必須（Polygon zkEVM Cardona）
+- **ブロックチェーン**: 必須（デフォルトは Hardhat/Hardhat Network、zkEVM Cardona はオプション）
 - **ハードウェア**: メタマスク（Ledger認証は Phase 2）
 
 ---
@@ -156,8 +156,16 @@ contract VKManager {
 
 #### **Day 1-2: 環境セットアップ**
 
-##### **1.1 ブロックチェーン依存関係追加**
+##### **1.1 ブロックチェーン依存関係追加（Hardhat）**
 ```bash
+npm i -D hardhat @nomicfoundation/hardhat-ethers ethers
+npx hardhat init
+npx hardhat node # RPC: http://127.0.0.1:8545, chainId: 31337
+```
+
+MetaMask 接続: ネットワーク追加 → RPC `http://127.0.0.1:8545` / Chain ID `31337` / Symbol `ETH`
+
+zkEVM Cardona を利用する場合は、`.env` に RPC と鍵を設定して `hardhat.config.ts` にネットワークを追記する。
 # 全プロジェクトにethers追加
 cd scholar-prover && npm install ethers
 cd executive-console && npm install ethers

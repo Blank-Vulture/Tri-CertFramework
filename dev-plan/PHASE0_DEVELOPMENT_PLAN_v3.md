@@ -18,7 +18,7 @@
 - **必須コンポーネント**: Scholar Prover / Verifier UI（完全フロントエンド・ローカルJSON）
 - **到達点**:
   1) 入力PDFから **ZKP（Groth16）** を生成し、`proof.json` を **PDF/A-3に添付**  
-  2) **WebAuthn ES256** による JWS 署名 `sig.jws` を生成・PDFに添付  
+  2) **WebAuthn ES256** によるアサーション署名（JWS非採用）を生成し、`webauthn_sig.json` を PDF に添付  
   3) Verifier UI で **VK指定**して ZKP 検証、**公開鍵指定**して署名検証  
 - **非スコープ（Phase 0では扱わない）**: ブロックチェーン統合、MPC、PAdES ネイティブ署名（Phase 1 以降で分岐）
 
@@ -31,14 +31,14 @@
   - Circom/snarkjs(Groth16) で `proof.json` を生成し PDF に添付
 - **ZKP回路から VK 生成／ローカルへエクスポート**  
   - `vkey.json` と `vkey_hash(SHA3-256)` を出力（`proof.json` にも `vkey_hash` を埋め込む）
-- **パスキー（WebAuthn ES256）で JWS 署名生成／PDFへ添付**  
-  - 署名対象 `sig_target.json` を ES256(JWS) で署名 → `sig.jws` を添付
+- **パスキー（WebAuthn ES256）でアサーション署名生成／PDFへ添付**  
+  - 署名対象 `sig_target.json` を WebAuthn で署名 → `webauthn_sig.json` を添付（公開鍵は `webauthn_pub.jwk.json`）
 - **パスキーの検証鍵エクスポート**  
   - **JWK（EC P-256, alg: ES256）** もしくは **COSE_Key(JSON)** を出力（`kid` = credentialId 由来）
 
 ### 2.2 Verifier UI（必須）
 - **VKファイル指定（またはPDF内添付抽出）で ZKP 検証**
-- **公開鍵ファイル指定（またはPDF内添付抽出）で JWS 検証**
+- **公開鍵ファイル指定（またはPDF内添付抽出）で WebAuthn 署名検証**
 
 > **Phase 0 のハッシュ規則（自己参照回避）**  
 > `pdf_sha3_512` は **「添付ファイルを除去したPDF本文」** に対する SHA3-512。  
@@ -51,8 +51,8 @@
 
 ### 3.1 Scholar Prover の出力
 - `out.pdf`（PDF/A-3）  
-  - **必須添付**: `proof.json`, `sig.jws`  
-  - **推奨添付**: `webauthn_pub.jwk.json`, `vkey.json`
+  - **必須添付**: `proof.json`, `webauthn_sig.json`  
+  - **推奨添付**: `webauthn_pub.jwk.json`, `vkey.json`, `sig_target.json`
 - `proof.json`（例）
 ```json
 {
@@ -67,7 +67,7 @@
 }
 ```
 - `vkey.json` / `vkey_hash.txt`（snarkjs 形式 + ハッシュ）
-- `sig.jws`（ES256 / JWS compact 推奨）
+- `webauthn_sig.json`（WebAuthn アサーション）
 - `sig_target.json`（署名対象；例）
 ```json
 {
@@ -102,7 +102,7 @@
 1. PDFを受領 → **添付を一時除去** → 本文の `pdf_sha3_512` を計算  
 2. PDFから `proof.json`（および `vkey.json`, `webauthn_pub.jwk.json`）を抽出  
 3. `groth16.verify(vkey.json, proof.json)` を実行（snarkjs 互換）  
-4. `sig.jws` を `webauthn_pub.jwk.json`（または指定鍵）で検証  
+4. `webauthn_sig.json` を `webauthn_pub.jwk.json`（または指定鍵）で検証  
 5. `pdf_sha3_512` / `vkey_hash` / `commit` の整合性をチェック → `verify_report.json`（任意）
 
 ---
@@ -136,11 +136,9 @@ snarkjs groth16 verify vkey.json public.json proof.json
 ```
 - **PDF 添付操作（pdfcpu）**
 ```bash
-# 添付
-pdfcpu attachments add input.pdf proof.json sig.jws webauthn_pub.jwk.json -o out.pdf
-# 添付一覧
+# 参考（pdfcpu 利用例）
+pdfcpu attachments add input.pdf proof.json webauthn_sig.json webauthn_pub.jwk.json sig_target.json -o out.pdf
 pdfcpu attachments list out.pdf
-# 添付除去（本文ハッシュ再計算時）
 pdfcpu attachments remove out.pdf -o out_noattach.pdf
 ```
 
@@ -149,7 +147,7 @@ pdfcpu attachments remove out.pdf -o out_noattach.pdf
 ## 8. スケジュール（1週間目安）
 
 - **Day 1–2**: Circom/snarkjs セットアップ、`commitment.circom` 実装、`vkey.json`/`proof.json` 生成  
-- **Day 3–4**: Scholar Prover（PDF添付・JWS 署名生成）/ Verifier UI（抽出・検証UI）  
+- **Day 3–4**: Scholar Prover（PDF添付・WebAuthn 署名生成）/ Verifier UI（抽出・検証UI）  
 - **Day 5–7**: 統合テスト（同一PDF成功・1バイト改変失敗・添付横流し失敗・VKすり替え失敗）
 
 ---
@@ -158,7 +156,7 @@ pdfcpu attachments remove out.pdf -o out_noattach.pdf
 
 - **同一PDF**（本文同一）: ZKP/署名とも ✅ 成功  
 - **本文1バイト改変**: ZKP/署名とも ❌ 失敗  
-- **添付横流し**（他PDFの `proof.json`/`sig.jws` を流用）: ❌ 失敗（`pdf_sha3_512` 不一致）  
+- **添付横流し**（他PDFの `proof.json`/`webauthn_sig.json` を流用）: ❌ 失敗（`pdf_sha3_512` 不一致）  
 - **VKすり替え**（別回路の VK）: ❌ 失敗（`vkey_hash` 不一致）
 
 ---
@@ -168,13 +166,13 @@ pdfcpu attachments remove out.pdf -o out_noattach.pdf
 - **添付差し替え**: 本文ハッシュ結合（`pdf_sha3_512`）で検知  
 - **VK/回路不整合**: `vkey_hash` の二重記録（proof & sig_target）で検知  
 - **見た目同一・内部改変**: 添付除去後ハッシュで検出  
-- **PAdES 互換**: Phase 0 では JWS 外部署名。公的PDF署名互換は後続フェーズで分岐
+- **PAdES 互換**: Phase 0 は WebAuthn 外部署名。公的PDF署名互換は後続フェーズで分岐
 
 ---
 
 ## 11. 5分デモ手順（サンプル）
 
-1. PDF をドラッグ＆ドロップ → Prover が `proof.json` 生成 & `sig.jws` 署名 → `out.pdf` 生成  
+1. PDF をドラッグ＆ドロップ → Prover が `proof.json` 生成 & `webauthn_sig.json` 署名 → `out.pdf` 生成  
 2. Verifier UI へ `out.pdf` を投入 → 添付抽出 → VK/鍵指定 → ZKP & 署名検証 → 結果表示
 
 ---
@@ -182,6 +180,5 @@ pdfcpu attachments remove out.pdf -o out_noattach.pdf
 ## 12. 参考（仕様・ツール）
 
 - Circom/snarkjs（Groth16） / Poseidon（ZK向けハッシュ）  
-- JWS / RFC 7515（ES256） / WebAuthn × COSE（alg=-7）  
+- WebAuthn × COSE（alg=-7） / ES256 
 - pdfcpu（attachments add/list/remove） / PDF/A-3（任意型埋め込み）
-

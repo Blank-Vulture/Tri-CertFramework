@@ -12,8 +12,8 @@
   - Circom/snarkjs(Groth16) で `proof.json` を生成し、PDF に添付します。
 - **ZKP回路から VK 生成／ローカルへエクスポート**
   - `vkey.json`（検証鍵）と `vkey_hash`（SHA3-256）を出力します（`proof.json` にも埋め込み）。
-- **パスキーを使った電子署名（JWS, ES256）を PDF へ添付**
-  - 署名対象は `sig_target.json`（下記）で、WebAuthn の鍵で **ES256** 署名した `sig.jws` を添付します。
+- **パスキーを使った電子署名（WebAuthn, ES256）を PDF へ添付**
+  - 署名対象は `sig_target.json`（下記）で、WebAuthn の鍵で **ES256** 署名したアサーションを `webauthn_sig.json` として添付します。
 - **パスキーの検証鍵をローカルへエクスポート**
   - 公開鍵を **JWK（EC P-256, alg: ES256）** もしくは **COSE_Key(JSON)** でエクスポートします。
 
@@ -21,7 +21,7 @@
 - **VKをファイル指定して ZKP 検証**
   - 指定した `vkey.json`（または PDF 内の添付から抽出）で `proof.json` を検証します。
 - **電子署名の検証鍵を指定して電子署名検証**
-  - 指定した JWK/COSE（または PDF 内の添付から抽出）で `sig.jws` を検証します。
+  - 指定した JWK/COSE（または PDF 内の添付から抽出）で `webauthn_sig.json`（WebAuthn アサーション）を検証します。
 
 > **Phase 0 ハッシュ規則（自己参照回避）**  
 > `pdf_sha3_512` は **「添付ファイルをすべて除去したPDF」** の SHA3-512 です。  
@@ -37,7 +37,7 @@
 
 - `out.pdf` （PDF/A-3）  
   - 入力 PDF に以下のファイルを**添付**した成果物  
-    - **必須**: `proof.json`、`sig.jws`  
+    - **必須**: `proof.json`、`webauthn_sig.json`  
     - **推奨**: `webauthn_pub.jwk.json`（検証鍵）、`vkey.json`（検証鍵本体）
 
 - `proof.json`  
@@ -59,8 +59,8 @@
 - `vkey.json` / `vkey_hash.txt`  
   **説明**: snarkjs の検証鍵（JSON）と、その SHA3-256。`vkey_hash` は `proof.json` と `sig_target.json` にも埋め込みます。
 
-- `sig.jws`  
-  **説明**: `sig_target.json` を **ES256（WebAuthn）** で JWS 署名したもの（compact 形式推奨）。
+- `webauthn_sig.json`  
+  **説明**: `sig_target.json` を **ES256（WebAuthn）** で署名したアサーション。
 
 - `sig_target.json`（署名対象ペイロード）  
   **説明**: 署名に含める最小メタデータ。`pdf_sha3_512` と `vkey_hash` を必ず持たせ、すり替えを検出します。  
@@ -103,7 +103,7 @@
 1. PDF を受領し、**添付ファイルを一時除去**して `pdf_sha3_512` を計算。  
 2. PDF から `proof.json`（および `vkey.json`、`webauthn_pub.jwk.json` があればそれも）を抽出。  
 3. `vkey.json` を指定（または添付から取得）し、`snarkjs` 互換の `groth16.verify` で ZKP 検証。  
-4. `sig.jws` を `webauthn_pub.jwk.json`（または指定鍵）で検証。  
+4. `webauthn_sig.json` を `webauthn_pub.jwk.json`（または指定鍵）で検証。  
 5. `vkey_hash`、`pdf_sha3_512`、`commit` の整合性を最終チェック。
 
 ---
@@ -112,7 +112,7 @@
 
 - **同一PDF**（添付を除去した本文が同じ）: ZKP 検証・署名検証とも ✅ 成功  
 - **PDF本文を1バイト改変**: `pdf_sha3_512` が変化し、ZKP/署名とも ❌ 失敗  
-- **添付の入れ替え／横流し**（他PDFの `proof.json`/`sig.jws` を流用）: ❌ 失敗（`pdf_sha3_512` 不一致）  
+- **添付の入れ替え／横流し**（他PDFの `proof.json`/`webauthn_sig.json` を流用）: ❌ 失敗（`pdf_sha3_512` 不一致）  
 - **VKのすり替え**（別回路の `vkey.json` を指定）: ❌ 失敗（`vkey_hash` 不一致）
 
 ---
@@ -127,7 +127,7 @@
 - **PDF 添付操作（pdfcpu）**  
   ```bash
   # 添付
-  pdfcpu attachments add input.pdf proof.json sig.jws webauthn_pub.jwk.json -o out.pdf
+  pdfcpu attachments add input.pdf proof.json webauthn_sig.json webauthn_pub.jwk.json sig_target.json -o out.pdf
   # 添付一覧
   pdfcpu attachments list out.pdf
   # 添付除去（検証のためのハッシュ再計算時など）
@@ -159,14 +159,13 @@
 - **添付差し替え攻撃**: `pdf_sha3_512` により本文と強結合。横流しは検知される。  
 - **VK/回路の不整合**: `vkey_hash` を `proof.json` と `sig_target.json` に埋め込み、UI で一致確認。  
 - **見た目同一・内部改変**: 添付を除去して本文ハッシュを算出するため、内部改変も検出可能。  
-- **PAdES互換**: Phase 0 は JWS の外部署名。公的PAdES互換は後続フェーズで分岐検討。
+- **PAdES互換**: Phase 0 は WebAuthn の外部署名。公的PAdES互換は後続フェーズで分岐検討。
 
 ---
 
 ## 参考（仕様・ツール）
 - Circom/snarkjs Groth16 検証コマンド（`snarkjs groth16 verify`）
 - Poseidon（ZK向けハッシュ）
-- JSON Web Signature (JWS) / RFC 7515（ES256）
 - WebAuthn × COSE（ES256/alg=-7）
 - pdfcpu（添付 add/list/remove）
 - PDF/A-3（ISO 19005-3、任意型の埋め込みを許容）

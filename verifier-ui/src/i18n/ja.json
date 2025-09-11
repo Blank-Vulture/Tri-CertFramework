@@ -1,0 +1,62 @@
+{
+  "header": {
+    "language": "言語"
+  },
+  "lang": {
+    "en": "English",
+    "ja": "日本語"
+  },
+  "hero": {
+    "subtitle": {
+      "verifier": "PDFに埋め込まれたゼロ知識証明と電子署名を検証します。"
+    }
+  },
+  "action": {
+    "verify": "PDFを検証",
+    "verifying": "検証中..."
+  },
+  "pdfUpload": {
+    "title": "検証するPDF",
+    "upload": "検証するPDFファイルをアップロード",
+    "orDrag": "またはドラッグ＆ドロップ",
+    "hint": "証明が添付されたPDF",
+    "selected": "選択済み:",
+    "size": "サイズ:"
+  },
+  "keyUpload": {
+    "publicKey": {
+      "title": "公開鍵（webauthn_pub.jwk.json）",
+      "desc": "任意：未指定の場合はPDF内の鍵を使用します"
+    }
+  },
+  "vkSection": {
+    "title": "検証鍵選択方法",
+    "desc": "ローカルのVKファイルを選択するか、PDFに埋め込まれたVKを使用します。",
+    "key": {
+      "title": "検証キー（vkey.json）",
+      "desc": "推奨：ローカルのVKファイルを選択。未選択の場合はPDF内のVKを使用します。"
+    }
+  },
+  "alerts": {
+    "selectPdf": "検証するPDFファイルを選択してください"
+  },
+  "results": {
+    "valid": "有効",
+    "invalid": "無効",
+    "successTitle": "検証に成功",
+    "failedTitle": "検証に失敗",
+    "successDesc": "すべての検証チェックに合格しました",
+    "failedDesc": "1つ以上の検証チェックに失敗しました",
+    "zkp": "ゼロ知識証明",
+    "signature": "電子署名",
+    "hash": "PDFハッシュ整合性",
+    "vkeyHash": "検証キーのハッシュ",
+    "possibleIssues": "想定される問題",
+    "issue": {
+      "zkp": "ゼロ知識証明の検証に失敗しました",
+      "signature": "電子署名が無効です",
+      "hash": "PDFの内容が変更されています",
+      "vkeyHash": "検証キーが一致しません"
+    }
+  }
+}

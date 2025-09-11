@@ -1,11 +1,5 @@
 import { decode as cborDecode } from 'cbor-x';
-import type {
-  PublicKeyCredentialCreationOptions,
-  PublicKeyCredentialRequestOptions,
-  WebAuthnCredential,
-  WebAuthnSignatureData,
-  CBORData
-} from '../types/webauthn';
+import type { WebAuthnSignatureData, CBORData } from '../types/webauthn';
 
 /**
  * Base64URL encoding/decoding utilities
@@ -36,7 +30,7 @@ export function generateChallenge(): ArrayBuffer {
 /**
  * Register a new WebAuthn credential
  */
-export async function registerWebAuthnCredential(): Promise<WebAuthnCredential> {
+export async function registerWebAuthnCredential(): Promise<PublicKeyCredential> {
   if (!navigator.credentials || !window.PublicKeyCredential) {
     throw new Error('WebAuthn is not supported in this browser');
   }
@@ -80,7 +74,7 @@ export async function registerWebAuthnCredential(): Promise<WebAuthnCredential> 
       throw new Error('Failed to create credential');
     }
 
-    return credential as WebAuthnCredential;
+    return credential as PublicKeyCredential;
   } catch (error) {
     console.error('WebAuthn registration failed:', error);
     if (error instanceof Error) {
@@ -93,9 +87,19 @@ export async function registerWebAuthnCredential(): Promise<WebAuthnCredential> 
 /**
  * Create a WebAuthn assertion (signature) for the given data
  */
+interface SignatureTarget {
+  schema: string;
+  circuit_id: string;
+  vkey_hash: string;
+  pdf_sha3_512: string;
+  graduation_year: string;
+  commit: string;
+  issued_at: string;
+}
+
 export async function createWebAuthnAssertion(
   credentialId: string,
-  dataToSign: object
+  dataToSign: SignatureTarget
 ): Promise<WebAuthnSignatureData> {
   if (!navigator.credentials || !window.PublicKeyCredential) {
     throw new Error('WebAuthn is not supported in this browser');
@@ -143,7 +147,7 @@ export async function createWebAuthnAssertion(
         y: '', // Will be filled by caller with actual public key
         kid: arrayBufferToBase64url(assertion.rawId),
       },
-      sig_target: dataToSign as any, // Will be properly typed by caller
+      sig_target: dataToSign,
     };
   } catch (error) {
     console.error('WebAuthn assertion failed:', error);

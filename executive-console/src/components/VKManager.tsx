@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import type { VKInfo } from '../App'
+import type { VKInfo, VerificationKey } from '../App'
 import { saveJsonFile, saveTextFile } from '../utils/download'
 
 interface VKManagerProps {
@@ -50,13 +50,13 @@ const VKManager: React.FC<VKManagerProps> = ({ vkList, onVKDelete, onVKImport })
     }
   }
 
-  const calculateVKeyHash = async (vkey: any): Promise<string> => {
+  const calculateVKeyHash = async (vkey: VerificationKey): Promise<string> => {
     const crypto = await import('crypto-js')
     const canonicalJson = JSON.stringify(vkey, Object.keys(vkey).sort())
     return crypto.SHA3(canonicalJson, { outputLength: 256 }).toString()
   }
 
-  const inferYear = (vkey: any, filename?: string): number | null => {
+  const inferYear = (vkey: VerificationKey, filename?: string): number | null => {
     // Try metadata.graduation_year
     if (typeof vkey?.metadata?.graduation_year === 'number') return vkey.metadata.graduation_year
     // Try circuit_id like commitment_poseidon_2025_v1

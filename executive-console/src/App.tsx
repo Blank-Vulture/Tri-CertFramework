@@ -6,10 +6,28 @@ import './App.css'
 
 export interface VKInfo {
   year: number;
-  vkey: any;
+  vkey: VerificationKey;
   vkeyHash: string;
   createdAt: string;
   circuitId: string;
+}
+
+export interface VerificationKey {
+  protocol: string;
+  curve: string;
+  nPublic: number;
+  vk_alpha_1: string[];
+  vk_beta_2: string[][];
+  vk_gamma_2: string[][];
+  vk_delta_2: string[][];
+  vk_alphabeta_12: string[];
+  IC: string[][];
+  circuit_id?: string;
+  metadata?: {
+    graduation_year?: number;
+    circuit_id?: string;
+    generated_at?: string;
+  };
 }
 
 function AppShell({ children }: { children: React.ReactNode }) {

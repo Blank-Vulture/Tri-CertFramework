@@ -71,12 +71,12 @@ export default function Home() {
   const [step, setStep] = useState<number>(0);
 
   const steps = useMemo(() => [
-    'Upload Document',
-    'Calculate Hash',
-    'Generate Proof',
-    'Digital Signature',
-    'Export & Download'
-  ], []);
+    t('steps.upload'),
+    t('steps.hash'),
+    t('steps.proof'),
+    t('steps.signature'),
+    t('steps.export')
+  ], [t]);
 
   const addLog = (message: string) => setLogs((prev) => [...prev, `${new Date().toLocaleTimeString()}  ${message}`]);
 
@@ -113,7 +113,7 @@ export default function Home() {
                 <div className="flex h-1.5 w-1.5 items-center justify-center">
                   <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse"></div>
                 </div>
-                <span className="ml-2">System Online</span>
+              <span className="ml-2">{t('hero.status.online')}</span>
               </span>
             </div>
           </div>
@@ -207,8 +207,8 @@ export default function Home() {
                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                       </svg>
                     </div>
-                    <h3 className="text-lg font-semibold text-gray-900">Process Complete!</h3>
-                    <p className="text-sm text-gray-600">Your secured PDF and verification files are ready for download.</p>
+                    <h3 className="text-lg font-semibold text-gray-900">{t('page.complete.title')}</h3>
+                    <p className="text-sm text-gray-600">{t('page.complete.subtitle')}</p>
                   </div>
                   <OutputDisplay
                     outputPdf={outputPdf}
@@ -230,7 +230,7 @@ export default function Home() {
                         <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
                       </svg>
                     </div>
-                    Activity Log
+                    {t('page.activityLog')}
                   </h3>
                   <div className="rounded-2xl bg-white border border-slate-200 p-4 max-h-64 overflow-auto">
                     <div className="space-y-2">

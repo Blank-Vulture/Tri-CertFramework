@@ -1,0 +1,62 @@
+{
+  "header": {
+    "language": "Language"
+  },
+  "lang": {
+    "en": "English",
+    "ja": "日本語"
+  },
+  "hero": {
+    "subtitle": {
+      "verifier": "Verify zero-knowledge proofs and digital signatures embedded in your PDF."
+    }
+  },
+  "action": {
+    "verify": "Verify PDF",
+    "verifying": "Verifying..."
+  },
+  "pdfUpload": {
+    "title": "PDF to Verify",
+    "upload": "Upload a PDF file to verify",
+    "orDrag": "or drag and drop",
+    "hint": "PDF files with attached proofs",
+    "selected": "Selected:",
+    "size": "Size:"
+  },
+  "keyUpload": {
+    "publicKey": {
+      "title": "Public Key (webauthn_pub.jwk.json)",
+      "desc": "Optional: If not provided, will use key from PDF"
+    }
+  },
+  "vkSection": {
+    "title": "Verification Key Selection",
+    "desc": "Select a local VK file or use the VK embedded in the PDF.",
+    "key": {
+      "title": "Verification Key (vkey.json)",
+      "desc": "Recommended: select a local VK file. If not selected, the embedded VK will be used."
+    }
+  },
+  "alerts": {
+    "selectPdf": "Please select a PDF file to verify"
+  },
+  "results": {
+    "valid": "Valid",
+    "invalid": "Invalid",
+    "successTitle": "Verification Successful",
+    "failedTitle": "Verification Failed",
+    "successDesc": "All verification checks passed",
+    "failedDesc": "One or more verification checks failed",
+    "zkp": "Zero-Knowledge Proof",
+    "signature": "Digital Signature",
+    "hash": "PDF Hash Integrity",
+    "vkeyHash": "Verification Key Hash",
+    "possibleIssues": "Possible Issues",
+    "issue": {
+      "zkp": "The zero-knowledge proof could not be verified",
+      "signature": "The digital signature is invalid",
+      "hash": "The PDF content has been modified",
+      "vkeyHash": "The verification key does not match"
+    }
+  }
+}

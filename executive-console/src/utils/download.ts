@@ -1,7 +1,7 @@
 import { save } from '@tauri-apps/plugin-dialog'
 import { writeFile } from '@tauri-apps/plugin-fs'
 
-export async function saveJsonFile(suggestedName: string, data: any) {
+export async function saveJsonFile(suggestedName: string, data: unknown) {
   const filePath = await save({
     defaultPath: suggestedName,
     filters: [{ name: 'JSON', extensions: ['json'] }],

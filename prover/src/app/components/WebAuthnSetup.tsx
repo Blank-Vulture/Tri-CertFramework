@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useI18n } from './LanguageProvider';
 import {
   isWebAuthnSupported,
   isPlatformAuthenticatorAvailable,
@@ -8,7 +9,6 @@ import {
   extractPublicKeyFromAttestation,
   arrayBufferToBase64url,
 } from '../../utils/webauthn';
-import type { WebAuthnCredential } from '../../types/webauthn';
 
 interface WebAuthnCredentialInfo {
   credentialId: string;
@@ -30,6 +30,7 @@ export default function WebAuthnSetup({
   registeredCredential,
   isDisabled = false,
 }: WebAuthnSetupProps) {
+  const { t } = useI18n();
   const [isSupported, setIsSupported] = useState(false);
   const [isPlatformAvailable, setIsPlatformAvailable] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
@@ -52,10 +53,10 @@ export default function WebAuthnSetup({
       
       // Verify WebAuthn support before proceeding
       if (!isWebAuthnSupported()) {
-        throw new Error('WebAuthn is not supported in this browser');
+        throw new Error(t('webauthn.error.notSupported'));
       }
 
-      const credential: WebAuthnCredential = await registerWebAuthnCredential();
+      const credential: PublicKeyCredential = await registerWebAuthnCredential();
       
       console.log('WebAuthn credential created successfully');
       console.log('Credential ID:', arrayBufferToBase64url(credential.rawId));
@@ -63,7 +64,7 @@ export default function WebAuthnSetup({
       
       // Verify response type
       if (!(credential.response instanceof AuthenticatorAttestationResponse)) {
-        throw new Error('Invalid credential response type');
+        throw new Error(t('webauthn.error.invalidResponse'));
       }
 
       console.log('Attestation object size:', credential.response.attestationObject.byteLength);
@@ -87,7 +88,9 @@ export default function WebAuthnSetup({
         onCredentialRegistered(credentialInfo);
       } catch (keyExtractionError) {
         console.error('Public key extraction failed:', keyExtractionError);
-        throw new Error(`Public key extraction failed: ${keyExtractionError instanceof Error ? keyExtractionError.message : 'Unknown error'}`);
+        throw new Error(
+          `${t('webauthn.error.keyExtractionFailed')}: ${keyExtractionError instanceof Error ? keyExtractionError.message : t('webauthn.error.unknown')}`
+        );
       }
     } catch (err) {
       console.error('WebAuthn registration error:', err);
@@ -98,18 +101,18 @@ export default function WebAuthnSetup({
       });
       
       // Provide user-friendly error messages
-      let userMessage = 'Authentication setup failed';
+      let userMessage = t('webauthn.error.setupFailed');
       if (err instanceof Error) {
         if (err.name === 'NotSupportedError') {
-          userMessage = 'Your device does not support biometric authentication';
+          userMessage = t('webauthn.error.deviceNoBio');
         } else if (err.name === 'SecurityError') {
-          userMessage = 'Security error: Please ensure you are using HTTPS';
+          userMessage = t('webauthn.error.securityHttps');
         } else if (err.name === 'NotAllowedError') {
-          userMessage = 'Authentication was cancelled or not permitted';
+          userMessage = t('webauthn.error.cancelled');
         } else if (err.name === 'InvalidStateError') {
-          userMessage = 'An authenticator is already registered for this account';
+          userMessage = t('webauthn.error.alreadyRegistered');
         } else if (err.message.includes('CBOR')) {
-          userMessage = 'Device compatibility issue: Try using a different authenticator';
+          userMessage = t('webauthn.error.compatibility');
         } else {
           userMessage = err.message;
         }
@@ -131,10 +134,8 @@ export default function WebAuthnSetup({
             </svg>
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-red-800">WebAuthn Not Supported</h3>
-            <p className="text-sm text-red-700 mt-1">
-              Your browser doesn't support WebAuthn. Please use a modern browser like Chrome, Firefox, or Safari.
-            </p>
+            <h3 className="text-sm font-semibold text-red-800">{t('webauthn.notSupported.title')}</h3>
+            <p className="text-sm text-red-700 mt-1">{t('webauthn.notSupported.desc')}</p>
           </div>
         </div>
       </div>
@@ -151,7 +152,7 @@ export default function WebAuthnSetup({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
               </svg>
             </div>
-            <span>WebAuthn Digital Signature</span>
+            <span>{t('webauthn.title')}</span>
           </div>
         </h3>
 
@@ -160,13 +161,13 @@ export default function WebAuthnSetup({
           <div className="flex items-center space-x-3">
             <div className={`h-2 w-2 rounded-full ${isSupported ? 'bg-green-500' : 'bg-red-500'}`} />
             <span className="text-sm text-gray-600">
-              WebAuthn API: {isSupported ? 'Supported' : 'Not Supported'}
+              {t('webauthn.status.api')}: {isSupported ? t('webauthn.status.supported') : t('webauthn.status.notSupported')}
             </span>
           </div>
           <div className="flex items-center space-x-3">
             <div className={`h-2 w-2 rounded-full ${isPlatformAvailable ? 'bg-green-500' : 'bg-orange-500'}`} />
             <span className="text-sm text-gray-600">
-              Platform Authenticator: {isPlatformAvailable ? 'Available' : 'Not Available'}
+              {t('webauthn.status.platform')}: {isPlatformAvailable ? t('webauthn.status.available') : t('webauthn.status.notAvailable')}
             </span>
           </div>
         </div>
@@ -181,13 +182,11 @@ export default function WebAuthnSetup({
                 </svg>
               </div>
               <div className="min-w-0 flex-1">
-                <h4 className="text-sm font-semibold text-green-800">Authenticator Registered</h4>
-                <p className="text-sm text-green-700 mt-1">
-                  Your biometric authenticator is ready for digital signatures.
-                </p>
+                <h4 className="text-sm font-semibold text-green-800">{t('webauthn.registered.title')}</h4>
+                <p className="text-sm text-green-700 mt-1">{t('webauthn.registered.desc')}</p>
                 <div className="mt-3 text-xs text-green-600 font-mono">
-                  <div>Credential ID: {registeredCredential.credentialId.substring(0, 16)}...</div>
-                  <div>Registered: {new Date(registeredCredential.createdAt).toLocaleString()}</div>
+                  <div>{t('webauthn.registered.credentialId')}: {registeredCredential.credentialId.substring(0, 16)}...</div>
+                  <div>{t('webauthn.registered.registeredAt')}: {new Date(registeredCredential.createdAt).toLocaleString()}</div>
                 </div>
               </div>
             </div>
@@ -202,22 +201,20 @@ export default function WebAuthnSetup({
                   </svg>
                 </div>
                 <div>
-                  <h4 className="text-sm font-semibold text-blue-800">Authenticator Setup Required</h4>
-                  <p className="text-sm text-blue-700 mt-1">
-                    Register your biometric authenticator (fingerprint, face, PIN) to create digital signatures.
-                  </p>
+                  <h4 className="text-sm font-semibold text-blue-800">{t('webauthn.setup.title')}</h4>
+                  <p className="text-sm text-blue-700 mt-1">{t('webauthn.setup.desc')}</p>
                   <ul className="text-xs text-blue-600 mt-2 space-y-1">
-                    <li>• Your biometric data never leaves your device</li>
-                    <li>• Each signature is cryptographically unique</li>
-                    <li>• No passwords or secrets to remember</li>
-                    <li>• {isPlatformAvailable ? 'Touch ID/Face ID/Windows Hello ready' : 'External authenticator required'}</li>
+                    <li>• {t('webauthn.setup.pointPrivacy')}</li>
+                    <li>• {t('webauthn.setup.pointUnique')}</li>
+                    <li>• {t('webauthn.setup.pointNoPassword')}</li>
+                    <li>• {isPlatformAvailable ? t('webauthn.setup.pointPlatformReady') : t('webauthn.setup.pointExternalRequired')}</li>
                   </ul>
                   
                   {/* Browser Guide */}
                   <div className="mt-3 p-2 bg-blue-100 rounded-lg">
-                    <p className="text-xs text-blue-800 font-medium">💡 Setup Guide:</p>
+                    <p className="text-xs text-blue-800 font-medium">{t('webauthn.guide.title')}</p>
                     <p className="text-xs text-blue-700 mt-1">
-                      Click "Setup Authenticator" → Follow browser prompts → Use {isPlatformAvailable ? 'biometric' : 'PIN/security key'}
+                      {t('webauthn.guide.text')} {isPlatformAvailable ? t('webauthn.guide.biometric') : t('webauthn.guide.pinOrKey')}
                     </p>
                   </div>
                 </div>
@@ -235,14 +232,14 @@ export default function WebAuthnSetup({
                     <div className="mr-3">
                       <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>
                     </div>
-                    <span>Setting up Authenticator...</span>
+                    <span>{t('webauthn.button.settingUp')}</span>
                   </>
                 ) : (
                   <>
                     <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                     </svg>
-                    <span>Setup Authenticator</span>
+                    <span>{t('webauthn.button.setup')}</span>
                   </>
                 )}
               </div>
@@ -258,7 +255,7 @@ export default function WebAuthnSetup({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
               </svg>
               <div>
-                <h4 className="text-sm font-semibold text-red-800">Registration Failed</h4>
+                <h4 className="text-sm font-semibold text-red-800">{t('webauthn.error.title')}</h4>
                 <p className="text-sm text-red-700 mt-1">{error}</p>
               </div>
             </div>

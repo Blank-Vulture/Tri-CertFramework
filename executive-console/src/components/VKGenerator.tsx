@@ -1,7 +1,5 @@
 import React, { useState } from 'react'
-import type { VKInfo } from '../App'
-// @ts-expect-error - snarkjs doesn't have proper TypeScript declarations
-import * as snarkjs from 'snarkjs'
+import type { VKInfo, VerificationKey } from '../App'
 
 interface VKGeneratorProps {
   onVKGenerated: (vkInfo: VKInfo) => void
@@ -164,7 +162,7 @@ const VKGenerator: React.FC<VKGeneratorProps> = ({ onVKGenerated }) => {
   }
 
 
-  const calculateVKeyHash = async (vkey: any): Promise<string> => {
+  const calculateVKeyHash = async (vkey: VerificationKey): Promise<string> => {
     const crypto = await import('crypto-js')
     const canonicalJson = JSON.stringify(vkey, Object.keys(vkey).sort())
     return crypto.SHA3(canonicalJson, { outputLength: 256 }).toString()

@@ -1,0 +1,159 @@
+{
+  "header": {
+    "language": "Language"
+  },
+  "lang": {
+    "en": "English",
+    "ja": "日本語"
+  },
+  "hero": {
+    "subtitle": {
+      "prover": "Generate zero-knowledge proofs and digital signatures for your PDF documents."
+    },
+    "status": {
+      "online": "System Online"
+    }
+  },
+  "steps": {
+    "upload": "Upload Document",
+    "hash": "Calculate Hash",
+    "proof": "Generate Proof",
+    "signature": "Digital Signature",
+    "export": "Export & Download"
+  },
+  "section": {
+    "generateTitle": "Generate Cryptographic Proof"
+  },
+  "fileUpload": {
+    "title": "Upload Your Document",
+    "choose": "Choose a PDF file",
+    "orDrop": "or drag and drop it anywhere in this area",
+    "pdfOnly": "PDF files only",
+    "documentReady": "Document Ready",
+    "validPdf": "Valid PDF",
+    "readyToProve": "Ready to prove",
+    "sizeReady": "MB • Ready for processing"
+  },
+  "proofGen": {
+    "secret": {
+      "label": "Private Secret Key",
+      "placeholder": "Enter your private secret for proof generation...",
+      "help": "This secret remains private and is used to generate your zero-knowledge proof"
+    },
+    "year": {
+      "label": "Graduation Year",
+      "or": "or",
+      "placeholder": "2024",
+      "help": "Select your graduation year (2000-2050, numeric only)"
+    },
+    "alert": {
+      "enterSecret": "Please enter your secret value",
+      "yearInvalid": "Please enter a valid graduation year (2000-2050)",
+      "setupWebAuthn": "Please setup your WebAuthn authenticator first"
+    },
+    "status": {
+      "processingPdf": "Processing PDF...",
+      "calcHash": "Calculating PDF hash...",
+      "generatingZkp": "Generating zero-knowledge proof...",
+      "signing": "Creating digital signature...",
+      "attaching": "Creating output PDF...",
+      "complete": "Complete!"
+    },
+    "progress": {
+      "selected": "📄 PDF selected",
+      "hash": "🔎 Calculating PDF hash",
+      "zkp": "🧮 Generating ZK proof (groth16)",
+      "sign": "✍️ Creating digital signature (WebAuthn ES256)",
+      "attach": "📎 Attaching proof/signature and exporting PDF",
+      "done": "✅ All steps completed"
+    },
+    "vkey": {
+      "label": "Verification Key (vkey.json)",
+      "select": "Select vkey.json",
+      "changeFile": "Change file",
+      "help": "Optional fail-safe: Select VK exported from Executive Console. If not selected, the default public VK is used.",
+      "hash": "hash"
+    }
+  },
+  "common": {
+    "clear": "Clear"
+  },
+  "download": {
+    "readyTitle": "Secured PDF is ready",
+    "aria": "Download secured PDF",
+    "button": "Download Secured PDF",
+    "afterHint": "After downloading, you can verify this PDF in the Verifier app."
+  },
+  "webauthn": {
+    "title": "WebAuthn Digital Signature",
+    "notSupported": {
+      "title": "WebAuthn Not Supported",
+      "desc": "Your browser doesn't support WebAuthn. Please use a modern browser like Chrome, Firefox, or Safari."
+    },
+    "status": {
+      "api": "WebAuthn API",
+      "platform": "Platform Authenticator",
+      "supported": "Supported",
+      "notSupported": "Not Supported",
+      "available": "Available",
+      "notAvailable": "Not Available"
+    },
+    "registered": {
+      "title": "Authenticator Registered",
+      "desc": "Your biometric authenticator is ready for digital signatures.",
+      "credentialId": "Credential ID",
+      "registeredAt": "Registered"
+    },
+    "setup": {
+      "title": "Authenticator Setup Required",
+      "desc": "Register your biometric authenticator (fingerprint, face, PIN) to create digital signatures.",
+      "pointPrivacy": "Your biometric data never leaves your device",
+      "pointUnique": "Each signature is cryptographically unique",
+      "pointNoPassword": "No passwords or secrets to remember",
+      "pointPlatformReady": "Touch ID/Face ID/Windows Hello ready",
+      "pointExternalRequired": "External authenticator required"
+    },
+    "guide": {
+      "title": "💡 Setup Guide:",
+      "text": "Click \"Setup Authenticator\" → Follow browser prompts → Use",
+      "biometric": "biometric",
+      "pinOrKey": "PIN/security key"
+    },
+    "button": {
+      "settingUp": "Setting up Authenticator...",
+      "setup": "Setup Authenticator"
+    },
+    "error": {
+      "title": "Registration Failed",
+      "setupFailed": "Authentication setup failed",
+      "notSupported": "WebAuthn is not supported in this browser",
+      "invalidResponse": "Invalid credential response type",
+      "keyExtractionFailed": "Public key extraction failed",
+      "unknown": "Unknown error",
+      "deviceNoBio": "Your device does not support biometric authentication",
+      "securityHttps": "Security error: Please ensure you are using HTTPS",
+      "cancelled": "Authentication was cancelled or not permitted",
+      "alreadyRegistered": "An authenticator is already registered for this account",
+      "compatibility": "Device compatibility issue: Try using a different authenticator"
+    }
+  },
+  "output": {
+    "successTitle": "🎉 Proof Generated Successfully!",
+    "successSubtitle": "Download your cryptographically secured files",
+    "securedPdf": "Secured PDF",
+    "securedPdfCaption": "with ZKP & Signature",
+    "zkProof": "ZK Proof",
+    "vkey": "Verify Key",
+    "publicKey": "Public Key",
+    "signature": "Signature",
+    "sigTarget": "Sig Target",
+    "previewTitle": "Zero-Knowledge Proof Data Preview"
+  },
+  "page": {
+    "complete": {
+      "title": "Process Complete!",
+      "subtitle": "Your secured PDF and verification files are ready for download."
+    },
+    "activityLog": "Activity Log"
+  }
+}

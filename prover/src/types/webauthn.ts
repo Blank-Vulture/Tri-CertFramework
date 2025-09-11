@@ -84,11 +84,11 @@ export type ResidentKeyRequirement = 'discouraged' | 'preferred' | 'required';
 export type COSEAlgorithmIdentifier = number;
 
 export interface AuthenticationExtensionsClientInputs {
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface AuthenticationExtensionsClientOutputs {
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface WebAuthnSignatureData {

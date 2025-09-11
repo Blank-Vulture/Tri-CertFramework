@@ -1,4 +1,5 @@
-'use client';
+"use client";
+import { useI18n } from './LanguageProvider';
 
 // Type definitions
 interface ProofData {
@@ -61,6 +62,7 @@ interface OutputDisplayProps {
 }
 
 export default function OutputDisplay({ outputPdf, proofData, vkeyData, signatureData }: OutputDisplayProps) {
+  const { t } = useI18n();
   const downloadPdf = () => {
     const url = URL.createObjectURL(outputPdf);
     const a = document.createElement('a');
@@ -87,8 +89,8 @@ export default function OutputDisplay({ outputPdf, proofData, vkeyData, signatur
   return (
     <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-xl p-6 space-y-6">
       <div className="text-center">
-        <h3 className="text-xl font-bold text-gray-900 mb-2">🎉 Proof Generated Successfully!</h3>
-        <p className="text-gray-600">Download your cryptographically secured files</p>
+        <h3 className="text-xl font-bold text-gray-900 mb-2">{t('output.successTitle')}</h3>
+        <p className="text-gray-600">{t('output.successSubtitle')}</p>
       </div>
       
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
@@ -99,8 +101,8 @@ export default function OutputDisplay({ outputPdf, proofData, vkeyData, signatur
           <svg className="h-6 w-6 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
-          <span className="font-semibold">Secured PDF</span>
-          <span className="text-xs opacity-90">with ZKP & Signature</span>
+          <span className="font-semibold">{t('output.securedPdf')}</span>
+          <span className="text-xs opacity-90">{t('output.securedPdfCaption')}</span>
         </button>
 
         <button
@@ -110,7 +112,7 @@ export default function OutputDisplay({ outputPdf, proofData, vkeyData, signatur
           <svg className="h-6 w-6 mb-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
-          <span className="font-semibold">ZK Proof</span>
+          <span className="font-semibold">{t('output.zkProof')}</span>
           <span className="text-xs text-gray-500">proof.json</span>
         </button>
 
@@ -121,7 +123,7 @@ export default function OutputDisplay({ outputPdf, proofData, vkeyData, signatur
           <svg className="h-6 w-6 mb-2 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
           </svg>
-          <span className="font-semibold">Verify Key</span>
+          <span className="font-semibold">{t('output.vkey')}</span>
           <span className="text-xs text-gray-500">vkey.json</span>
         </button>
 
@@ -132,7 +134,7 @@ export default function OutputDisplay({ outputPdf, proofData, vkeyData, signatur
           <svg className="h-6 w-6 mb-2 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
           </svg>
-          <span className="font-semibold">Public Key</span>
+          <span className="font-semibold">{t('output.publicKey')}</span>
           <span className="text-xs text-gray-500">webauthn_pub.jwk.json</span>
         </button>
 
@@ -153,7 +155,7 @@ export default function OutputDisplay({ outputPdf, proofData, vkeyData, signatur
           <svg className="h-5 w-5 mb-1 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16l2.879-2.879m0 0a3 3 0 104.243-4.242 3 3 0 00-4.243 4.242zM21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <span className="font-semibold">Signature</span>
+          <span className="font-semibold">{t('output.signature')}</span>
           <span className="text-xs text-gray-500">webauthn_sig.json</span>
         </button>
 
@@ -164,7 +166,7 @@ export default function OutputDisplay({ outputPdf, proofData, vkeyData, signatur
           <svg className="h-5 w-5 mb-1 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
           </svg>
-          <span className="font-semibold">Sig Target</span>
+          <span className="font-semibold">{t('output.sigTarget')}</span>
           <span className="text-xs text-gray-500">sig_target.json</span>
         </button>
       </div>
@@ -174,7 +176,7 @@ export default function OutputDisplay({ outputPdf, proofData, vkeyData, signatur
           <svg className="w-4 h-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
           </svg>
-          Zero-Knowledge Proof Data Preview
+          {t('output.previewTitle')}
         </h4>
         <div className="bg-gray-50 rounded-lg p-4 max-h-64 overflow-y-auto">
           <pre className="text-xs text-gray-700 font-mono leading-relaxed">

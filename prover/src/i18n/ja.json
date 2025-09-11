@@ -1,0 +1,159 @@
+{
+  "header": {
+    "language": "言語"
+  },
+  "lang": {
+    "en": "English",
+    "ja": "日本語"
+  },
+  "hero": {
+    "subtitle": {
+      "prover": "PDFに対するゼロ知識証明と電子署名を生成します。"
+    },
+    "status": {
+      "online": "システムオンライン"
+    }
+  },
+  "steps": {
+    "upload": "ドキュメントのアップロード",
+    "hash": "ハッシュ計算",
+    "proof": "証明生成",
+    "signature": "電子署名",
+    "export": "書き出し・ダウンロード"
+  },
+  "section": {
+    "generateTitle": "暗号学的証明の生成"
+  },
+  "fileUpload": {
+    "title": "ドキュメントをアップロード",
+    "choose": "PDFファイルを選択",
+    "orDrop": "または、この領域にドラッグ＆ドロップ",
+    "pdfOnly": "PDFファイルのみ",
+    "documentReady": "ドキュメントの準備ができました",
+    "validPdf": "有効なPDF",
+    "readyToProve": "証明の準備完了",
+    "sizeReady": "MB・処理の準備完了"
+  },
+  "proofGen": {
+    "secret": {
+      "label": "任意の文字列を入力",
+      "placeholder": "証明生成に使用する任意の文字列を入力してください...",
+      "help": "この情報は公開されず、後に必要となることはありません"
+    },
+    "year": {
+      "label": "卒業年度",
+      "or": "または",
+      "placeholder": "2024",
+      "help": "卒業年度を選択してください（2000〜2050、数字のみ）"
+    },
+    "alert": {
+      "enterSecret": "秘密情報を入力してください",
+      "yearInvalid": "有効な卒業年度（2000-2050）を入力してください",
+      "setupWebAuthn": "先にWebAuthn認証器を設定してください"
+    },
+    "status": {
+      "processingPdf": "PDFを処理中...",
+      "calcHash": "PDFハッシュを計算中...",
+      "generatingZkp": "ゼロ知識証明を生成中...",
+      "signing": "電子署名を作成中...",
+      "attaching": "出力PDFを作成中...",
+      "complete": "完了！"
+    },
+    "progress": {
+      "selected": "📄 PDFを選択しました",
+      "hash": "🔎 PDFハッシュを計算中",
+      "zkp": "🧮 ZK証明を生成中（groth16）",
+      "sign": "✍️ 電子署名を作成中（WebAuthn ES256）",
+      "attach": "📎 証明・署名を添付しPDFを書き出し",
+      "done": "✅ すべてのステップが完了"
+    },
+    "vkey": {
+      "label": "検証キー（vkey.json）",
+      "select": "vkey.jsonを選択",
+      "changeFile": "ファイルを変更",
+      "help": "任意のフェイルセーフ：Executive Console からエクスポートした VK を選択できます。未選択の場合は既定の公開 VK を使用します。",
+      "hash": "ハッシュ"
+    }
+  },
+  "common": {
+    "clear": "クリア"
+  },
+  "download": {
+    "readyTitle": "保護されたPDFの準備ができました",
+    "aria": "保護されたPDFをダウンロード",
+    "button": "保護されたPDFをダウンロード",
+    "afterHint": "ダウンロード後は Verifier アプリで検証できます。"
+  },
+  "webauthn": {
+    "title": "WebAuthn 電子署名",
+    "notSupported": {
+      "title": "WebAuthn がサポートされていません",
+      "desc": "ご利用のブラウザは WebAuthn に対応していません。Chrome / Firefox / Safari など最新のブラウザをご利用ください。"
+    },
+    "status": {
+      "api": "WebAuthn API",
+      "platform": "プラットフォーム認証器",
+      "supported": "利用可",
+      "notSupported": "未対応",
+      "available": "利用可能",
+      "notAvailable": "未利用"
+    },
+    "registered": {
+      "title": "認証器を登録しました。",
+      "desc": "生体認証器で電子署名の準備ができています。この登録はこのセッションのみ有効です。",
+      "credentialId": "クレデンシャルID",
+      "registeredAt": "登録日時"
+    },
+    "setup": {
+      "title": "認証器の設定が必要です",
+      "desc": "電子署名のために生体認証器（指紋・顔・PIN）を一時登録してください。",
+      "pointPrivacy": "この登録は一時的なものです。生体情報は端末の外へ送信されません。",
+      "pointUnique": "各署名は暗号的に一意です",
+      "pointNoPassword": "パスワードや秘密の記憶は不要です",
+      "pointPlatformReady": "Touch ID / Face ID / Windows Hello 対応",
+      "pointExternalRequired": "外部認証器が必要です"
+    },
+    "guide": {
+      "title": "💡 セットアップ手順:",
+      "text": "「認証器を設定」をクリック → ブラウザの案内に従う → 使用するのは",
+      "biometric": "生体認証",
+      "pinOrKey": "PIN / セキュリティキー"
+    },
+    "button": {
+      "settingUp": "認証器を設定中...",
+      "setup": "認証器を設定"
+    },
+    "error": {
+      "title": "登録に失敗しました",
+      "setupFailed": "認証器の設定に失敗しました",
+      "notSupported": "このブラウザは WebAuthn をサポートしていません",
+      "invalidResponse": "不正なクレデンシャル応答形式です",
+      "keyExtractionFailed": "公開鍵の抽出に失敗しました",
+      "unknown": "不明なエラー",
+      "deviceNoBio": "このデバイスは生体認証に対応していません",
+      "securityHttps": "セキュリティエラー：HTTPS でアクセスしてください",
+      "cancelled": "認証がキャンセルされたか許可されませんでした",
+      "alreadyRegistered": "このアカウントにはすでに認証器が登録されています",
+      "compatibility": "デバイス互換性の問題：別の認証器をお試しください"
+    }
+  },
+  "output": {
+    "successTitle": "🎉 証明の生成が完了しました！",
+    "successSubtitle": "暗号的に保護されたファイルをダウンロードできます",
+    "securedPdf": "保護されたPDF",
+    "securedPdfCaption": "ZKPと署名付き",
+    "zkProof": "ZK証明",
+    "vkey": "検証キー",
+    "publicKey": "公開鍵",
+    "signature": "署名",
+    "sigTarget": "署名対象",
+    "previewTitle": "ゼロ知識証明データのプレビュー"
+  },
+  "page": {
+    "complete": {
+      "title": "処理が完了しました！",
+      "subtitle": "保護されたPDFと検証ファイルのダウンロード準備が整いました。"
+    },
+    "activityLog": "アクティビティログ"
+  }
+}

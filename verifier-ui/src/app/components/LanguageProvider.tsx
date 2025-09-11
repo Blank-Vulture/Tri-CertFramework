@@ -1,6 +1,8 @@
-'use client';
+"use client";
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import en from '../../i18n/en.json';
+import ja from '../../i18n/ja.json';
 
 type Lang = 'en' | 'ja';
 
@@ -10,28 +12,23 @@ type I18nContextType = {
   t: (key: string) => string;
 };
 
-const I18N_STRINGS: Record<Lang, Record<string, string>> = {
-  en: {
-    'header.language': 'Language',
-    'hero.subtitle.verifier': 'Verify zero-knowledge proofs and digital signatures embedded in your PDF.',
-    'action.verify': 'Verify PDF',
-    'action.verifying': 'Verifying...',
-  },
-  ja: {
-    'header.language': '言語',
-    'hero.subtitle.verifier': 'PDFに埋め込まれたゼロ知識証明と電子署名を検証します。',
-    'action.verify': 'PDFを検証',
-    'action.verifying': '検証中...',
-  },
-};
+const DICTS: Record<Lang, Record<string, unknown>> = { en, ja };
+
+function getFromPath(obj: Record<string, unknown>, path: string): string | undefined {
+  return path.split('.').reduce((acc: unknown, k: string) => (acc && typeof acc === 'object' && acc !== null && k in acc ? (acc as Record<string, unknown>)[k] : undefined), obj) as string | undefined;
+}
 
 const I18nContext = createContext<I18nContextType | null>(null);
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLangState] = useState<Lang>(() => {
     if (typeof window === 'undefined') return 'en';
+    const urlLang = new URLSearchParams(window.location.search).get('lang');
+    if (urlLang === 'ja' || urlLang === 'en') return urlLang as Lang;
     const saved = window.localStorage.getItem('lang');
-    return (saved === 'ja' || saved === 'en') ? (saved as Lang) : 'en';
+    if (saved === 'ja' || saved === 'en') return saved as Lang;
+    const nav = navigator.language || navigator.languages?.[0] || 'en';
+    return nav.toLowerCase().startsWith('ja') ? 'ja' : 'en';
   });
 
   useEffect(() => {
@@ -44,8 +41,8 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const setLang = useCallback((l: Lang) => setLangState(l), []);
 
   const t = useCallback((key: string) => {
-    const dict = I18N_STRINGS[lang];
-    return dict[key] ?? key;
+    const val = getFromPath(DICTS[lang], key);
+    return (typeof val === 'string' ? val : undefined) ?? key;
   }, [lang]);
 
   const value = useMemo(() => ({ lang, setLang, t }), [lang, setLang, t]);
@@ -64,21 +61,20 @@ export function useI18n() {
 }
 
 export function HeaderLangSwitcher() {
-  const { lang, setLang } = useI18n();
+  const { lang, setLang, t } = useI18n();
   return (
     <div className="flex items-center gap-2">
-      <label className="text-xs text-gray-600" htmlFor="lang-select">{lang === 'ja' ? '言語' : 'Language'}</label>
+      <label className="text-xs text-gray-600" htmlFor="lang-select">{t('header.language')}</label>
       <select
         id="lang-select"
         value={lang}
         onChange={(e) => setLang(e.target.value as Lang)}
         className="text-sm border border-gray-300 rounded-md px-2 py-1 bg-white"
-        aria-label={lang === 'ja' ? '言語設定' : 'Language setting'}
+        aria-label={t('header.language')}
       >
-        <option value="en">English</option>
-        <option value="ja">日本語</option>
+        <option value="en">{t('lang.en')}</option>
+        <option value="ja">{t('lang.ja')}</option>
       </select>
     </div>
   );
 }
-

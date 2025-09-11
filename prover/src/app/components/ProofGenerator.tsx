@@ -1,13 +1,11 @@
-'use client';
+"use client";
 
 import { useEffect, useState } from 'react';
 import { useI18n } from './LanguageProvider';
 import WebAuthnSetup from './WebAuthnSetup';
 import {
   createWebAuthnAssertion,
-  arrayBufferToBase64url,
 } from '../../utils/webauthn';
-import type { WebAuthnSignatureData } from '../../types/webauthn';
 // @ts-expect-error - snarkjs doesn't have proper TypeScript declarations
 import * as snarkjs from 'snarkjs';
 
@@ -135,17 +133,17 @@ export default function ProofGenerator({
 
   const generateProof = async () => {
     if (!secretInput) {
-      alert('Please enter your secret value');
+      alert(t('proofGen.alert.enterSecret'));
       return;
     }
 
     if (graduationYear < 2000 || graduationYear > 2050) {
-      alert('Please enter a valid graduation year (2000-2050)');
+      alert(t('proofGen.alert.yearInvalid'));
       return;
     }
 
     if (!webauthnCredential) {
-      alert('Please setup your WebAuthn authenticator first');
+      alert(t('proofGen.alert.setupWebAuthn'));
       return;
     }
 
@@ -157,19 +155,19 @@ export default function ProofGenerator({
     }
 
     setIsProcessing(true);
-    setStatus('Processing PDF...');
-    onProgress?.({ step: 0, message: '📄 PDF selected' });
+    setStatus(t('proofGen.status.processingPdf'));
+    onProgress?.({ step: 0, message: t('proofGen.progress.selected') });
 
     try {
       // Step 1: Calculate PDF hash
-      setStatus('Calculating PDF hash...');
-      onProgress?.({ step: 1, message: '🔎 Calculating PDF hash' });
+      setStatus(t('proofGen.status.calcHash'));
+      onProgress?.({ step: 1, message: t('proofGen.progress.hash') });
       const pdfBuffer = await pdfFile.arrayBuffer();
       const pdfHash = await calculatePdfHash(new Uint8Array(pdfBuffer));
 
       // Step 2: Generate ZKP
-      setStatus('Generating zero-knowledge proof...');
-      onProgress?.({ step: 2, message: '🧮 Generating ZK proof (groth16)' });
+      setStatus(t('proofGen.status.generatingZkp'));
+      onProgress?.({ step: 2, message: t('proofGen.progress.zkp') });
       // If a local VK is selected, use it; otherwise fetch default public VK
       let selectedVKey: VKeyData | undefined = undefined;
       if (vkeyFile) {
@@ -178,17 +176,17 @@ export default function ProofGenerator({
       const { proof, vkey } = await generateZKProof(secretInput, pdfHash, graduationYear, selectedVKey);
 
       // Step 3: Sign with WebAuthn
-      setStatus('Creating digital signature...');
-      onProgress?.({ step: 3, message: '✍️ Creating digital signature (WebAuthn ES256)' });
+      setStatus(t('proofGen.status.signing'));
+      onProgress?.({ step: 3, message: t('proofGen.progress.sign') });
       const signature = await createWebAuthnSignature(proof, vkey, pdfHash, webauthnCredential);
 
       // Step 4: Attach to PDF
-      setStatus('Creating output PDF...');
-      onProgress?.({ step: 4, message: '📎 Attaching proof/signature and exporting PDF' });
+      setStatus(t('proofGen.status.attaching'));
+      onProgress?.({ step: 4, message: t('proofGen.progress.attach') });
       const outputPdf = await attachToPdf(pdfBuffer, proof, signature, vkey);
 
-      setStatus('Complete!');
-      onProgress?.({ step: 4, message: '✅ All steps completed' });
+      setStatus(t('proofGen.status.complete'));
+      onProgress?.({ step: 4, message: t('proofGen.progress.done') });
       onProofGenerated(outputPdf, proof, vkey, signature);
 
       const base = (pdfFile.name || 'document').replace(/\.pdf$/i, '');
@@ -227,7 +225,7 @@ export default function ProofGenerator({
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                   </svg>
                 </div>
-                <span>Private Secret Key</span>
+                <span>{t('proofGen.secret.label')}</span>
               </div>
             </label>
             <div className="relative">
@@ -237,7 +235,7 @@ export default function ProofGenerator({
                 value={secretInput}
                 onChange={(e) => setSecretInput(e.target.value)}
                 className="block w-full rounded-2xl border-0 bg-gray-50 px-4 py-4 text-gray-900 placeholder:text-gray-400 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 disabled:bg-gray-100 disabled:text-gray-500"
-                placeholder="Enter your private secret for proof generation..."
+                placeholder={t('proofGen.secret.placeholder')}
                 disabled={isProcessing}
               />
               <div className="absolute inset-y-0 right-0 flex items-center pr-4">
@@ -248,7 +246,7 @@ export default function ProofGenerator({
               </div>
             </div>
             <p className="mt-2 text-sm text-gray-600">
-              This secret remains private and is used to generate your zero-knowledge proof
+              {t('proofGen.secret.help')}
             </p>
           </div>
 
@@ -261,7 +259,7 @@ export default function ProofGenerator({
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M8 7v8a2 2 0 002 2h8a2 2 0 002-2V9a2 2 0 00-2-2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-1" />
                   </svg>
                 </div>
-                <span>Graduation Year</span>
+                <span>{t('proofGen.year.label')}</span>
               </div>
             </label>
             <div className="flex items-center space-x-4">
@@ -286,7 +284,7 @@ export default function ProofGenerator({
               
               {/* Custom Year Input */}
               <div className="flex items-center space-x-2">
-                <span className="text-sm text-gray-500">または</span>
+                <span className="text-sm text-gray-500">{t('proofGen.year.or')}</span>
                 <input
                   type="text"
                   id="graduation-year"
@@ -302,7 +300,7 @@ export default function ProofGenerator({
                       }
                     }
                   }}
-                  placeholder="2024"
+                  placeholder={t('proofGen.year.placeholder')}
                   maxLength={4}
                   className="block w-20 rounded-lg border-gray-300 border px-3 py-2 text-center text-sm focus:border-green-500 focus:ring-green-500 disabled:bg-gray-100 disabled:text-gray-500"
                   disabled={isProcessing}
@@ -313,7 +311,7 @@ export default function ProofGenerator({
               </div>
             </div>
             <p className="mt-2 text-sm text-gray-600">
-              Select your graduation year (2000-2050, numeric characters only)
+              {t('proofGen.year.help')}
             </p>
           </div>
 
@@ -326,7 +324,7 @@ export default function ProofGenerator({
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
                 </div>
-                <span>Verification Key (vkey.json)</span>
+                <span>{t('proofGen.vkey.label')}</span>
               </div>
             </label>
             <div className="flex items-center gap-3">
@@ -341,13 +339,13 @@ export default function ProofGenerator({
                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v16c0 1.1.9 2 2 2h12a2 2 0 002-2V8l-6-4H6a2 2 0 00-2 2z" />
                 </svg>
-                <span>{vkeyFile ? 'Change file' : 'Select vkey.json'}</span>
+                <span>{vkeyFile ? t('proofGen.vkey.changeFile') : t('proofGen.vkey.select')}</span>
               </label>
               {vkeyFile && (
                 <div className="text-xs text-gray-600">
                   <div className="font-medium">{vkeyFile.name}</div>
                   {vkeyHashPreview && (
-                    <div className="text-emerald-600">hash: {vkeyHashPreview.substring(0, 20)}...</div>
+                    <div className="text-emerald-600">{t('proofGen.vkey.hash')}: {vkeyHashPreview.substring(0, 20)}...</div>
                   )}
                 </div>
               )}
@@ -358,13 +356,11 @@ export default function ProofGenerator({
                   className="ml-auto text-xs text-red-600 hover:text-red-700"
                   disabled={isProcessing}
                 >
-                  Clear
+                  {t('common.clear')}
                 </button>
               )}
             </div>
-            <p className="mt-2 text-sm text-gray-600">
-              Optional fail-safe: Select VK exported from Executive Console. If not selected, the default public VK is used.
-            </p>
+            <p className="mt-2 text-sm text-gray-600">{t('proofGen.vkey.help')}</p>
           </div>
 
           {/* Generate Button */}
@@ -431,7 +427,7 @@ export default function ProofGenerator({
         <div className="relative overflow-hidden rounded-2xl bg-white p-6 border border-gray-200 shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <p className="text-sm font-semibold text-gray-900">Secured PDF is ready</p>
+              <p className="text-sm font-semibold text-gray-900">{t('download.readyTitle')}</p>
               <p className="text-sm text-gray-600 mt-1">
                 {downloadName} {typeof downloadSize === 'number' && (
                   <span className="text-gray-500">({formatBytes(downloadSize)})</span>
@@ -443,12 +439,12 @@ export default function ProofGenerator({
                 href={downloadUrl}
                 download={downloadName || 'secured.pdf'}
                 className="inline-flex items-center justify-center px-5 py-3 rounded-xl text-sm font-semibold text-white bg-green-600 hover:bg-green-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-green-500 transition-colors"
-                aria-label="Download secured PDF"
+                aria-label={t('download.aria')}
               >
                 <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" />
                 </svg>
-                Download Secured PDF
+                {t('download.button')}
               </a>
               <button
                 type="button"
@@ -460,11 +456,11 @@ export default function ProofGenerator({
                 }}
                 className="inline-flex items-center justify-center px-4 py-3 rounded-xl text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-gray-400 transition-colors"
               >
-                Clear
+                {t('common.clear')}
               </button>
             </div>
           </div>
-          <p className="sr-only">After downloading, you can verify this PDF in the Verifier app.</p>
+          <p className="sr-only">{t('download.afterHint')}</p>
         </div>
       )}
     </div>
@@ -541,11 +537,11 @@ async function circuitAcceptsSignal(wasmPath: string, signalName: string): Promi
         writeBufferMessage: () => {},
         showSharedRWMemory: () => {},
       },
-    } as any);
+    } as WebAssembly.Imports);
     const h = fnv1a64(signalName);
     const hMSB = parseInt(h.slice(0, 8), 16);
     const hLSB = parseInt(h.slice(8, 16), 16);
-    const size = (instance.exports as any).getInputSignalSize(hMSB, hLSB);
+    const size = (instance.exports as { getInputSignalSize: (msb: number, lsb: number) => number }).getInputSignalSize(hMSB, hLSB);
     return size > 0;
   } catch (e) {
     // If introspection fails, default to not including optional signals

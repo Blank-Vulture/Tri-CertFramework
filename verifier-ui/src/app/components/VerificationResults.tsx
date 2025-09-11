@@ -1,4 +1,6 @@
-'use client';
+"use client";
+
+import { useI18n } from './LanguageProvider';
 
 interface VerificationResult {
   zkpValid: boolean;
@@ -18,6 +20,7 @@ interface VerificationResultsProps {
 }
 
 export default function VerificationResults({ result }: VerificationResultsProps) {
+  const { t } = useI18n();
   const overallValid = result.zkpValid && result.signatureValid && result.hashValid && result.vkeyHashValid;
   
   const ResultItem = ({ 
@@ -46,14 +49,14 @@ export default function VerificationResults({ result }: VerificationResultsProps
             <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
             </svg>
-            Valid
+            {t('results.valid')}
           </>
         ) : (
           <>
             <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
             </svg>
-            Invalid
+            {t('results.invalid')}
           </>
         )}
       </div>
@@ -86,37 +89,34 @@ export default function VerificationResults({ result }: VerificationResultsProps
               <h3 className={`text-lg font-medium ${
                 overallValid ? 'text-green-800' : 'text-red-800'
               }`}>
-                {overallValid ? 'Verification Successful' : 'Verification Failed'}
+                {overallValid ? t('results.successTitle') : t('results.failedTitle')}
               </h3>
               <p className={`text-sm ${
                 overallValid ? 'text-green-600' : 'text-red-600'
               }`}>
-                {overallValid 
-                  ? 'All verification checks passed'
-                  : 'One or more verification checks failed'
-                }
+                {overallValid ? t('results.successDesc') : t('results.failedDesc')}
               </p>
             </div>
           </div>
 
           <div className="bg-white rounded-lg shadow">
             <ResultItem 
-              label="Zero-Knowledge Proof" 
+              label={t('results.zkp')} 
               isValid={result.zkpValid}
               details={result.details.zkp}
             />
             <ResultItem 
-              label="Digital Signature" 
+              label={t('results.signature')} 
               isValid={result.signatureValid}
               details={result.details.signature}
             />
             <ResultItem 
-              label="PDF Hash Integrity" 
+              label={t('results.hash')} 
               isValid={result.hashValid}
               details={result.details.hash}
             />
             <ResultItem 
-              label="Verification Key Hash" 
+              label={t('results.vkeyHash')} 
               isValid={result.vkeyHashValid}
               details={result.details.vkeyHash}
             />
@@ -131,15 +131,13 @@ export default function VerificationResults({ result }: VerificationResultsProps
                   </svg>
                 </div>
                 <div className="ml-3">
-                  <h3 className="text-sm font-medium text-yellow-800">
-                    Possible Issues
-                  </h3>
+                  <h3 className="text-sm font-medium text-yellow-800">{t('results.possibleIssues')}</h3>
                   <div className="mt-2 text-sm text-yellow-700">
                     <ul className="list-disc list-inside space-y-1">
-                      {!result.zkpValid && <li>The zero-knowledge proof could not be verified</li>}
-                      {!result.signatureValid && <li>The digital signature is invalid</li>}
-                      {!result.hashValid && <li>The PDF content has been modified</li>}
-                      {!result.vkeyHashValid && <li>The verification key does not match</li>}
+                      {!result.zkpValid && <li>{t('results.issue.zkp')}</li>}
+                      {!result.signatureValid && <li>{t('results.issue.signature')}</li>}
+                      {!result.hashValid && <li>{t('results.issue.hash')}</li>}
+                      {!result.vkeyHashValid && <li>{t('results.issue.vkeyHash')}</li>}
                     </ul>
                   </div>
                 </div>

@@ -1,6 +1,7 @@
-'use client';
+"use client";
 
 import { useCallback } from 'react';
+import { useI18n } from './LanguageProvider';
 
 interface PdfUploadProps {
   onFileSelect: (file: File) => void;
@@ -8,6 +9,7 @@ interface PdfUploadProps {
 }
 
 export default function PdfUpload({ onFileSelect, selectedFile }: PdfUploadProps) {
+  const { t } = useI18n();
   const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     const file = e.dataTransfer.files[0];
@@ -29,9 +31,7 @@ export default function PdfUpload({ onFileSelect, selectedFile }: PdfUploadProps
 
   return (
     <div>
-      <h2 className="text-lg font-medium text-gray-900 mb-4">
-        PDF to Verify
-      </h2>
+      <h2 className="text-lg font-medium text-gray-900 mb-4">{t('pdfUpload.title')}</h2>
       <div
         onDrop={handleDrop}
         onDragOver={preventDefault}
@@ -54,7 +54,7 @@ export default function PdfUpload({ onFileSelect, selectedFile }: PdfUploadProps
         </svg>
         <p className="mt-2 text-sm text-gray-600">
           <label htmlFor="pdf-upload" className="relative cursor-pointer rounded-md font-medium text-green-600 hover:text-green-500">
-            <span>Upload a PDF file to verify</span>
+            <span>{t('pdfUpload.upload')}</span>
             <input
               id="pdf-upload"
               name="pdf-upload"
@@ -64,18 +64,18 @@ export default function PdfUpload({ onFileSelect, selectedFile }: PdfUploadProps
               onChange={handleFileInput}
             />
           </label>
-          <span className="pl-1">or drag and drop</span>
+          <span className="pl-1">{t('pdfUpload.orDrag')}</span>
         </p>
-        <p className="text-xs text-gray-500">PDF files with attached proofs</p>
+        <p className="text-xs text-gray-500">{t('pdfUpload.hint')}</p>
       </div>
       
       {selectedFile && (
         <div className="mt-4 p-4 bg-blue-50 rounded-lg">
           <p className="text-sm text-blue-800">
-            Selected: <span className="font-medium">{selectedFile.name}</span>
+            {t('pdfUpload.selected')} <span className="font-medium">{selectedFile.name}</span>
           </p>
           <p className="text-xs text-blue-600 mt-1">
-            Size: {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+            {t('pdfUpload.size')} {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
           </p>
         </div>
       )}

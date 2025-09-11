@@ -86,7 +86,7 @@ export default function Home() {
   const [isVerifying, setIsVerifying] = useState(false);
 
   // Function to load VK based on graduation year
-  const loadVKByYear = async (year: number): Promise<any | null> => {
+  const loadVKByYear = async (year: number): Promise<VKeyData | null> => {
     try {
       // Try to fetch from public directory with year-specific filename
       const response = await fetch(`/vkey_${year}.json`);
@@ -136,7 +136,7 @@ export default function Home() {
 
   const handleVerify = async () => {
     if (!pdfFile) {
-      alert('Please select a PDF file to verify');
+      alert(t('alerts.selectPdf'));
       return;
     }
 
@@ -356,15 +356,13 @@ export default function Home() {
             {/* VK Selection */}
             <div className="relative overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-gray-200">
               <div className="p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">検証鍵選択方法</h3>
+                <h3 className="text-lg font-medium text-gray-900 mb-4">{t('vkSection.title')}</h3>
                 <div className="space-y-4">
-                  <p className="text-sm text-gray-600">
-                    ローカルのVKファイルを選択するか、PDFに埋め込まれたVKを使用します。
-                  </p>
+                  <p className="text-sm text-gray-600">{t('vkSection.desc')}</p>
                   <div className="ml-1">
                     <KeyUpload
-                      title="Verification Key (vkey.json)"
-                      description="推奨: ローカルのVKファイルを選択。未選択の場合はPDF内のVKを使用します。"
+                      title={t('vkSection.key.title')}
+                      description={t('vkSection.key.desc')}
                       onFileSelect={setVkeyFile}
                       selectedFile={vkeyFile}
                       accept=".json"
@@ -376,8 +374,8 @@ export default function Home() {
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <KeyUpload
-                title="Public Key (webauthn_pub.jwk.json)"
-                description="Optional: If not provided, will use key from PDF"
+                title={t('keyUpload.publicKey.title')}
+                description={t('keyUpload.publicKey.desc')}
                 onFileSelect={setPublicKeyFile}
                 selectedFile={publicKeyFile}
                 accept=".json"

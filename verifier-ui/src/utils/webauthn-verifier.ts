@@ -1,5 +1,4 @@
 import type {
-  WebAuthnSignatureData,
   WebAuthnPublicKey,
   SignatureVerificationContext,
   ClientDataJSON,
@@ -94,7 +93,7 @@ export function createSignatureData(
  */
 export async function verifyWebAuthnSignature(
   context: SignatureVerificationContext,
-  expectedChallenge?: any
+  expectedChallenge?: unknown
 ): Promise<boolean> {
   try {
     console.log('=== Starting WebAuthn signature verification ===');

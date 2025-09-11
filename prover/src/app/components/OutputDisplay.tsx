@@ -29,7 +29,12 @@ interface VKeyData {
 }
 
 interface SignatureData {
-  jws: string;
+  webauthn: {
+    credentialId: string;
+    authenticatorData: string; // base64url
+    clientDataJSON: string; // base64url
+    signature: string; // base64url
+  };
   sig_target: {
     schema: string;
     circuit_id: string;
@@ -133,11 +138,11 @@ export default function OutputDisplay({ outputPdf, proofData, vkeyData, signatur
 
         <button
           onClick={() => {
-            const blob = new Blob([signatureData.jws], { type: 'text/plain' });
+            const blob = new Blob([JSON.stringify(signatureData.webauthn, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'sig.jws';
+            a.download = 'webauthn_sig.json';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -149,7 +154,7 @@ export default function OutputDisplay({ outputPdf, proofData, vkeyData, signatur
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16l2.879-2.879m0 0a3 3 0 104.243-4.242 3 3 0 00-4.243 4.242zM21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <span className="font-semibold">Signature</span>
-          <span className="text-xs text-gray-500">sig.jws</span>
+          <span className="text-xs text-gray-500">webauthn_sig.json</span>
         </button>
 
         <button

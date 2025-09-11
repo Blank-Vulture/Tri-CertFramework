@@ -57,7 +57,7 @@
 - 全システムの詳細なユニットテストやE2Eテストはプロダクション向けである。プロトタイプでは**段階的に教授が実際に確認する主要なユースケース**（例: Phase 0でのローカルVK選択・ZKP生成、Phase 1でのExecutive ConsoleによるVKデプロイとLedger署名、Phase 2での4システム統合）に絞って、ハッピーパス（正常系）の動作を確認する手動テストで十分。
 
 ## ブロックチェーン環境（方針更新）
-開発・検証容易性とコスト回避のため、プロトタイプのデフォルトは **Hardhat + Hardhat Network**（ローカルRPC）を採用する。必要に応じて zkEVM Cardona へ切替可能（オプション）。
+開発・検証容易性とコスト回避のため、プロトタイプのデフォルトは **Hardhat + Hardhat Network**（ローカルRPC）を採用する。デモ用途には **Ethereum Sepolia Testnet** を利用する。必要に応じて zkEVM Cardona はオプション（比較用）。
 
 ## MetaMask ネットワーク設定（推奨: Hardhat）
 
@@ -81,6 +81,16 @@
 | **ブロックエクスプローラー** | https://cardona-zkevm.polygonscan.com/ |
 | **フォーセット** | https://faucet.polygon.technology/ |
 | **ブリッジUI** | https://bridge-ui.cardona.zkevm-rpc.com |
+
+デモ用: Ethereum Sepolia Testnet（MetaMask 追加例）
+
+| 項目 | 設定値 |
+|-----|--------|
+| **ネットワーク名** | Ethereum Sepolia Testnet |
+| **RPC URL** | https://sepolia.infura.io/v3/YOUR_KEY または https://rpc.sepolia.org |
+| **チェーンID** | 11155111 |
+| **通貨シンボル** | SepoliaETH |
+| **ブロックエクスプローラー** | https://sepolia.etherscan.io/ |
 
 ## ツールの活用方法
 - GitHub PagesでVerifier UIを配布。

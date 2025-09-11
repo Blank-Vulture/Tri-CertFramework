@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useI18n } from './LanguageProvider';
 import WebAuthnSetup from './WebAuthnSetup';
 import {
   createWebAuthnAssertion,
@@ -89,6 +90,7 @@ export default function ProofGenerator({
   setIsProcessing,
   onProgress
 }: ProofGeneratorProps) {
+  const { t } = useI18n();
   const [status, setStatus] = useState('');
   const [secretInput, setSecretInput] = useState('');
   const [graduationYear, setGraduationYear] = useState<number>(new Date().getFullYear());
@@ -206,7 +208,7 @@ export default function ProofGenerator({
   return (
     <div className="space-y-8">
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-6">Generate Cryptographic Proof</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-6">{t('section.generateTitle')}</h3>
         
         <div className="space-y-8">
           {/* WebAuthn Setup */}

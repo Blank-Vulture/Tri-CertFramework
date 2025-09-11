@@ -70,13 +70,18 @@ async function testPdfAttachment() {
       }
     };
     
-    const mockSignature = "test.signature.here";
+    const mockWebAuthn = {
+      credentialId: "test-credential-id",
+      authenticatorData: "BASE64URL_AUTH_DATA",
+      clientDataJSON: "BASE64URL_CLIENT_DATA",
+      signature: "BASE64URL_SIGNATURE"
+    };
     const mockVkey = { test: "vkey" };
     const mockPubKey = { test: "pubkey" };
     
     const attachments = [
       { filename: 'proof.json', data: new TextEncoder().encode(JSON.stringify(mockProof, null, 2)) },
-      { filename: 'sig.jws', data: new TextEncoder().encode(mockSignature) },
+      { filename: 'webauthn_sig.json', data: new TextEncoder().encode(JSON.stringify(mockWebAuthn, null, 2)) },
       { filename: 'vkey.json', data: new TextEncoder().encode(JSON.stringify(mockVkey, null, 2)) },
       { filename: 'webauthn_pub.jwk.json', data: new TextEncoder().encode(JSON.stringify(mockPubKey, null, 2)) }
     ];

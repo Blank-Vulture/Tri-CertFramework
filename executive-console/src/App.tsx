@@ -103,6 +103,10 @@ function Settings() {
     const saved = localStorage.getItem('theme') as 'light' | 'dark' | null
     return saved ?? 'light'
   })
+  const [lang, setLang] = useState<'en' | 'ja'>(() => {
+    const saved = localStorage.getItem('lang') as 'en' | 'ja' | null
+    return saved ?? 'ja'
+  })
 
   const applyTheme = useCallback((next: 'light' | 'dark') => {
     const htmlEl = document.documentElement
@@ -117,6 +121,10 @@ function Settings() {
   useEffect(() => {
     applyTheme(theme)
   }, [theme, applyTheme])
+
+  useEffect(() => {
+    document.documentElement.lang = lang
+  }, [lang])
 
   const handleChange = (next: 'light' | 'dark') => {
     setTheme(next)
@@ -144,6 +152,21 @@ function Settings() {
           >
             ダーク
           </button>
+        </div>
+      </div>
+      <div className="rounded-lg border border-subtle surface p-4">
+        <h2 className="font-semibold mb-4 text-fg">言語設定</h2>
+        <div className="flex items-center gap-3">
+          <label htmlFor="lang-select" className="text-sm muted">表示言語</label>
+          <select
+            id="lang-select"
+            className="px-3 py-2 rounded-md border text-sm border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-fg"
+            value={lang}
+            onChange={(e) => { const v = e.target.value as 'en'|'ja'; setLang(v); localStorage.setItem('lang', v); }}
+          >
+            <option value="ja">日本語</option>
+            <option value="en">English</option>
+          </select>
         </div>
       </div>
     </div>

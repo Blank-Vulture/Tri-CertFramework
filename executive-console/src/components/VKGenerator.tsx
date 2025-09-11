@@ -1,6 +1,5 @@
 import React, { useState } from 'react'
 import type { VKInfo } from '../App'
-import { saveJsonFile, saveTextFile } from '../utils/download'
 // @ts-expect-error - snarkjs doesn't have proper TypeScript declarations
 import * as snarkjs from 'snarkjs'
 
@@ -164,13 +163,6 @@ const VKGenerator: React.FC<VKGeneratorProps> = ({ onVKGenerated }) => {
     }
   }
 
-  const downloadVKFile = async (vkInfo: VKInfo) => {
-    await saveJsonFile(`vkey_${vkInfo.year}.json`, vkInfo.vkey)
-  }
-
-  const downloadVKHash = async (vkInfo: VKInfo) => {
-    await saveTextFile(`vkey_hash_${vkInfo.year}.txt`, vkInfo.vkeyHash)
-  }
 
   const calculateVKeyHash = async (vkey: any): Promise<string> => {
     const crypto = await import('crypto-js')

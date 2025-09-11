@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useI18n } from './components/LanguageProvider';
 import FileUpload from './components/FileUpload';
 import ProofGenerator from './components/ProofGenerator';
 import OutputDisplay from './components/OutputDisplay';
@@ -34,7 +35,12 @@ interface VKeyData {
 }
 
 interface SignatureData {
-  jws: string;
+  webauthn: {
+    credentialId: string;
+    authenticatorData: string; // base64url
+    clientDataJSON: string; // base64url
+    signature: string; // base64url
+  };
   sig_target: {
     schema: string;
     circuit_id: string;
@@ -54,6 +60,7 @@ interface SignatureData {
 }
 
 export default function Home() {
+  const { t } = useI18n();
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [outputPdf, setOutputPdf] = useState<Blob | null>(null);
   const [proofData, setProofData] = useState<ProofData | null>(null);
@@ -95,7 +102,7 @@ export default function Home() {
             
             {/* Subtitle */}
             <p className="mt-6 text-lg leading-8 text-gray-600">
-              Generate zero-knowledge proofs and digital signatures for your PDF documents.
+              {t('hero.subtitle.prover')}
               <br />
               <span className="text-sm text-gray-500 font-mono">Secure • Private • Verifiable</span>
             </p>

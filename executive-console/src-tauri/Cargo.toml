@@ -25,7 +25,7 @@ log = "0.4"
 
 # Scope Tauri to macOS and Windows only to avoid Linux GTK/GLib stack in the lockfile
 [target.'cfg(any(target_os = "macos", target_os = "windows"))'.dependencies]
-tauri = { version = "2", default-features = false, features = ["macos-private-api"] }
+tauri = { version = "2", default-features = false, features = ["macos-private-api", "wry"] }
 tauri-plugin-log = "2"
 tauri-plugin-fs = "2"
 tauri-plugin-dialog = "2"

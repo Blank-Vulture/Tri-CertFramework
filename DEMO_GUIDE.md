@@ -66,7 +66,7 @@ npm run dev
    - "ZK Proof"でproof.jsonを取得
    - "Verify Key"でvkey.jsonを取得
    - "Public Key"でwebauthn_pub.jwk.jsonを取得
-   - "Signature"でsig.jwsを取得
+   - "Signature"でwebauthn_sig.jsonを取得
    - "Sig Target"でsig_target.jsonを取得
 
 ### Phase 2: Verifier UI（2分）
@@ -125,8 +125,8 @@ echo "Modified" >> test-modified.pdf
    - Poseidonハッシュによる効率的な計算
 
 2. **電子署名**
-   - WebAuthn ES256による署名
-   - JWS形式での署名格納
+   - WebAuthn ES256による署名（アサーション）
+   - webauthn_sig.json（署名データ）/ webauthn_pub.jwk.json（公開鍵）として格納
 
 3. **PDF統合**
    - PDF/A-3準拠の添付ファイル機能
@@ -137,7 +137,7 @@ echo "Modified" >> test-modified.pdf
    - VKハッシュによるすり替え防止
 
 ### Phase 0の制約事項
-- WebAuthnの実際の署名は開発中（モック実装）
+- WebAuthn署名は実装済み（アサーション検証を含む）
 - pdfcpuによる本格的な添付は後続フェーズ
 - 回路の最適化は今後の改善事項
 

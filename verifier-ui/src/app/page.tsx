@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useI18n } from './components/LanguageProvider';
 import PdfUpload from './components/PdfUpload';
 import KeyUpload from './components/KeyUpload';
 import VerificationResults from './components/VerificationResults';
@@ -77,6 +78,7 @@ interface ExtractedData {
 }
 
 export default function Home() {
+  const { t } = useI18n();
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [vkeyFile, setVkeyFile] = useState<File | null>(null);
   const [publicKeyFile, setPublicKeyFile] = useState<File | null>(null);
@@ -336,7 +338,7 @@ export default function Home() {
               TriCert <span className="gradient-text">Verifier</span>
             </h1>
             <p className="mt-6 text-lg leading-8 text-gray-600">
-              Verify zero-knowledge proofs and digital signatures embedded in your PDF.
+              {t('hero.subtitle.verifier')}
             </p>
           </div>
         </div>
@@ -387,7 +389,7 @@ export default function Home() {
               disabled={!pdfFile || isVerifying}
               className="group relative w-full flex items-center justify-center px-8 py-4 border border-transparent rounded-2xl text-base font-semibold text-white bg-gradient-to-r from-emerald-600 via-teal-600 to-green-600 hover:from-emerald-700 hover:via-teal-700 hover:to-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all duration-300 shadow-xl hover:shadow-2xl disabled:shadow-none"
             >
-              {isVerifying ? 'Verifying...' : 'Verify PDF'}
+              {isVerifying ? t('action.verifying') : t('action.verify')}
             </button>
             
             {verificationResult && (

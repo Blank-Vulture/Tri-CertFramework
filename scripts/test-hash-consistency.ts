@@ -64,7 +64,9 @@ async function simulateAttachedPdf(originalPdfData: Uint8Array): Promise<Uint8Ar
   const metadata = {
     attachments: [
       { name: 'proof.json', size: 100, data: 'mock-data' },
-      { name: 'sig.jws', size: 50, data: 'mock-sig' }
+      { name: 'webauthn_sig.json', size: 200, data: 'mock-webauthn-assertion' },
+      { name: 'webauthn_pub.jwk.json', size: 180, data: 'mock-pubkey' },
+      { name: 'sig_target.json', size: 140, data: 'mock-sig-target' }
     ]
   };
   

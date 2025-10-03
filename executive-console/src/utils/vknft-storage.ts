@@ -6,7 +6,12 @@ const BASE_DIR_STORAGE_KEY = 'tricert.vknft.baseDir'
 const decoder = new TextDecoder()
 
 function isTauri(): boolean {
-  return typeof window !== 'undefined' && '__TAURI__' in window
+  if (typeof window === 'undefined') {
+    return false
+  }
+  // Tauri v2 may use __TAURI_INTERNALS__ instead of __TAURI__
+  return '__TAURI_INTERNALS__' in window || '__TAURI__' in window || 
+         navigator.userAgent.includes('Tauri')
 }
 
 interface ManifestFileEntry {
@@ -87,6 +92,22 @@ export async function loadVkInfosFromVknft(): Promise<VKInfo[]> {
 
   for (const entry of entries) {
     if (!entry.name) continue
+    
+    // Skip hidden files, system files, and non-directory entries
+    if (
+      entry.name.startsWith('.') ||          // Hidden files (.DS_Store, .gitkeep, etc.)
+      entry.name === 'node_modules' ||       // npm directory
+      entry.name === 'Thumbs.db' ||          // Windows thumbnail cache
+      !entry.isDirectory                     // Skip files, only process directories
+    ) {
+      continue
+    }
+    
+    // Skip non-numeric directory names (year directories should be numbers)
+    const potentialYear = Number(entry.name)
+    if (Number.isNaN(potentialYear) || potentialYear < 2000 || potentialYear > 2100) {
+      continue
+    }
 
     try {
       const yearDir = await join(baseDir, entry.name)

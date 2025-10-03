@@ -21,15 +21,21 @@ function getFromPath(obj: Record<string, unknown>, path: string): string | undef
 const I18nContext = createContext<I18nContextType | null>(null);
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [lang, setLangState] = useState<Lang>(() => {
-    if (typeof window === 'undefined') return 'en';
+  // Avoid hydration mismatch: default to 'en' for SSR/first paint, then update after mount
+  const [lang, setLangState] = useState<Lang>('en');
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
     const urlLang = new URLSearchParams(window.location.search).get('lang');
-    if (urlLang === 'ja' || urlLang === 'en') return urlLang as Lang;
     const saved = window.localStorage.getItem('lang');
-    if (saved === 'ja' || saved === 'en') return saved as Lang;
     const nav = navigator.language || navigator.languages?.[0] || 'en';
-    return nav.toLowerCase().startsWith('ja') ? 'ja' : 'en';
-  });
+    const preferred = (urlLang === 'ja' || urlLang === 'en')
+      ? (urlLang as Lang)
+      : (saved === 'ja' || saved === 'en')
+        ? (saved as Lang)
+        : (nav.toLowerCase().startsWith('ja') ? 'ja' : 'en');
+    if (preferred !== lang) setLangState(preferred);
+  }, []);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {

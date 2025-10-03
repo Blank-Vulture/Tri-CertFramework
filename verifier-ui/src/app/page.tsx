@@ -134,6 +134,38 @@ export default function Home() {
     }
   };
 
+  async function readFileToArrayBuffer(file: File): Promise<ArrayBuffer> {
+    // Primary: modern File.arrayBuffer(); Fallback: FileReader for older/locked edge cases
+    try {
+      return await file.arrayBuffer();
+    } catch (err) {
+      console.warn('arrayBuffer() failed, falling back to FileReader', err);
+      // Retry once via FileReader to mitigate NotReadableError intermittently seen on locked files
+      const reader = new FileReader();
+      return await new Promise<ArrayBuffer>((resolve, reject) => {
+        reader.onerror = () => {
+          reject(reader.error || new DOMException('File read failed'));
+        };
+        reader.onload = () => {
+          if (reader.result instanceof ArrayBuffer) {
+            resolve(reader.result);
+          } else if (reader.result) {
+            // result may be a string in readAsText scenarios; convert if needed
+            const enc = new TextEncoder();
+            resolve(enc.encode(String(reader.result)).buffer);
+          } else {
+            reject(new DOMException('Empty file read result'));
+          }
+        };
+        try {
+          reader.readAsArrayBuffer(file);
+        } catch (e) {
+          reject(e);
+        }
+      });
+    }
+  }
+
   const handleVerify = async () => {
     if (!pdfFile) {
       alert(t('alerts.selectPdf'));
@@ -144,7 +176,21 @@ export default function Home() {
     
     try {
       // Extract data from PDF
-      const pdfBuffer = await pdfFile.arrayBuffer();
+      let pdfBuffer: ArrayBuffer;
+      try {
+        pdfBuffer = await readFileToArrayBuffer(pdfFile);
+      } catch (e) {
+        console.error('Failed to read PDF file:', e);
+        const name = (e as any)?.name || '';
+        // Provide actionable hints for NotReadableError / SecurityError
+        let msg = 'Failed to read the selected PDF file.';
+        if (name === 'NotReadableError' || name === 'SecurityError' || (e instanceof DOMException && (e.name === 'NotReadableError' || e.name === 'SecurityError'))) {
+          msg += '\n\nTips:\n• Close the PDF if it is open in another app (Preview/Adobe).\n• Re-select the file from disk (do not drag from recent downloads banner).\n• If stored on network/Cloud Drive, copy it locally and try again.';
+        }
+        alert(msg);
+        setIsVerifying(false);
+        return;
+      }
       const extractedData = await extractPdfData(pdfBuffer);
       // Pre-calculate normalized PDF hash for ZKP public signal reconstruction
       const calculatedHash = await calculatePdfHash(pdfBuffer);

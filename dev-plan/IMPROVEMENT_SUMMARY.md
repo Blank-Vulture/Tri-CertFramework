@@ -79,6 +79,7 @@ Dependencies: 最小限 (PDF-lib, Circom, SnarkJS)
 - ✅ MetaMask統合・Polygon zkEVM Cardona接続
 - ✅ VKManagerスマートコントラクト
 - ✅ ブロックチェーンVK保存・取得
+- ✅ Ledger署名済みZIP + GitHub Releases 配布フロー
 - ✅ 4システムでのブロックチェーン統合
 
 #### **デモ内容**
@@ -92,6 +93,7 @@ Frontend: Phase 0 + ethers.js
 Blockchain: Polygon zkEVM Cardona
 Contracts: Solidity + Hardhat
 Wallet: MetaMask
+Distribution: GitHub Actions + GitHub Releases（ZIP/署名）、ブロックチェーン（vk.json）
 ```
 
 ### **Phase 2: 高度機能・完全統合（3週間）**
@@ -106,6 +108,7 @@ Wallet: MetaMask
 - ✅ Ledger Nano X認証（Executive Console）
 - ✅ Merkle Tree統合（効率化・プライバシー）
 - ✅ 監査・透明性機能
+- ✅ web3.storage + ブロックチェーン連携による署名済みZIP配信
 
 #### **デモ内容**
 - 多要素認証の実演
@@ -118,6 +121,7 @@ Frontend: Phase 1 + Tauri (Desktop)
 Auth: WebAuthn + Ledger Hardware
 Data: Merkle Tree + IPFS
 Security: 多要素認証 + 暗号化
+Distribution: web3.storage（CID公開）+ GitHub Releases（ミラー）
 ```
 
 ---

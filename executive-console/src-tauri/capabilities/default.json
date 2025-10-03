@@ -7,7 +7,21 @@
   ],
   "permissions": [
     "core:default",
-    "dialog:allow-save",
-    "fs:allow-write-file"
+    "dialog:default",
+    "fs:default",
+    "fs:write-files",
+    {
+      "identifier": "fs:scope",
+      "allow": [
+        { "path": "$HOME" },
+        { "path": "$HOME/**" },
+        { "path": "$DOCUMENT" },
+        { "path": "$DOCUMENT/**" },
+        { "path": "$DOWNLOAD" },
+        { "path": "$DOWNLOAD/**" },
+        { "path": "$DESKTOP" },
+        { "path": "$DESKTOP/**" }
+      ]
+    }
   ]
 }

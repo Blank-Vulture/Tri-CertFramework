@@ -10,19 +10,23 @@
 ### **目標**
 - **高度認証**: パスキー（WebAuthn）+ Ledger Nano X の多要素認証
 - **Merkle Tree統合**: 効率的なデータ管理・プライバシー保護
+- **分散アーティファクト配布**: web3.storage へ署名済みZIPを公開し、ブロックチェーンと連携
 - **エンタープライズ機能**: 大学での本格運用に向けた機能
 - **完全統合**: 4システムの完全連携・教授向けデモ完成
 
 ### **機能拡張**
-- **Scholar Prover**: パスキー認証 + Merkle Proof生成
-- **Executive Console**: Ledger認証 + Merkle Root管理 + システム監視
-- **Registrar Console**: 完全な学生データ管理 + Merkle Tree構築
-- **Verifier UI**: 完全検証 + 透明性追跡 + 監査機能
+- **Scholar Prover**: パスキー認証 + Merkle Proof生成 + web3.storage からのZIP検証
+- **Executive Console**: Ledger認証 + Merkle Root管理 + システム監視 + web3.storage アップロード
+- **Registrar Console**: 完全な学生データ管理 + Merkle Tree構築 + CID参照UI
+- **Verifier UI**: 完全検証 + 透明性追跡 + 監査機能 + web3.storage 署名検証
+- **CI/CD パイプライン**: GitHub Actions から web3.storage への署名済みZIP自動アップロードと CID 公開
 
 ### **技術制約**
 - **バックエンド**: なし（完全フロントエンド）
 - **データベース**: なし（ブロックチェーン + Merkle Tree）
 - **ブロックチェーン**: 必須（Polygon zkEVM Cardona）
+- **分散ストレージ**: web3.storage（CID ベースの配布）
+- **配布チャネル**: GitHub Releases（ミラー） + web3.storage（本番用）
 - **ハードウェア**: パスキー対応デバイス + Ledger Nano X
 
 ---
@@ -110,6 +114,23 @@ Tri-CertFramework/
         ├── merkle.ts
         └── audit.ts
 ```
+
+---
+
+## 📦 **署名済みアーティファクト配布フロー（Phase 2）**
+
+1. **Ledger 署名付き ZIP を生成**  
+   - Phase 1 で確立したワークフローを継承し、年度ごとの ZIP / Manifest / `.sig` を出力。  
+   - Manifest に web3.storage CID フィールドを追加。
+2. **GitHub Actions で web3.storage へアップロード**  
+   - `web3.storage` CLI を利用し、署名済み ZIP をアップロードして CID を取得。  
+   - 同時に GitHub Releases にミラーとしてアップロード（従来フロー継続）。
+3. **ブロックチェーン登録**  
+   - コントラクトに `vk.json` 本文、CID、SHA3 ハッシュ、署名者情報を保存。  
+   - CID 更新時はイベントで履歴を追跡可能にする。
+4. **クライアント取得/検証**  
+   - Scholar Prover / Verifier UI は web3.storage から CID を取得。  
+   - Ledger 署名・CID・ハッシュ・ブロックチェーンの `vk.json` を照合し、整合性を確認後に利用。
 
 ---
 
@@ -600,10 +621,11 @@ export class MerkleTreeBuilder {
 
 ### **Week 3: 完全統合・最適化**
 
-#### **Day 15-17: システム統合**
-- 4システム完全連携
-- エラーハンドリング強化
-- パフォーマンス最適化
+#### **Day 15-17: 分散配布・システム統合**
+- GitHub Actions から web3.storage へ署名済みZIPをアップロードし CID を取得
+- CID・ハッシュ・署名情報をブロックチェーンへ登録するスクリプトを整備
+- Scholar Prover / Verifier UI に CID 取得 + 署名検証フローを実装
+- 4システム連携を再検証し、エラー処理とパフォーマンスを最適化
 
 #### **Day 18-21: 教授向けデモ準備**
 - デモンストレーションシナリオ作成
@@ -618,6 +640,7 @@ export class MerkleTreeBuilder {
 - [ ] パスキー認証完全動作
 - [ ] Ledger Nano X認証完全動作
 - [ ] Merkle Tree構築・検証完全動作
+- [ ] web3.storage 経由の署名済みZIP配布と CID 検証フローの確立
 - [ ] 4システム完全統合動作
 - [ ] エンタープライズ級パフォーマンス
 

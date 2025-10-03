@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import type { VKInfo, VerificationKey } from '../App'
 import { saveBinaryFile, saveJsonFile, saveTextFile, saveZipFile } from '../utils/download'
 import { deployToProver } from '../utils/prover-deployment'
+import { signExistingVknftBundle } from '../utils/vknft-bundle'
 
 interface VKManagerProps {
   vkList: VKInfo[]
@@ -19,6 +20,12 @@ const VKManager: React.FC<VKManagerProps> = ({ vkList, onVKDelete, onVKImport, o
     success: boolean
     message: string
     files: string[]
+  } | null>(null)
+  const [signingVK, setSigningVK] = useState<number | null>(null)
+  const [signatureResult, setSignatureResult] = useState<{
+    success: boolean
+    message: string
+    scheme: 'ledger-hardware' | null
   } | null>(null)
 
   useEffect(() => {
@@ -103,6 +110,42 @@ const VKManager: React.FC<VKManagerProps> = ({ vkList, onVKDelete, onVKImport, o
       setDeployingVK(null)
       // Auto-hide result after 5 seconds
       setTimeout(() => setDeploymentResult(null), 5000)
+    }
+  }
+
+  const signVKBundle = async (vk: VKInfo, index: number) => {
+    try {
+      setSigningVK(index)
+      setSignatureResult(null)
+
+      const result = await signExistingVknftBundle(vk.year)
+
+      if (result.success) {
+        setSignatureResult({
+          success: true,
+          message: `${vk.year}年度のVKバンドルにLedger署名を追加しました！`,
+          scheme: result.signatureScheme
+        })
+        // Refresh VK list to reflect signature status
+        await onRefresh?.()
+      } else {
+        setSignatureResult({
+          success: false,
+          message: '署名に失敗しました: ' + (result.error || '不明なエラー'),
+          scheme: null
+        })
+      }
+    } catch (e) {
+      console.error('Failed to sign VK bundle', e)
+      setSignatureResult({
+        success: false,
+        message: '署名中にエラーが発生しました: ' + (e as Error).message,
+        scheme: null
+      })
+    } finally {
+      setSigningVK(null)
+      // Auto-hide result after 5 seconds
+      setTimeout(() => setSignatureResult(null), 5000)
     }
   }
 
@@ -413,6 +456,66 @@ const VKManager: React.FC<VKManagerProps> = ({ vkList, onVKDelete, onVKImport, o
         </div>
       )}
 
+      {/* Signature Result Notification */}
+      {signatureResult && (
+        <div className={`relative overflow-hidden rounded-3xl border shadow-xl shadow-black/20 ${
+          signatureResult.success 
+            ? 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800'
+            : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+        }`}>
+          <div className="p-6">
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                {signatureResult.success ? (
+                  <svg className="h-6 w-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                ) : (
+                  <svg className="h-6 w-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                )}
+              </div>
+              <div className="ml-3 flex-1">
+                <h3 className={`text-sm font-medium ${
+                  signatureResult.success 
+                    ? 'text-purple-900 dark:text-purple-100'
+                    : 'text-red-900 dark:text-red-100'
+                }`}>
+                  {signatureResult.success ? '署名完了' : '署名失敗'}
+                </h3>
+                <p className={`mt-1 text-sm ${
+                  signatureResult.success 
+                    ? 'text-purple-700 dark:text-purple-200'
+                    : 'text-red-700 dark:text-red-200'
+                }`}>
+                  {signatureResult.message}
+                </p>
+                {signatureResult.success && signatureResult.scheme && (
+                  <div className="mt-2">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-800 dark:text-purple-100">
+                      🔐 Ledger Hardware
+                    </span>
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={() => setSignatureResult(null)}
+                className={`ml-3 ${
+                  signatureResult.success 
+                    ? 'text-purple-400 hover:text-purple-500 dark:text-purple-300 dark:hover:text-purple-200'
+                    : 'text-red-400 hover:text-red-500 dark:text-red-300 dark:hover:text-red-200'
+                }`}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* VK List */}
       <div className="relative overflow-hidden rounded-3xl surface border border-subtle shadow-xl shadow-black/20">
         <div className="p-8 sm:p-10">
@@ -498,6 +601,29 @@ const VKManager: React.FC<VKManagerProps> = ({ vkList, onVKDelete, onVKImport, o
                         </>
                       ) : (
                         'Proverに配置'
+                      )}
+                    </button>
+                    <button
+                      onClick={() => signVKBundle(vk, index)}
+                      disabled={signingVK === index}
+                      className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-amber-700 bg-amber-100 hover:bg-amber-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      title={vk.signaturePath ? '署名を更新' : '署名を追加'}
+                    >
+                      {signingVK === index ? (
+                        <>
+                          <svg className="animate-spin -ml-1 mr-1 h-3 w-3 text-amber-700" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          署名中
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                          </svg>
+                          {vk.signaturePath ? '再署名' : '署名'}
+                        </>
                       )}
                     </button>
                     <button

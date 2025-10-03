@@ -8,22 +8,25 @@
 ## 🎯 **Phase 1 概要**
 
 ### **目標**
-- **ブロックチェーン統合**: Phase 0の4システムにブロックチェーン機能を追加
+- **ブロックチェーン統合**: Phase 0のシステムにブロックチェーン機能を追加
 - **Trust Minimized**: 中央集権的な信頼を排除した設計
 - **スマートコントラクト**: VK管理のブロックチェーン実装
+- **署名済みアーティファクト流通**: Ledger Nano Xで署名した年度ZIPをGitHub Releasesで安全に配布
 - **実用性向上**: より本格的な証明書システムの実現
 
 ### **機能拡張**
 - **Scholar Prover**: ブロックチェーンVK取得 + メタマスク連携
-- **Executive Console**: スマートコントラクトデプロイ + VK管理
+- **Executive Console**: スマートコントラクトデプロイ + VK管理 + Ledger署名ワークフロー
 - **Registrar Console**: ブロックチェーンVKレジストリ管理
-- **Verifier UI**: ブロックチェーン検証 + 透明性確保
+- **Verifier UI**: ブロックチェーン検証 + 透明性確保 + GitHub Releases 署名検証
+- **CI/CD パイプライン**: GitHub Actions による署名済みZIPの自動リリース
 
 ### **技術制約**
 - **バックエンド**: なし（完全フロントエンド）
 - **データベース**: なし（ブロックチェーンストレージ）
 - **ブロックチェーン**: 必須（デフォルトは Hardhat/Hardhat Network、zkEVM Cardona はオプション）
-- **ハードウェア**: メタマスク（Ledger認証は Phase 2）
+- **ハードウェア**: MetaMask対応デバイス + Ledger Nano X（署名用）
+- **成果物配布**: GitHub Actions + GitHub Releases（ZIP本体） / ブロックチェーン（vk.json）
 
 ---
 
@@ -147,6 +150,25 @@ contract VKManager {
     }
 }
 ```
+
+---
+
+## 📦 **署名済みアーティファクト配布フロー（Phase 1）**
+
+1. **Executive Console で年度VKを生成**  
+   - Circom/SnarkJS で `commitment_<year>.wasm`、`commitment_final_<year>.zkey`、`vkey_<year>.json`、`manifest.json` を生成。  
+   - ZIP バンドルを作成し、Ledger Nano X で SHA3-256 ハッシュへ署名（`.zip` と `.zip.sig` を取得）。
+2. **GitHub Actions で自動リリース**  
+   - 署名済みファイルを `release` ブランチにコミット。  
+   - ワークフローがトリガされ、GitHub Releases にアップロード（年度タグ・リリースノート自動生成）。
+3. **ブロックチェーン登録**  
+   - スマートコントラクトへ `vk.json` 本文と ZIP の SHA3-256 ハッシュを登録。  
+   - イベントログに GitHub Releases の URL を残し、監査証跡を確保。
+4. **クライアント側検証**  
+   - Scholar Prover / Verifier UI は Releases から ZIP を取得し、Ledger 署名とハッシュを検証。  
+   - ブロックチェーン上の `vk.json` と一致することを確認後にローカルへ展開する。
+
+このフローにより、バックエンドレス構成を継続したまま、安全なアーティファクト配布とトレーサビリティを実現する。
 
 ---
 
@@ -351,6 +373,22 @@ export const MetaMaskConnector: React.FC<MetaMaskConnectorProps> = ({ onConnecti
 };
 ```
 
+#### **Day 5-7: Ledger署名 & GitHub Releases 自動化**
+
+##### **1.5 Ledger Nano X 署名連携**
+- Executive Console（Tauri）に Ledger 対応モジュールを追加し、年度 ZIP 生成後に署名ワークフローを起動。  
+- CLI 版 `ledgerctl` / `gpg --card-status` を利用し、署名済みファイル（`.zip` + `.zip.sig`）を生成。  
+- 署名結果を Manifest に追記（署名者、署名アルゴリズム、署名日時）。
+
+##### **1.6 GitHub Actions リリースパイプライン**
+- `/.github/workflows/release-artifacts.yml` を追加し、`release` ブランチへの push で実行。  
+- 署名済み ZIP / Manifest / `.sig` を GitHub Releases へアップロード。  
+- リリースノートにブロックチェーン登録用 SHA3-256 ハッシュと署名検証手順を自動挿入。
+
+##### **1.7 ブロックチェーン登録スクリプト**
+- `shared/scripts/register-vk.ts` を作成し、GitHub Releases の URL・ZIP ハッシュ・`vk.json` をコントラクトへ送信。  
+- Registrar Console / Executive Console からワンクリックで登録できる UI を準備。
+
 ### **Week 2: 各システム統合**
 
 #### **Day 8-10: Executive Console強化**
@@ -476,6 +514,7 @@ const blockchainIntegrationFlow = async () => {
 - [ ] MetaMask接続・Polygon zkEVM Cardona統合成功
 - [ ] スマートコントラクトデプロイ成功
 - [ ] VKのブロックチェーン保存・取得成功
+- [ ] Ledger署名済みZIPのGitHub Releases配布と検証フロー確立
 - [ ] 4システムでのブロックチェーン統合成功
 - [ ] Trust Minimized動作確認
 

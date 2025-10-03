@@ -4,6 +4,7 @@ import VKGenerator from './components/VKGenerator'
 import VKManager from './components/VKManager'
 import './App.css'
 import { loadVkInfosFromVknft, deleteVknftYear } from './utils/vknft-storage'
+import './utils/tauri-diagnostics' // Enable diagnostics globally
 
 export interface VKInfo {
   year: number;

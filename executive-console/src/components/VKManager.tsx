@@ -1,17 +1,29 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import type { VKInfo, VerificationKey } from '../App'
-import { saveJsonFile, saveTextFile } from '../utils/download'
+import { saveBinaryFile, saveJsonFile, saveTextFile, saveZipFile } from '../utils/download'
+import { deployToProver } from '../utils/prover-deployment'
 
 interface VKManagerProps {
   vkList: VKInfo[]
-  onVKDelete: (index: number) => void
+  onVKDelete: (vk: VKInfo) => Promise<void> | void
   onVKImport: (vk: VKInfo) => void
+  onRefresh?: () => Promise<void> | void
 }
 
-const VKManager: React.FC<VKManagerProps> = ({ vkList, onVKDelete, onVKImport }) => {
+const VKManager: React.FC<VKManagerProps> = ({ vkList, onVKDelete, onVKImport, onRefresh }) => {
   const [selectedVK, setSelectedVK] = useState<VKInfo | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<number | null>(null)
   const [isImporting, setIsImporting] = useState(false)
+  const [deployingVK, setDeployingVK] = useState<number | null>(null)
+  const [deploymentResult, setDeploymentResult] = useState<{
+    success: boolean
+    message: string
+    files: string[]
+  } | null>(null)
+
+  useEffect(() => {
+    onRefresh?.()
+  }, [onRefresh])
 
   const downloadVKFile = async (vk: VKInfo) => {
     try {
@@ -29,22 +41,111 @@ const VKManager: React.FC<VKManagerProps> = ({ vkList, onVKDelete, onVKImport })
     }
   }
 
+  const downloadCircuitArtifact = async (vk: VKInfo, type: 'wasm' | 'zkey') => {
+    const artifacts = vk.artifacts?.[type]
+    if (!artifacts) {
+      console.warn('No artifact data to download for', type, vk.year)
+      return
+    }
+
+    const description = type === 'wasm' ? 'WASM' : 'ZKey'
+    const extension = type
+    await saveBinaryFile(artifacts.fileName, artifacts.data, { description, extension })
+  }
+
+  const downloadVkBundle = async (vk: VKInfo) => {
+    const encoder = new TextEncoder()
+    const entries = [
+      {
+        name: `vkey_${vk.year}.json`,
+        data: encoder.encode(JSON.stringify(vk.vkey, null, 2)),
+      }
+    ]
+
+    if (vk.artifacts?.wasm) {
+      entries.push({ name: vk.artifacts.wasm.fileName, data: vk.artifacts.wasm.data })
+    }
+    if (vk.artifacts?.zkey) {
+      entries.push({ name: vk.artifacts.zkey.fileName, data: vk.artifacts.zkey.data })
+    }
+
+    await saveZipFile(`vk_${vk.year}_bundle.zip`, entries)
+  }
+
+  const deployVKToProver = async (vk: VKInfo, index: number) => {
+    try {
+      setDeployingVK(index)
+      setDeploymentResult(null)
+
+      const result = await deployToProver({ vk })
+
+      if (result.success) {
+        setDeploymentResult({
+          success: true,
+          message: `${vk.year}年度のVKとファイルをProverに正常に配置しました！`,
+          files: result.deployedFiles
+        })
+      } else {
+        setDeploymentResult({
+          success: false,
+          message: 'Proverへの配置に失敗しました: ' + result.errors.join(', '),
+          files: result.deployedFiles
+        })
+      }
+    } catch (e) {
+      console.error('Failed to deploy to prover', e)
+      setDeploymentResult({
+        success: false,
+        message: 'Proverへの配置中にエラーが発生しました: ' + (e as Error).message,
+        files: []
+      })
+    } finally {
+      setDeployingVK(null)
+      // Auto-hide result after 5 seconds
+      setTimeout(() => setDeploymentResult(null), 5000)
+    }
+  }
+
   const downloadAllVKs = async () => {
-    // Export verified bundle manifest (distribution-ready)
-    const bundle = {
+    const encoder = new TextEncoder()
+    const manifest = {
       schema: 'tri-cert/vk-bundle@1',
       generatedAt: new Date().toISOString(),
       items: vkList.map(vk => ({
         year: vk.year,
-        vkey: vk.vkey,
         vkeyHash: vk.vkeyHash,
         circuitId: vk.circuitId,
         createdAt: vk.createdAt,
-      }))
+        hasArtifacts: Boolean(vk.artifacts),
+        wasmFileName: vk.artifacts?.wasm.fileName ?? null,
+        zkeyFileName: vk.artifacts?.zkey.fileName ?? null,
+      })),
     }
 
+    const entries = [
+      {
+        name: 'vk_bundle_manifest.json',
+        data: encoder.encode(JSON.stringify(manifest, null, 2)),
+      },
+    ]
+
+    vkList.forEach((vk) => {
+      const basePath = `vk_${vk.year}`
+      entries.push({
+        name: `${basePath}/vkey_${vk.year}.json`,
+        data: encoder.encode(JSON.stringify(vk.vkey, null, 2)),
+      })
+
+      if (vk.artifacts?.wasm) {
+        entries.push({ name: `${basePath}/${vk.artifacts.wasm.fileName}`, data: vk.artifacts.wasm.data })
+      }
+      if (vk.artifacts?.zkey) {
+        entries.push({ name: `${basePath}/${vk.artifacts.zkey.fileName}`, data: vk.artifacts.zkey.data })
+      }
+    })
+
     try {
-      await saveJsonFile('vk_bundle_verified.json', bundle)
+      await saveZipFile('vk_bundle_verified.zip', entries)
     } catch (e) {
       console.error('Failed to save all VKs', e)
     }
@@ -105,9 +206,17 @@ const VKManager: React.FC<VKManagerProps> = ({ vkList, onVKDelete, onVKImport })
     }
   }
 
-  const confirmDelete = (index: number) => {
-    onVKDelete(index)
-    setShowDeleteConfirm(null)
+  const confirmDelete = async (index: number) => {
+    const target = vkList[index]
+    if (!target) {
+      setShowDeleteConfirm(null)
+      return
+    }
+    try {
+      await onVKDelete(target)
+    } finally {
+      setShowDeleteConfirm(null)
+    }
   }
 
   const formatDate = (isoString: string) => {
@@ -231,19 +340,94 @@ const VKManager: React.FC<VKManagerProps> = ({ vkList, onVKDelete, onVKImport })
         </div>
       </div>
 
+      {/* Deployment Result Notification */}
+      {deploymentResult && (
+        <div className={`relative overflow-hidden rounded-3xl border shadow-xl shadow-black/20 ${
+          deploymentResult.success 
+            ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+            : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+        }`}>
+          <div className="p-6">
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                {deploymentResult.success ? (
+                  <svg className="h-6 w-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                ) : (
+                  <svg className="h-6 w-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                )}
+              </div>
+              <div className="ml-3 flex-1">
+                <h3 className={`text-sm font-medium ${
+                  deploymentResult.success 
+                    ? 'text-green-900 dark:text-green-100'
+                    : 'text-red-900 dark:text-red-100'
+                }`}>
+                  {deploymentResult.success ? 'Prover配置完了' : 'Prover配置失敗'}
+                </h3>
+                <p className={`mt-1 text-sm ${
+                  deploymentResult.success 
+                    ? 'text-green-700 dark:text-green-200'
+                    : 'text-red-700 dark:text-red-200'
+                }`}>
+                  {deploymentResult.message}
+                </p>
+                {deploymentResult.files.length > 0 && (
+                  <div className="mt-2">
+                    <p className={`text-xs font-medium ${
+                      deploymentResult.success 
+                        ? 'text-green-800 dark:text-green-100'
+                        : 'text-red-800 dark:text-red-100'
+                    }`}>
+                      配置されたファイル:
+                    </p>
+                    <ul className={`mt-1 text-xs ${
+                      deploymentResult.success 
+                        ? 'text-green-600 dark:text-green-300'
+                        : 'text-red-600 dark:text-red-300'
+                    } font-mono`}>
+                      {deploymentResult.files.map((file, i) => (
+                        <li key={i}>• {file}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={() => setDeploymentResult(null)}
+                className={`ml-3 ${
+                  deploymentResult.success 
+                    ? 'text-green-400 hover:text-green-500 dark:text-green-300 dark:hover:text-green-200'
+                    : 'text-red-400 hover:text-red-500 dark:text-red-300 dark:hover:text-red-200'
+                }`}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* VK List */}
       <div className="relative overflow-hidden rounded-3xl surface border border-subtle shadow-xl shadow-black/20">
         <div className="p-8 sm:p-10">
           <h3 className="text-lg font-medium text-fg mb-6">年度別検証鍵一覧</h3>
           
           <div className="grid gap-4">
-            {vkList.map((vk, index) => (
-              <div key={index} className="border border-gray-200 dark:border-slate-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-4">
-                      <div className="flex-shrink-0">
-                        <div className="h-10 w-10 rounded-lg bg-blue-100 dark:bg-blue-800 flex items-center justify-center">
+            {vkList.map((vk, index) => {
+              const hasArtifacts = Boolean(vk.artifacts)
+              return (
+                <div key={index} className="border border-gray-200 dark:border-slate-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-4">
+                        <div className="flex-shrink-0">
+                          <div className="h-10 w-10 rounded-lg bg-blue-100 dark:bg-blue-800 flex items-center justify-center">
                           <span className="text-sm font-bold text-blue-600 dark:text-blue-300">{vk.year}</span>
                         </div>
                       </div>
@@ -272,6 +456,51 @@ const VKManager: React.FC<VKManagerProps> = ({ vkList, onVKDelete, onVKImport })
                       VK DL
                     </button>
                     <button
+                      onClick={() => downloadCircuitArtifact(vk, 'wasm')}
+                      disabled={!hasArtifacts}
+                      className={`inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded ${
+                        hasArtifacts
+                          ? 'text-indigo-700 bg-indigo-100 hover:bg-indigo-200'
+                          : 'text-indigo-300 bg-indigo-50 cursor-not-allowed'
+                      } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:focus:ring-0`}
+                    >
+                      WASM
+                    </button>
+                    <button
+                      onClick={() => downloadCircuitArtifact(vk, 'zkey')}
+                      disabled={!hasArtifacts}
+                      className={`inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded ${
+                        hasArtifacts
+                          ? 'text-purple-700 bg-purple-100 hover:bg-purple-200'
+                          : 'text-purple-300 bg-purple-50 cursor-not-allowed'
+                      } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:focus:ring-0`}
+                    >
+                      ZKey
+                    </button>
+                    <button
+                      onClick={() => downloadVkBundle(vk)}
+                      className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-slate-700 bg-slate-100 hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500"
+                    >
+                      ZIP
+                    </button>
+                    <button
+                      onClick={() => deployVKToProver(vk, index)}
+                      disabled={deployingVK === index}
+                      className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-purple-700 bg-purple-100 hover:bg-purple-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {deployingVK === index ? (
+                        <>
+                          <svg className="animate-spin -ml-1 mr-1 h-3 w-3 text-purple-700" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          配置中
+                        </>
+                      ) : (
+                        'Proverに配置'
+                      )}
+                    </button>
+                    <button
                       onClick={() => downloadVKHash(vk)}
                       className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-green-700 bg-green-100 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
                     >
@@ -287,16 +516,17 @@ const VKManager: React.FC<VKManagerProps> = ({ vkList, onVKDelete, onVKImport })
                 </div>
 
                 {/* VK Hash Preview */}
-                <div className="mt-3 pl-14">
-                  <div className="text-xs text-gray-500 dark:text-slate-400">
-                    <span className="font-medium">VK Hash:</span>
-                    <span className="ml-2 font-mono break-all">
-                      {vk.vkeyHash.substring(0, 32)}...
+                  <div className="mt-3 pl-14">
+                    <div className="text-xs text-gray-500 dark:text-slate-400">
+                      <span className="font-medium">VK Hash:</span>
+                      <span className="ml-2 font-mono break-all">
+                        {vk.vkeyHash.substring(0, 32)}...
                     </span>
                   </div>
                 </div>
               </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       </div>
@@ -334,6 +564,19 @@ const VKManager: React.FC<VKManagerProps> = ({ vkList, onVKDelete, onVKImport })
                 <div>
                   <dt className="font-medium text-gray-900 dark:text-slate-100">作成日時</dt>
                   <dd className="text-gray-700 dark:text-slate-300">{formatDate(selectedVK.createdAt)}</dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-gray-900 dark:text-slate-100">成果物</dt>
+                  <dd className="text-gray-700 dark:text-slate-300">
+                    {selectedVK.artifacts ? (
+                      <ul className="text-xs space-y-1 mt-1">
+                        <li className="font-mono">{selectedVK.artifacts.wasm.fileName}</li>
+                        <li className="font-mono">{selectedVK.artifacts.zkey.fileName}</li>
+                      </ul>
+                    ) : (
+                      <span className="text-xs muted">回路ファイルは含まれていません</span>
+                    )}
+                  </dd>
                 </div>
                 <div>
                   <dt className="font-medium text-gray-900 dark:text-slate-100">検証鍵JSON</dt>

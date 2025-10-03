@@ -3,6 +3,7 @@ import { Link, NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import VKGenerator from './components/VKGenerator'
 import VKManager from './components/VKManager'
 import './App.css'
+import { loadVkInfosFromVknft, deleteVknftYear } from './utils/vknft-storage'
 
 export interface VKInfo {
   year: number;
@@ -10,6 +11,19 @@ export interface VKInfo {
   vkeyHash: string;
   createdAt: string;
   circuitId: string;
+  artifacts?: {
+    wasm: {
+      fileName: string;
+      data: Uint8Array;
+    };
+    zkey: {
+      fileName: string;
+      data: Uint8Array;
+    };
+  };
+  bundlePath?: string;
+  manifestPath?: string;
+  signaturePath?: string;
 }
 
 export interface VerificationKey {
@@ -27,11 +41,14 @@ export interface VerificationKey {
     graduation_year?: number;
     circuit_id?: string;
     generated_at?: string;
+    circuit_wasm?: string;
+    circuit_zkey?: string;
   };
 }
 
 function AppShell({ children }: { children: React.ReactNode }) {
   const location = useLocation()
+  
   return (
     <div className="app-shell app-theme min-h-screen transition-colors bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:!bg-none flex">
       {/* Sidebar */}
@@ -194,24 +211,57 @@ function Settings() {
 function App() {
   const [vkList, setVKList] = useState<VKInfo[]>([])
 
+  const refreshVkList = useCallback(async () => {
+    try {
+      const loaded = await loadVkInfosFromVknft()
+      setVKList(loaded)
+    } catch (error) {
+      console.error('Failed to load VKNFT bundles', error)
+    }
+  }, [])
+
+  useEffect(() => {
+    refreshVkList()
+  }, [refreshVkList])
+
   const handleVKGenerated = (vkInfo: VKInfo) => {
-    setVKList(prev => [...prev, vkInfo])
+    setVKList(prev => {
+      const withoutYear = prev.filter(v => v.year !== vkInfo.year)
+      return [...withoutYear, vkInfo]
+    })
+    refreshVkList()
   }
 
-  const handleVKDelete = (index: number) => {
-    setVKList(prev => prev.filter((_, i) => i !== index))
+  const handleVKDelete = async (vk: VKInfo) => {
+    try {
+      await deleteVknftYear(vk.year)
+    } catch (error) {
+      console.error('Failed to delete VKNFT year directory', error)
+    }
+    refreshVkList()
   }
 
   const handleVKImported = (vkInfo: VKInfo) => {
     setVKList(prev => [...prev, vkInfo])
+    refreshVkList()
   }
 
   return (
     <AppShell>
       <Routes>
         <Route path="/" element={<Dashboard />} />
-        <Route path="/vk-generate" element={<VKGenerator onVKGenerated={handleVKGenerated} />} />
-        <Route path="/vk-manage" element={<VKManager vkList={vkList} onVKDelete={handleVKDelete} onVKImport={handleVKImported} />} />
+        <Route path="/vk-generate" element={<VKGenerator onVKGenerated={handleVKGenerated} onStorageUpdated={refreshVkList} />} />
+        <Route
+          path="/vk-manage"
+          element={
+            <VKManager
+              vkList={vkList}
+              onVKDelete={handleVKDelete}
+              onVKImport={handleVKImported}
+              onRefresh={refreshVkList}
+            />
+          }
+        />
         <Route path="/settings" element={<Settings />} />
       </Routes>
     </AppShell>

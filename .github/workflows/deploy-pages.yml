@@ -1,6 +1,7 @@
 name: Deploy to GitHub Pages
 
 on:
+<<<<<<< Updated upstream
   push:
     branches:
       - main
@@ -12,14 +13,38 @@ concurrency:
   cancel-in-progress: false
 
 # Set permissions for GitHub Pages
+=======
+  # mainブランチへのpushでトリガー
+  push:
+    branches:
+      - main
+  # 手動実行も可能
+  workflow_dispatch:
+  # PRのマージ時にも実行（オプション）
+  pull_request:
+    branches:
+      - main
+
+# GitHub Pagesデプロイに必要な権限
+>>>>>>> Stashed changes
 permissions:
   contents: read
   pages: write
   id-token: write
 
+<<<<<<< Updated upstream
 jobs:
   build:
     name: Build Applications
+=======
+# 同時実行を1つに制限（デプロイ競合を回避）
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+>>>>>>> Stashed changes
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -34,6 +59,7 @@ jobs:
             prover/package-lock.json
             verifier-ui/package-lock.json
 
+<<<<<<< Updated upstream
       - name: Install prover dependencies
         working-directory: ./prover
         run: npm ci
@@ -79,6 +105,111 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+=======
+      - name: Install dependencies (Prover)
+        working-directory: ./prover
+        run: npm ci
+
+      - name: Install dependencies (Verifier UI)
+        working-directory: ./verifier-ui
+        run: npm ci
+
+      - name: Build Prover (Static Export)
+        working-directory: ./prover
+        run: npm run build:export
+
+      - name: Build Verifier UI (Static Export)
+        working-directory: ./verifier-ui
+        run: npm run build:export
+
+      - name: Create deployment directory
+        run: |
+          mkdir -p deploy/dist
+          mkdir -p deploy/dist/prover
+          mkdir -p deploy/dist/verifier-ui
+
+      - name: Copy Prover build output
+        run: |
+          cp -r prover/out/* deploy/dist/prover/
+
+      - name: Copy Verifier UI build output
+        run: |
+          cp -r verifier-ui/out/* deploy/dist/verifier-ui/
+
+      - name: Create index.html redirect
+        run: |
+          cat > deploy/dist/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Tri-CertFramework</title>
+            <style>
+              body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                min-height: 100vh;
+                margin: 0;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+              }
+              .container {
+                text-align: center;
+                background: white;
+                padding: 2rem;
+                border-radius: 12px;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+              }
+              h1 {
+                margin: 0 0 1rem 0;
+                color: #333;
+              }
+              .links {
+                display: flex;
+                gap: 1rem;
+                justify-content: center;
+                flex-wrap: wrap;
+              }
+              a {
+                display: inline-block;
+                padding: 0.75rem 1.5rem;
+                background: #667eea;
+                color: white;
+                text-decoration: none;
+                border-radius: 6px;
+                transition: background 0.3s;
+              }
+              a:hover {
+                background: #5568d3;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <h1>Tri-CertFramework</h1>
+              <div class="links">
+                <a href="/Tri-CertFramework/prover/">Prover</a>
+                <a href="/Tri-CertFramework/verifier-ui/">Verifier UI</a>
+              </div>
+            </div>
+          </body>
+          </html>
+          EOF
+
+      - name: Upload pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './deploy/dist'
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+>>>>>>> Stashed changes
     steps:
       - name: Deploy to GitHub Pages
         id: deployment

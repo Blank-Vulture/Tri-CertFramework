@@ -1,6 +1,11 @@
 import type { NextConfig } from "next";
 import path from "path";
 
+// GitHub Pages用のbasePath設定
+// 環境変数 BASE_PATH が設定されている場合はそれを使用、なければ空文字列（開発用）
+const basePath = process.env.BASE_PATH || "";
+const assetPrefix = process.env.ASSET_PREFIX || basePath;
+
 const nextConfig: NextConfig = {
   // Static export for GitHub Pages
   output: 'export',
@@ -11,6 +16,16 @@ const nextConfig: NextConfig = {
   
   // Fix workspace root inference to this repo root
   outputFileTracingRoot: path.join(__dirname, ".."),
+  
+  // GitHub Pages用の設定
+  ...(process.env.NEXT_EXPORT === "true" && {
+    output: "export" as const,
+    basePath: basePath,
+    assetPrefix: assetPrefix,
+    images: {
+      unoptimized: true,
+    },
+  }),
   
   // Ensure CSS is properly processed
   transpilePackages: [],

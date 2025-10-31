@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:export": "NEXT_EXPORT=true BASE_PATH=/Tri-CertFramework/verifier-ui ASSET_PREFIX=/Tri-CertFramework/verifier-ui next build",
     "start": "next start",
     "lint": "eslint"
   },

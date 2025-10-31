@@ -181,10 +181,10 @@ export default function Home() {
         pdfBuffer = await readFileToArrayBuffer(pdfFile);
       } catch (e) {
         console.error('Failed to read PDF file:', e);
-        const name = (e as any)?.name || '';
+        const errorName = e instanceof Error ? e.name : e instanceof DOMException ? e.name : '';
         // Provide actionable hints for NotReadableError / SecurityError
         let msg = 'Failed to read the selected PDF file.';
-        if (name === 'NotReadableError' || name === 'SecurityError' || (e instanceof DOMException && (e.name === 'NotReadableError' || e.name === 'SecurityError'))) {
+        if (errorName === 'NotReadableError' || errorName === 'SecurityError' || (e instanceof DOMException && (e.name === 'NotReadableError' || e.name === 'SecurityError'))) {
           msg += '\n\nTips:\n• Close the PDF if it is open in another app (Preview/Adobe).\n• Re-select the file from disk (do not drag from recent downloads banner).\n• If stored on network/Cloud Drive, copy it locally and try again.';
         }
         alert(msg);

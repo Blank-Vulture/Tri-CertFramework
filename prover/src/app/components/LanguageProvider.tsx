@@ -36,7 +36,8 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
         ? (saved as Lang)
         : (nav.toLowerCase().startsWith('ja') ? 'ja' : 'en');
     if (preferred !== lang) setLangState(preferred);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount to initialize language
 
   useEffect(() => {
     if (typeof window !== 'undefined') {

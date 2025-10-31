@@ -570,7 +570,6 @@ function getAssetPath(path: string): string {
     
     // Fallback: Try to get from environment variable (set during build)
     if (!basePath) {
-      // @ts-expect-error - process.env is replaced by webpack DefinePlugin at build time
       const envBasePath = process.env.NEXT_PUBLIC_BASE_PATH;
       if (envBasePath && typeof envBasePath === 'string') {
         basePath = envBasePath;

@@ -50,10 +50,20 @@ jobs:
       - name: Build Prover (Static Export)
         working-directory: ./prover
         run: npm run build:export
+        env:
+          NEXT_EXPORT: "true"
+          BASE_PATH: "/Tri-CertFramework/prover"
+          ASSET_PREFIX: "/Tri-CertFramework/prover"
+          NEXT_PUBLIC_BASE_PATH: "/Tri-CertFramework/prover"
 
       - name: Build Verifier UI (Static Export)
         working-directory: ./verifier-ui
         run: npm run build:export
+        env:
+          NEXT_EXPORT: "true"
+          BASE_PATH: "/Tri-CertFramework/verifier-ui"
+          ASSET_PREFIX: "/Tri-CertFramework/verifier-ui"
+          NEXT_PUBLIC_BASE_PATH: "/Tri-CertFramework/verifier-ui"
 
       - name: Create deployment directory
         run: |

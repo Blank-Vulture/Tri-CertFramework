@@ -550,6 +550,40 @@ async function circuitAcceptsSignal(wasmPath: string, signalName: string): Promi
   }
 }
 
+// Helper function to get base path for asset loading
+// This is needed because fetch() calls don't automatically use Next.js basePath
+function getAssetPath(path: string): string {
+  // Detect basePath from the current location if deployed to GitHub Pages
+  // GitHub Pages URL pattern: https://username.github.io/repo-name/app/
+  let basePath = '';
+  
+  if (typeof window !== 'undefined') {
+    // Get the pathname and extract basePath
+    // For example: /Tri-CertFramework/prover/... -> basePath = /Tri-CertFramework/prover
+    const pathname = window.location.pathname;
+    
+    // Match the pattern /Tri-CertFramework/prover or /Tri-CertFramework/verifier-ui
+    const match = pathname.match(/^(\/Tri-CertFramework\/(?:prover|verifier-ui))/);
+    if (match) {
+      basePath = match[1];
+    }
+    
+    // Fallback: Try to get from environment variable (set during build)
+    if (!basePath) {
+      // @ts-expect-error - process.env is replaced by webpack DefinePlugin at build time
+      const envBasePath = process.env.NEXT_PUBLIC_BASE_PATH;
+      if (envBasePath && typeof envBasePath === 'string') {
+        basePath = envBasePath;
+      }
+    }
+  }
+  
+  // Remove trailing slash from basePath if present, ensure path starts with /
+  const normalizedBasePath = basePath.endsWith('/') ? basePath.slice(0, -1) : basePath;
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  return `${normalizedBasePath}${normalizedPath}`;
+}
+
 async function generateZKProof(secret: string, pdfHash: string, graduationYear: number, overrideVKey?: VKeyData): Promise<{ proof: ProofData; vkey: VKeyData }> {
   console.log('Starting ZKP generation with:', { 
     secret: secret.substring(0, 10) + '...', 
@@ -559,7 +593,13 @@ async function generateZKProof(secret: string, pdfHash: string, graduationYear: 
   
   try {
     // Load verification key first to get vkey hash
-    const vkey: VKeyData = overrideVKey ?? (await (await fetch('/vkey.json')).json());
+    const vkeyPath = getAssetPath('/vkey.json');
+    console.log('Loading verification key from:', vkeyPath);
+    const vkeyResponse = await fetch(vkeyPath);
+    if (!vkeyResponse.ok) {
+      throw new Error(`Failed to load vkey.json: ${vkeyResponse.status} ${vkeyResponse.statusText}`);
+    }
+    const vkey: VKeyData = overrideVKey ?? (await vkeyResponse.json());
     const vkeyHash = await calculateVKeyHash(vkey);
 
     // Prepare circuit inputs (compatible with both legacy and year-aware circuits)
@@ -571,11 +611,11 @@ async function generateZKProof(secret: string, pdfHash: string, graduationYear: 
     const pdfHashBigInt = BigInt('0x' + pdfHash.slice(0, 60)); // Use first 60 chars to fit in field
     
     // Prefer year-specific assets if available; fallback to default Phase 0 assets
-    let wasmPath = '/commitment_js/commitment.wasm';
-    let zkeyPath = '/commitment_final.zkey';
+    let wasmPath = getAssetPath('/commitment_js/commitment.wasm');
+    let zkeyPath = getAssetPath('/commitment_final.zkey');
     try {
-      const wasmYear = `/commitment_js/commitment_${graduationYear}.wasm`;
-      const zkeyYear = `/commitment_final_${graduationYear}.zkey`;
+      const wasmYear = getAssetPath(`/commitment_js/commitment_${graduationYear}.wasm`);
+      const zkeyYear = getAssetPath(`/commitment_final_${graduationYear}.zkey`);
       const [wr, zr] = await Promise.all([
         fetch(wasmYear, { method: 'HEAD' }).catch(() => null),
         fetch(zkeyYear, { method: 'HEAD' }).catch(() => null),
@@ -605,6 +645,21 @@ async function generateZKProof(secret: string, pdfHash: string, graduationYear: 
     console.log('Circuit inputs prepared:', input);
     
     console.log('Loading circuit files:', { wasmPath, zkeyPath });
+    
+    // Verify assets exist before attempting proof generation
+    const [wasmCheck, zkeyCheck] = await Promise.all([
+      fetch(wasmPath, { method: 'HEAD' }).catch(() => null),
+      fetch(zkeyPath, { method: 'HEAD' }).catch(() => null),
+    ]);
+    
+    if (!wasmCheck || !wasmCheck.ok) {
+      throw new Error(`WASM file not found: ${wasmPath} (status: ${wasmCheck?.status || 'network error'})`);
+    }
+    if (!zkeyCheck || !zkeyCheck.ok) {
+      throw new Error(`ZKey file not found: ${zkeyPath} (status: ${zkeyCheck?.status || 'network error'})`);
+    }
+    
+    console.log('Circuit assets verified, generating proof...');
     
     // Generate proof using snarkjs
     const { proof, publicSignals } = await snarkjs.groth16.fullProve(

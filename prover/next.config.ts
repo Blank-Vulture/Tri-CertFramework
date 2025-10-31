@@ -44,6 +44,16 @@ const nextConfig: NextConfig = {
         path: false,
         crypto: false,
       };
+      
+      // Inject NEXT_PUBLIC_BASE_PATH for client-side usage
+      if (process.env.NEXT_EXPORT === "true" && basePath) {
+        config.plugins = config.plugins || [];
+        config.plugins.push(
+          new (require('webpack').DefinePlugin)({
+            'process.env.NEXT_PUBLIC_BASE_PATH': JSON.stringify(basePath),
+          })
+        );
+      }
     }
     
     // Suppress critical dependency warnings for web-worker

@@ -39,6 +39,7 @@ yarn-error.log*
 *.pfx
 private-keys/
 secrets/
+registrations/issuance-log.json
 
 # Temporary files
 *.tmp

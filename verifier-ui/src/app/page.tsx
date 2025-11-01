@@ -7,6 +7,7 @@ import KeyUpload from './components/KeyUpload';
 import VerificationResults from './components/VerificationResults';
 import { verifyWebAuthnComplete } from '../utils/webauthn-verifier';
 import type { SignatureVerificationContext } from '../types/webauthn';
+import { checkRegistration } from '../utils/registration-checker';
 
 // Type definitions
 interface ProofData {
@@ -42,11 +43,13 @@ interface VerificationResult {
   signatureValid: boolean;
   hashValid: boolean;
   vkeyHashValid: boolean;
+  registrationValid?: boolean;
   details: {
     zkp?: string;
     signature?: string;
     hash?: string;
     vkeyHash?: string;
+    registration?: string;
   };
 }
 
@@ -320,6 +323,39 @@ export default function Home() {
         });
       }
       
+      // Check student registration
+      let registrationValid = false;
+      let registrationDetails = 'Registration check not performed';
+      
+      if (extractedData.publicKey || (publicKeyFile && extractedData.webauthnSignature)) {
+        const pubKey = publicKeyFile ? JSON.parse(await publicKeyFile.text()) : extractedData.publicKey;
+        
+        if (pubKey) {
+          console.log('=== Starting Registration Check ===');
+          try {
+            const registrationResult = await checkRegistration(pubKey);
+            registrationValid = registrationResult.isRegistered;
+            
+            if (registrationResult.isRegistered) {
+              registrationDetails = '✅ Registered Student - This PDF was submitted by a verified student';
+            } else if (registrationResult.error) {
+              registrationDetails = `⚠️ Registration check failed: ${registrationResult.error}`;
+            } else {
+              registrationDetails = '❌ Unregistered Public Key - This signature is valid but the student is not registered in the system';
+            }
+            
+            console.log('Registration check result:', {
+              isRegistered: registrationResult.isRegistered,
+              thumbprint: registrationResult.thumbprint,
+              error: registrationResult.error,
+            });
+          } catch (registrationError) {
+            console.error('Registration check error:', registrationError);
+            registrationDetails = `Registration check error: ${registrationError instanceof Error ? registrationError.message : 'Unknown error'}`;
+          }
+        }
+      }
+      
       // Verify PDF hash (re-use pre-calculated value)
       const expectedHash = extractedData.proof?.public_signals?.pdf_sha3_512;
       const hashValid = expectedHash === `hex:${calculatedHash}`;
@@ -342,11 +378,13 @@ export default function Home() {
         signatureValid,
         hashValid,
         vkeyHashValid,
+        registrationValid,
         details: {
           zkp: zkpDetails,
           signature: signatureDetails,
           hash: hashValid ? 'PDF hash matches' : 'PDF hash mismatch',
-          vkeyHash: vkeyHashValid ? 'VKey hash matches' : 'VKey hash mismatch'
+          vkeyHash: vkeyHashValid ? 'VKey hash matches' : 'VKey hash mismatch',
+          registration: registrationDetails,
         }
       });
     } catch (error) {

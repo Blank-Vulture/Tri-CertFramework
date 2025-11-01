@@ -1,0 +1,13 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "registrar-console",
+  "outputfilename": "registrar-console",
+  "frontend:install": "npm install",
+  "frontend:build": "npm run build",
+  "frontend:dev:watcher": "npm run dev",
+  "frontend:dev:serverUrl": "auto",
+  "author": {
+    "name": "Blank-Vulture",
+    "email": "166619679+Blank-Vulture@users.noreply.github.com"
+  }
+}

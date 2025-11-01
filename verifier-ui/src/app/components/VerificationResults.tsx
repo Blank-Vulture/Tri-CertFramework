@@ -7,11 +7,13 @@ interface VerificationResult {
   signatureValid: boolean;
   hashValid: boolean;
   vkeyHashValid: boolean;
+  registrationValid?: boolean;
   details: {
     zkp?: string;
     signature?: string;
     hash?: string;
     vkeyHash?: string;
+    registration?: string;
   };
 }
 
@@ -21,7 +23,7 @@ interface VerificationResultsProps {
 
 export default function VerificationResults({ result }: VerificationResultsProps) {
   const { t } = useI18n();
-  const overallValid = result.zkpValid && result.signatureValid && result.hashValid && result.vkeyHashValid;
+  const overallValid = result.zkpValid && result.signatureValid && result.hashValid && result.vkeyHashValid && (result.registrationValid !== false);
   
   const ResultItem = ({ 
     label, 
@@ -120,6 +122,13 @@ export default function VerificationResults({ result }: VerificationResultsProps
               isValid={result.vkeyHashValid}
               details={result.details.vkeyHash}
             />
+            {result.registrationValid !== undefined && (
+              <ResultItem 
+                label="Student Registration" 
+                isValid={result.registrationValid}
+                details={result.details.registration}
+              />
+            )}
           </div>
 
           {!overallValid && (
@@ -138,6 +147,7 @@ export default function VerificationResults({ result }: VerificationResultsProps
                       {!result.signatureValid && <li>{t('results.issue.signature')}</li>}
                       {!result.hashValid && <li>{t('results.issue.hash')}</li>}
                       {!result.vkeyHashValid && <li>{t('results.issue.vkeyHash')}</li>}
+                      {result.registrationValid === false && <li>Student is not registered in the system</li>}
                     </ul>
                   </div>
                 </div>

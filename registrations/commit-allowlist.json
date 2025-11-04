@@ -1,5 +1,12 @@
 {
   "schema": "tri-cert/commit-allowlist@1",
-  "updated_at": "2025-11-01T09:10:31Z",
-  "entries": []
+  "updated_at": "2025-11-01T09:20:13Z",
+  "entries": [
+    {
+      "activation_hash": "sha512:adb4332a2195b39e40ef9682ef28db1d23319c32f84d421989ced7b93530bb4814143781321e3f942a54072799fcf43fa1d6e3d806f30d584f4cd622dec6c304",
+      "student_id_hash": "sha512:fce735acc45b30563ed958f345924064afe11a76afde17886db2fdd81804d2ad155386dcc8f463b7c82572ca414a1726677fc0225584e835f242d188e9e759af",
+      "created_at": "2025-11-01T09:20:13Z",
+      "updated_at": "2025-11-01T09:20:13Z"
+    }
+  ]
 }

@@ -25,8 +25,39 @@ export interface SaltVerificationResult {
 /**
  * GitHub raw URL for the commit allowlist
  * This should point to the registrar's published allowlist
+ * Can be overridden via NEXT_PUBLIC_ALLOWLIST_URL environment variable
  */
-const ALLOWLIST_URL = 'https://raw.githubusercontent.com/Blank-Vulture/Tri-CertFramework/main/registrations/commit-allowlist.json';
+const DEFAULT_ALLOWLIST_URL = 'https://raw.githubusercontent.com/Blank-Vulture/Tri-CertFramework/main/registrations/commit-allowlist.json';
+const ALLOWLIST_URL = process.env.NEXT_PUBLIC_ALLOWLIST_URL || DEFAULT_ALLOWLIST_URL;
+
+// Expected schema for integrity verification
+const EXPECTED_ALLOWLIST_SCHEMA = 'tri-cert/commit-allowlist@1';
+
+/**
+ * Validate allowlist structure for integrity
+ */
+function validateAllowlistIntegrity(data: unknown): data is AllowlistFile {
+  if (!data || typeof data !== 'object') return false;
+  const obj = data as Record<string, unknown>;
+  
+  // Schema validation
+  if (typeof obj.schema !== 'string' || !obj.schema.startsWith('tri-cert/commit-allowlist@')) {
+    return false;
+  }
+  
+  // Structure validation
+  if (!Array.isArray(obj.entries)) return false;
+  
+  // Entry validation
+  for (const entry of obj.entries) {
+    if (!entry || typeof entry !== 'object') return false;
+    const e = entry as Record<string, unknown>;
+    if (typeof e.activation_hash !== 'string' || !e.activation_hash.startsWith('sha512:')) return false;
+    if (typeof e.student_id_hash !== 'string' || !e.student_id_hash.startsWith('sha512:')) return false;
+  }
+  
+  return true;
+}
 
 /**
  * Calculate activation hash from salt, name, and birthdate
@@ -115,8 +146,6 @@ function arrayBufferToHex(buffer: ArrayBuffer): string {
  */
 export async function fetchAllowlist(): Promise<AllowlistFile | null> {
   try {
-    console.log('Fetching allowlist from:', ALLOWLIST_URL);
-    
     const response = await fetch(ALLOWLIST_URL, {
       method: 'GET',
       headers: {
@@ -126,20 +155,18 @@ export async function fetchAllowlist(): Promise<AllowlistFile | null> {
     });
 
     if (!response.ok) {
-      console.error('Failed to fetch allowlist:', response.status, response.statusText);
       return null;
     }
 
-    const allowlist: AllowlistFile = await response.json();
-    console.log('Allowlist fetched successfully:', {
-      schema: allowlist.schema,
-      entryCount: allowlist.entries?.length || 0,
-      updatedAt: allowlist.updated_at,
-    });
-
-    return allowlist;
-  } catch (error) {
-    console.error('Error fetching allowlist:', error);
+    const data: unknown = await response.json();
+    
+    // Integrity validation
+    if (!validateAllowlistIntegrity(data)) {
+      return null;
+    }
+    
+    return data;
+  } catch {
     return null;
   }
 }
@@ -155,7 +182,6 @@ export async function verifySalt(
   try {
     // Calculate activation hash
     const activationHash = await calculateActivationHash(salt, name, birthdate);
-    console.log('Calculated activation hash:', activationHash);
 
     // Fetch allowlist
     const allowlist = await fetchAllowlist();
@@ -172,11 +198,6 @@ export async function verifySalt(
     const entry = allowlist.entries.find(e => e.activation_hash === activationHash);
     
     if (entry) {
-      console.log('Salt verified successfully:', {
-        activationHash,
-        studentIdHash: entry.student_id_hash,
-      });
-      
       return {
         isValid: true,
         activationHash,
@@ -184,17 +205,15 @@ export async function verifySalt(
       };
     }
 
-    console.log('Salt not found in allowlist');
     return {
       isValid: false,
       activationHash,
       error: 'This salt is not registered. Please contact your registrar.',
     };
   } catch (error) {
-    console.error('Salt verification error:', error);
     return {
       isValid: false,
-      error: error instanceof Error ? error.message : 'Unknown error during verification',
+      error: 'Verification failed. Please try again.',
     };
   }
 }

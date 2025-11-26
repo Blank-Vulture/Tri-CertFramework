@@ -67,7 +67,8 @@
       "generatingZkp": "Generating proof...",
       "signing": "Creating signature...",
       "attaching": "Embedding in PDF...",
-      "complete": "Complete!"
+      "complete": "Complete!",
+      "error": "An error occurred. Please try again"
     },
     "progress": {
       "selected": "📄 PDF selected",

@@ -67,7 +67,8 @@
       "generatingZkp": "証明を生成中...",
       "signing": "署名を作成中...",
       "attaching": "PDFに埋め込み中...",
-      "complete": "完了しました！"
+      "complete": "完了しました！",
+      "error": "処理中にエラーが発生しました。もう一度お試しください"
     },
     "progress": {
       "selected": "📄 PDFを選択しました",

@@ -63,8 +63,6 @@ export async function registerWebAuthnCredential(): Promise<PublicKeyCredential>
     timeout: 60000,
   };
 
-  console.log('Creating WebAuthn credential with options:', createOptions);
-
   try {
     const credential = await navigator.credentials.create({
       publicKey: createOptions,
@@ -76,7 +74,6 @@ export async function registerWebAuthnCredential(): Promise<PublicKeyCredential>
 
     return credential as PublicKeyCredential;
   } catch (error) {
-    console.error('WebAuthn registration failed:', error);
     if (error instanceof Error) {
       throw new Error(`WebAuthn registration failed: ${error.message}`);
     }
@@ -121,8 +118,6 @@ export async function createWebAuthnAssertion(
     timeout: 60000,
   };
 
-  console.log('Creating WebAuthn assertion with options:', requestOptions);
-
   try {
     const assertion = await navigator.credentials.get({
       publicKey: requestOptions,
@@ -150,7 +145,6 @@ export async function createWebAuthnAssertion(
       sig_target: dataToSign,
     };
   } catch (error) {
-    console.error('WebAuthn assertion failed:', error);
     if (error instanceof Error) {
       throw new Error(`WebAuthn assertion failed: ${error.message}`);
     }
@@ -165,14 +159,9 @@ export async function extractPublicKeyFromAttestation(
   attestationResponse: AuthenticatorAttestationResponse
 ): Promise<{ x: string; y: string }> {
   try {
-    console.log('Starting public key extraction from attestation');
-    
     // Decode CBOR attestation object
     const attestationObjectBytes = new Uint8Array(attestationResponse.attestationObject);
-    console.log('Attestation object size:', attestationObjectBytes.length);
-    
     const attestationObject = cborDecode(attestationObjectBytes);
-    console.log('Decoded attestation object:', Object.keys(attestationObject));
     
     if (!attestationObject.authData) {
       throw new Error('No authData found in attestation object');
@@ -188,28 +177,16 @@ export async function extractPublicKeyFromAttestation(
       throw new Error('Invalid authData format');
     }
     
-    console.log('AuthData length:', authData.length);
-    
     if (authData.length < 37) {
-      throw new Error(`Invalid authenticator data length: ${authData.length}, minimum 37 required`);
+      throw new Error('Invalid authenticator data');
     }
 
     // Parse authenticator data structure
-    const rpIdHash = authData.slice(0, 32);
     const flags = authData[32];
-    const signCount = new DataView(authData.buffer.slice(authData.byteOffset + 33, authData.byteOffset + 37)).getUint32(0, false);
-    
-    console.log('AuthData parsed:', {
-      rpIdHashLength: rpIdHash.length,
-      flags: `0x${flags.toString(16)}`,
-      signCount,
-      hasAttestedCredData: !!(flags & 0x40),
-      hasExtensions: !!(flags & 0x80)
-    });
     
     // Check if attested credential data is present (AT flag)
     if (!(flags & 0x40)) {
-      throw new Error('No attested credential data present (AT flag not set)');
+      throw new Error('No attested credential data present');
     }
 
     // Skip to credential data (after fixed-length fields)
@@ -217,57 +194,48 @@ export async function extractPublicKeyFromAttestation(
     
     // Verify we have enough data for AAGUID
     if (authData.length < offset + 16) {
-      throw new Error(`Insufficient data for AAGUID at offset ${offset}`);
+      throw new Error('Insufficient data for AAGUID');
     }
     
     // Skip AAGUID (16 bytes)
-    const aaguid = authData.slice(offset, offset + 16);
     offset += 16;
-    console.log('AAGUID:', Array.from(aaguid).map(b => b.toString(16).padStart(2, '0')).join(''));
     
     // Verify we have enough data for credential ID length
     if (authData.length < offset + 2) {
-      throw new Error(`Insufficient data for credential ID length at offset ${offset}`);
+      throw new Error('Insufficient data for credential ID length');
     }
     
     // Get credential ID length (2 bytes, big-endian)
     const credIdLength = new DataView(authData.buffer.slice(authData.byteOffset + offset, authData.byteOffset + offset + 2)).getUint16(0, false);
     offset += 2;
-    console.log('Credential ID length:', credIdLength);
     
     // Verify we have enough data for credential ID
     if (authData.length < offset + credIdLength) {
-      throw new Error(`Insufficient data for credential ID at offset ${offset}, length ${credIdLength}`);
+      throw new Error('Insufficient data for credential ID');
     }
     
     // Skip credential ID
-    const credentialId = authData.slice(offset, offset + credIdLength);
     offset += credIdLength;
-    console.log('Credential ID:', arrayBufferToBase64url(credentialId.buffer));
     
     // Verify we have data for public key
     if (authData.length <= offset) {
-      throw new Error(`No public key data at offset ${offset}, authData length ${authData.length}`);
+      throw new Error('No public key data found');
     }
     
     // Parse CBOR-encoded public key
     const publicKeyBytes = authData.slice(offset);
-    console.log('Public key CBOR data size:', publicKeyBytes.length);
-    console.log('Public key CBOR data (first 32 bytes):', Array.from(publicKeyBytes.slice(0, 32)).map(b => b.toString(16).padStart(2, '0')).join(' '));
-    
     const publicKeyData = cborDecode(publicKeyBytes) as CBORData;
-    console.log('Decoded public key data:', publicKeyData);
     
     // Extract coordinates for P-256 curve
     // COSE key parameters: kty=1(EC), alg=3(-7 for ES256), crv=-1(1 for P-256), x=-2, y=-3
     if (publicKeyData[1] !== 2) {
-      throw new Error(`Unsupported key type: ${publicKeyData[1]}, expected 2 (EC)`);
+      throw new Error('Unsupported key type');
     }
     if (publicKeyData[3] !== -7) {
-      throw new Error(`Unsupported algorithm: ${publicKeyData[3]}, expected -7 (ES256)`);
+      throw new Error('Unsupported algorithm');
     }
     if (publicKeyData[-1] !== 1) {
-      throw new Error(`Unsupported curve: ${publicKeyData[-1]}, expected 1 (P-256)`);
+      throw new Error('Unsupported curve');
     }
     
     if (!publicKeyData[-2] || !publicKeyData[-3]) {
@@ -277,16 +245,9 @@ export async function extractPublicKeyFromAttestation(
     const x = arrayBufferToBase64url(publicKeyData[-2]);
     const y = arrayBufferToBase64url(publicKeyData[-3]);
     
-    console.log('Extracted public key coordinates:', { x: x.substring(0, 16) + '...', y: y.substring(0, 16) + '...' });
-    
     return { x, y };
   } catch (error) {
-    console.error('Failed to extract public key from attestation:', error);
-    console.error('Error details:', {
-      message: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined
-    });
-    throw new Error(`Failed to extract public key from attestation: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new Error(`Failed to extract public key: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 

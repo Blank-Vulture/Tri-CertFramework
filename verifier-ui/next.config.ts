@@ -6,6 +6,26 @@ import path from "path";
 const basePath = process.env.BASE_PATH || "";
 const assetPrefix = process.env.ASSET_PREFIX || basePath;
 
+// Security headers configuration
+const securityHeaders = [
+  {
+    key: 'X-Content-Type-Options',
+    value: 'nosniff',
+  },
+  {
+    key: 'X-Frame-Options',
+    value: 'DENY',
+  },
+  {
+    key: 'X-XSS-Protection',
+    value: '1; mode=block',
+  },
+  {
+    key: 'Referrer-Policy',
+    value: 'strict-origin-when-cross-origin',
+  },
+];
+
 const nextConfig: NextConfig = {
   // Static export for GitHub Pages
   output: 'export',
@@ -13,6 +33,16 @@ const nextConfig: NextConfig = {
   // GitHub Pages base path
   basePath: process.env.NODE_ENV === 'production' ? '/Tri-CertFramework/verifier' : '',
   assetPrefix: process.env.NODE_ENV === 'production' ? '/Tri-CertFramework/verifier' : '',
+  
+  // Security headers (applied in development and server mode)
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: securityHeaders,
+      },
+    ];
+  },
   
   // Fix the lockfile root warning by pinning to repo root
   outputFileTracingRoot: path.join(__dirname, ".."),

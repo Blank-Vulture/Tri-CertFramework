@@ -41,8 +41,6 @@ export async function GET(
     const vknftPath = path.join(process.cwd(), '..', 'VKNFT');
     const manifestPath = path.join(vknftPath, params.year, 'manifest.json');
     
-    console.log(`[VKNFT API] Reading manifest for year ${year}:`, manifestPath);
-    
     try {
       const manifestContent = await fs.readFile(manifestPath, 'utf-8');
       const manifest = JSON.parse(manifestContent);
@@ -51,18 +49,16 @@ export async function GET(
         success: true, 
         manifest 
       });
-    } catch (error) {
-      console.error(`[VKNFT API] Failed to read manifest for year ${year}:`, error);
+    } catch {
       return NextResponse.json({ 
         success: false, 
         error: 'Manifest not found' 
       }, { status: 404 });
     }
-  } catch (error) {
-    console.error('[VKNFT API] Error:', error);
+  } catch {
     return NextResponse.json({ 
       success: false, 
-      error: error instanceof Error ? error.message : 'Unknown error' 
+      error: 'Internal server error' 
     }, { status: 500 });
   }
 }

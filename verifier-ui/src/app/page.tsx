@@ -546,6 +546,34 @@ export default function Home() {
   );
 }
 
+/**
+ * Safely parse JSON with error handling
+ */
+function safeJsonParse<T>(data: string): T | null {
+  try {
+    return JSON.parse(data) as T;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Validate extracted proof data structure
+ */
+function isValidProofData(data: unknown): data is ProofData {
+  if (!data || typeof data !== 'object') return false;
+  const obj = data as Record<string, unknown>;
+  return (
+    typeof obj.schema === 'string' &&
+    typeof obj.circuit_id === 'string' &&
+    typeof obj.vkey_hash === 'string' &&
+    obj.public_signals !== null &&
+    typeof obj.public_signals === 'object' &&
+    obj.proof !== null &&
+    typeof obj.proof === 'object'
+  );
+}
+
 // Helper functions
 async function extractPdfData(pdfBuffer: ArrayBuffer): Promise<ExtractedData> {
   try {
@@ -555,24 +583,41 @@ async function extractPdfData(pdfBuffer: ArrayBuffer): Promise<ExtractedData> {
     const subject = pdfDoc.getSubject();
     
     if (subject) {
-      const metadata = JSON.parse(subject);
-      const attachments = metadata.attachments || [];
+      const metadata = safeJsonParse<{ attachments?: Array<{ name: string; data: string }> }>(subject);
+      if (!metadata || !Array.isArray(metadata.attachments)) {
+        return {};
+      }
       
+      const attachments = metadata.attachments;
       const result: ExtractedData = {};
       
       for (const attachment of attachments) {
-        const data = atob(attachment.data);
+        if (!attachment.name || !attachment.data) continue;
+        
+        let data: string;
+        try {
+          data = atob(attachment.data);
+        } catch {
+          continue; // Skip invalid base64
+        }
         
         if (attachment.name === 'proof.json') {
-          result.proof = JSON.parse(data);
+          const parsed = safeJsonParse<ProofData>(data);
+          if (parsed && isValidProofData(parsed)) {
+            result.proof = parsed;
+          }
         } else if (attachment.name === 'webauthn_sig.json') {
-          result.webauthnSignature = JSON.parse(data);
+          const parsed = safeJsonParse<ExtractedData['webauthnSignature']>(data);
+          if (parsed) result.webauthnSignature = parsed;
         } else if (attachment.name === 'sig_target.json') {
-          result.sigTarget = JSON.parse(data);
+          const parsed = safeJsonParse<ExtractedData['sigTarget']>(data);
+          if (parsed) result.sigTarget = parsed;
         } else if (attachment.name === 'vkey.json') {
-          result.vkey = JSON.parse(data);
+          const parsed = safeJsonParse<VKeyData>(data);
+          if (parsed) result.vkey = parsed;
         } else if (attachment.name === 'webauthn_pub.jwk.json') {
-          result.publicKey = JSON.parse(data);
+          const parsed = safeJsonParse<ExtractedData['publicKey']>(data);
+          if (parsed) result.publicKey = parsed;
         }
       }
       
@@ -618,13 +663,16 @@ async function verifyZKP(proof: ProofData, vkey: VKeyData, options?: { calculate
 
     const commitField = proof.public_signals.commit.replace('field:', '');
 
+    // BN128 scalar field modulus (approximately 254 bits)
+    const FIELD_MODULUS = BigInt('21888242871839275222246405745257275088548364400416034343698204186575808495617');
+
     const toFieldFromPdfHash = (hexWithPrefix?: string, fallbackHex?: string): string | null => {
       try {
         const hex = (hexWithPrefix?.startsWith('hex:') ? hexWithPrefix.slice(4) : hexWithPrefix) || fallbackHex;
         if (!hex) return null;
-        const modulus = BigInt('21888242871839275222246405745257275088548364400416034343698204186575808495617');
-        const slice = '0x' + hex.slice(0, 60);
-        return (BigInt(slice) % modulus).toString();
+        // Use full hash and reduce modulo field for maximum entropy preservation
+        const fullHash = '0x' + hex;
+        return (BigInt(fullHash) % FIELD_MODULUS).toString();
       } catch {
         return null;
       }

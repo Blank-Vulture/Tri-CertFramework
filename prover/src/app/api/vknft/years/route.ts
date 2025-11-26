@@ -15,13 +15,10 @@ export async function GET() {
     // prover/ -> Tri-CertFramework/ -> VKNFT/
     const vknftPath = path.join(process.cwd(), '..', 'VKNFT');
     
-    console.log('[VKNFT API] Checking VKNFT directory:', vknftPath);
-    
     // Check if VKNFT directory exists
     try {
       await fs.access(vknftPath);
     } catch {
-      console.warn('[VKNFT API] VKNFT directory not found:', vknftPath);
       return NextResponse.json({ 
         success: false, 
         error: 'VKNFT directory not found',
@@ -45,9 +42,8 @@ export async function GET() {
           try {
             await fs.access(manifestPath);
             years.push(year);
-            console.log(`[VKNFT API] Found valid year: ${year}`);
           } catch {
-            console.log(`[VKNFT API] Skipping ${year}: no manifest.json`);
+            // Skip years without manifest
           }
         }
       }
@@ -56,17 +52,14 @@ export async function GET() {
     // Sort years
     years.sort((a, b) => a - b);
     
-    console.log('[VKNFT API] Available years:', years);
-    
     return NextResponse.json({ 
       success: true, 
       years 
     });
-  } catch (error) {
-    console.error('[VKNFT API] Error reading VKNFT directory:', error);
+  } catch {
     return NextResponse.json({ 
       success: false, 
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: 'Internal server error',
       years: [] 
     }, { status: 500 });
   }

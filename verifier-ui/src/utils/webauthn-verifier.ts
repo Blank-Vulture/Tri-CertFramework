@@ -15,6 +15,33 @@ export function base64urlToArrayBuffer(base64url: string): ArrayBuffer {
   return new Uint8Array([...binaryString].map(char => char.charCodeAt(0))).buffer;
 }
 
+/**
+ * Allowed origins for WebAuthn verification
+ * Signatures created from these origins are considered valid
+ */
+const ALLOWED_ORIGINS = [
+  // Production
+  'https://blank-vulture.github.io',
+  // Development
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:3001',
+];
+
+/**
+ * Check if an origin is in the allowed list
+ */
+function isAllowedOrigin(origin: string): boolean {
+  // Allow configurable origins via environment variable
+  const envOrigins = process.env.NEXT_PUBLIC_ALLOWED_ORIGINS;
+  if (envOrigins) {
+    const customOrigins = envOrigins.split(',').map(o => o.trim());
+    if (customOrigins.includes(origin)) return true;
+  }
+  return ALLOWED_ORIGINS.includes(origin);
+}
+
 export function arrayBufferToBase64url(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
   const binaryString = Array.from(bytes, byte => String.fromCharCode(byte)).join('');
@@ -84,16 +111,9 @@ export async function verifyRPIDHash(
   origin: string
 ): Promise<boolean> {
   try {
-    console.log('=== Verifying RP ID hash ===');
-    
     // Extract hostname from origin (e.g., "https://example.com" -> "example.com")
     const url = new URL(origin);
     const rpId = url.hostname;
-    
-    console.log('RP ID verification:', {
-      origin,
-      rpId,
-    });
 
     // Calculate expected RP ID hash
     const encoder = new TextEncoder();
@@ -107,21 +127,8 @@ export async function verifyRPIDHash(
     const hashesMatch = actualHashArray.length === expectedHashArray.length &&
       actualHashArray.every((byte, index) => byte === expectedHashArray[index]);
 
-    console.log('RP ID hash comparison:', {
-      actual: arrayBufferToBase64url(rpIdHash).substring(0, 16) + '...',
-      expected: arrayBufferToBase64url(expectedHash).substring(0, 16) + '...',
-      match: hashesMatch,
-    });
-
-    if (!hashesMatch) {
-      console.error('RP ID hash mismatch - signature was not created for this origin');
-      return false;
-    }
-
-    console.log('✅ RP ID hash verified successfully');
-    return true;
-  } catch (error) {
-    console.error('RP ID hash verification error:', error);
+    return hashesMatch;
+  } catch {
     return false;
   }
 }
@@ -147,34 +154,18 @@ export async function verifyWebAuthnSignature(
   expectedChallenge?: unknown
 ): Promise<boolean> {
   try {
-    console.log('=== Starting WebAuthn signature verification ===');
-    console.log('Verification context:', {
-      credentialId: context.webauthn.credentialId,
-      publicKey: {
-        kty: context.webauthn_pub.kty,
-        crv: context.webauthn_pub.crv,
-        alg: context.webauthn_pub.alg,
-        x: context.webauthn_pub.x.substring(0, 16) + '...',
-        y: context.webauthn_pub.y.substring(0, 16) + '...'
-      },
-      sigTarget: context.sig_target
-    });
-
     // Parse client data JSON
     const clientDataBuffer = base64urlToArrayBuffer(context.webauthn.clientDataJSON);
     const clientDataStr = new TextDecoder().decode(clientDataBuffer);
     const clientData: ClientDataJSON = JSON.parse(clientDataStr);
 
-    console.log('Client data parsed:', {
-      type: clientData.type,
-      origin: clientData.origin,
-      challenge: clientData.challenge.substring(0, 32) + '...',
-      crossOrigin: clientData.crossOrigin
-    });
-
     // Verify client data type
     if (clientData.type !== 'webauthn.get') {
-      console.error('Invalid client data type:', clientData.type);
+      return false;
+    }
+
+    // Verify origin is in allowed list
+    if (!isAllowedOrigin(clientData.origin)) {
       return false;
     }
 
@@ -186,77 +177,38 @@ export async function verifyWebAuthnSignature(
       const receivedChallengeStr = new TextDecoder().decode(receivedChallengeBuffer);
       const expectedChallengeStr = JSON.stringify(expectedChallenge);
       
-      console.log('Challenge verification:', {
-        received: receivedChallengeStr,
-        expected: expectedChallengeStr,
-        match: receivedChallengeStr === expectedChallengeStr
-      });
-      
       if (receivedChallengeStr !== expectedChallengeStr) {
-        console.error('Challenge mismatch:', {
-          received: receivedChallengeStr,
-          expected: expectedChallengeStr
-        });
         return false;
       }
-      
-      console.log('Challenge verification passed');
     }
 
     // Parse authenticator data
     const authenticatorDataBuffer = base64urlToArrayBuffer(context.webauthn.authenticatorData);
     const authData = parseAuthenticatorData(authenticatorDataBuffer);
 
-    console.log('Authenticator data parsed:', {
-      flags: `0x${authData.flags.toString(16)}`,
-      userPresent: !!(authData.flags & 0x01),
-      userVerified: !!(authData.flags & 0x04),
-      signCount: authData.signCount,
-      dataLength: authenticatorDataBuffer.byteLength
-    });
-
-    // Verify RP ID hash
+    // Verify RP ID hash matches the claimed origin
     const rpIdHashValid = await verifyRPIDHash(authData.rpIdHash, clientData.origin);
     if (!rpIdHashValid) {
-      console.error('RP ID hash verification failed');
       return false;
     }
 
     // Verify User Present flag (UP) is set
     if (!(authData.flags & 0x01)) {
-      console.error('User Present flag not set, flags:', `0x${authData.flags.toString(16)}`);
       return false;
-    }
-
-    console.log('User Present flag verification passed');
-
-    // Optional: Verify User Verified flag (UV) for enhanced security
-    // This ensures biometric/PIN verification was performed
-    const userVerified = !!(authData.flags & 0x04);
-    if (userVerified) {
-      console.log('✅ User Verified flag is set (biometric/PIN authentication confirmed)');
-    } else {
-      console.log('ℹ️ User Verified flag not set (user presence only)');
     }
 
     // Create client data hash
     const clientDataHash = await crypto.subtle.digest('SHA-256', clientDataBuffer);
-    console.log('Client data hash created, length:', clientDataHash.byteLength);
 
     // Create signature verification data
     const verificationData = createSignatureData(authenticatorDataBuffer, clientDataHash);
-    console.log('Verification data created, length:', verificationData.byteLength);
 
     // Import public key for verification
-    console.log('Importing public key for verification...');
     const publicKey = await importWebAuthnPublicKey(context.webauthn_pub);
-    console.log('Public key imported successfully');
 
     // Verify signature
     const signatureBuffer = base64urlToArrayBuffer(context.webauthn.signature);
-    console.log('Signature buffer length:', signatureBuffer.byteLength);
     
-    console.log('Performing ECDSA signature verification...');
     let isValid = await crypto.subtle.verify(
       { name: 'ECDSA', hash: { name: 'SHA-256' } },
       publicKey,
@@ -267,7 +219,6 @@ export async function verifyWebAuthnSignature(
     // Fallback: try converting DER signature to raw (r||s) if first attempt fails
     if (!isValid) {
       try {
-        console.warn('Primary verification failed. Attempting DER->raw (r||s) signature fallback...');
         const rawSig = derToRawEcdsa(signatureBuffer, 32);
         isValid = await crypto.subtle.verify(
           { name: 'ECDSA', hash: { name: 'SHA-256' } },
@@ -275,15 +226,13 @@ export async function verifyWebAuthnSignature(
           rawSig,
           verificationData
         );
-      } catch (fallbackError) {
-        console.error('Fallback verification error:', fallbackError);
+      } catch {
+        // Fallback failed, isValid remains false
       }
     }
 
-    console.log('=== WebAuthn signature verification result:', isValid, '===');
     return isValid;
-  } catch (error) {
-    console.error('WebAuthn signature verification error:', error);
+  } catch {
     return false;
   }
 }
@@ -352,15 +301,7 @@ export async function verifyCredentialBinding(
   context: SignatureVerificationContext
 ): Promise<boolean> {
   try {
-    console.log('=== Verifying credential binding ===');
-    
     const expectedKid = context.webauthn_pub.kid;
-    const actualCredentialId = context.webauthn.credentialId;
-
-    console.log('Credential binding check:', {
-      kid: expectedKid.substring(0, 16) + '...',
-      credentialId: actualCredentialId.substring(0, 16) + '...',
-    });
 
     // The kid should be the JWK thumbprint
     // Calculate the thumbprint from the public key and compare
@@ -371,22 +312,13 @@ export async function verifyCredentialBinding(
       y: context.webauthn_pub.y,
     });
 
-    console.log('JWK Thumbprint verification:', {
-      calculated: calculatedThumbprint.substring(0, 16) + '...',
-      expected: expectedKid.substring(0, 16) + '...',
-      match: calculatedThumbprint === expectedKid,
-    });
-
     // Verify that the kid matches the calculated thumbprint
     if (calculatedThumbprint !== expectedKid) {
-      console.error('JWK Thumbprint mismatch - public key does not match kid');
       return false;
     }
 
-    console.log('✅ Credential binding verified successfully');
     return true;
-  } catch (error) {
-    console.error('Credential binding verification error:', error);
+  } catch {
     return false;
   }
 }
@@ -408,13 +340,10 @@ export async function verifyWebAuthnComplete(
   };
 }> {
   try {
-    console.log('=== Starting comprehensive WebAuthn verification ===');
-    
     // Verify credential binding (ensures public key matches kid)
     const credentialBindingValid = await verifyCredentialBinding(context);
     
     if (!credentialBindingValid) {
-      console.error('❌ Credential binding verification failed');
       return {
         isValid: false,
         details: {
@@ -436,15 +365,6 @@ export async function verifyWebAuthnComplete(
 
     const isValid = signatureValid && credentialBindingValid;
 
-    console.log('=== WebAuthn verification summary ===');
-    console.log('Overall result:', isValid ? '✅ VALID' : '❌ INVALID');
-    console.log('Details:', {
-      signatureValid,
-      credentialBindingValid,
-      userPresent,
-      userVerified,
-    });
-
     return {
       isValid,
       details: {
@@ -455,16 +375,13 @@ export async function verifyWebAuthnComplete(
         userVerified,
       },
     };
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error('❌ Complete WebAuthn verification failed:', errorMessage);
-
+  } catch {
     return {
       isValid: false,
       details: {
         signatureValid: false,
         credentialBindingValid: false,
-        error: errorMessage,
+        error: 'Verification failed',
       },
     };
   }

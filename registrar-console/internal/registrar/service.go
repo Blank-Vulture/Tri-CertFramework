@@ -40,6 +40,12 @@ var (
 		"2006.1.2",
 		"02.01.2006",
 	}
+	// Input validation constraints
+	maxStudentIDLength = 100
+	maxNameLength      = 200
+	maxBirthdateLength = 50
+	// Allowed characters for student ID (alphanumeric and hyphen)
+	studentIDPattern = regexp.MustCompile(`^[A-Za-z0-9-]+$`)
 )
 
 // Service provides registration data generation and persistence utilities.
@@ -522,7 +528,8 @@ func (s *Service) saveStudentFile(studentIDHash string, record studentFile) erro
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(path, payload, 0o644); err != nil {
+	// Use restrictive permissions (0600) for sensitive data
+	if err := os.WriteFile(path, payload, 0o600); err != nil {
 		return fmt.Errorf("registrar: write student file: %w", err)
 	}
 	return nil
@@ -560,7 +567,8 @@ func (s *Service) saveIssuanceLog(file *issuanceFile) error {
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(s.issuancePath, payload, 0o644); err != nil {
+	// Use restrictive permissions (0600) for sensitive data
+	if err := os.WriteFile(s.issuancePath, payload, 0o600); err != nil {
 		return fmt.Errorf("registrar: write issuance log: %w", err)
 	}
 	return nil
@@ -652,15 +660,52 @@ func marshalJSON(v interface{}) ([]byte, error) {
 }
 
 func validateInput(input StudentInput) error {
-	if strings.TrimSpace(input.StudentID) == "" {
+	studentID := strings.TrimSpace(input.StudentID)
+	name := strings.TrimSpace(input.Name)
+	birthdate := strings.TrimSpace(input.Birthdate)
+
+	// Required field checks
+	if studentID == "" {
 		return errors.New("student id is required")
 	}
-	if strings.TrimSpace(input.Name) == "" {
+	if name == "" {
 		return errors.New("name is required")
 	}
-	if strings.TrimSpace(input.Birthdate) == "" {
+	if birthdate == "" {
 		return errors.New("birthdate is required")
 	}
+
+	// Length validation
+	if len(studentID) > maxStudentIDLength {
+		return fmt.Errorf("student id too long (max %d characters)", maxStudentIDLength)
+	}
+	if len(name) > maxNameLength {
+		return fmt.Errorf("name too long (max %d characters)", maxNameLength)
+	}
+	if len(birthdate) > maxBirthdateLength {
+		return fmt.Errorf("birthdate too long (max %d characters)", maxBirthdateLength)
+	}
+
+	// Student ID format validation (alphanumeric and hyphen only)
+	if !studentIDPattern.MatchString(studentID) {
+		return errors.New("student id contains invalid characters (only alphanumeric and hyphen allowed)")
+	}
+
+	// Name sanitization check (no control characters)
+	for _, r := range name {
+		if r < 32 && r != '\t' && r != '\n' {
+			return errors.New("name contains invalid control characters")
+		}
+	}
+
+	// Optional field length validation
+	if len(strings.TrimSpace(input.Salt)) > 100 {
+		return errors.New("salt too long")
+	}
+	if len(strings.TrimSpace(input.ActivationHash)) > 200 {
+		return errors.New("activation hash too long")
+	}
+
 	return nil
 }
 

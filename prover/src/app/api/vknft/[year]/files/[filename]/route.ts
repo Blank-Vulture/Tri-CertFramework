@@ -54,20 +54,32 @@ export async function GET(
       }, { status: 400 });
     }
     
-    // Only allow specific file types for security
+    // Strict filename validation to prevent path traversal attacks
     const filename = params.filename;
-    const allowedExtensions = ['.wasm', '.zkey', '.json'];
-    const ext = path.extname(filename);
     
-    if (!allowedExtensions.includes(ext)) {
+    // Use path.basename to extract only the filename part
+    const sanitizedFilename = path.basename(filename);
+    
+    // Reject if basename differs from original (indicates traversal attempt)
+    if (sanitizedFilename !== filename) {
       return NextResponse.json({ 
         success: false, 
-        error: 'Invalid file type' 
+        error: 'Invalid filename' 
       }, { status: 400 });
     }
     
-    // Prevent directory traversal
-    if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+    // Strict pattern: only alphanumeric, underscore, hyphen, and dot allowed
+    // Must match patterns like: commitment_2024.wasm, vkey_2024.json, commitment_final_2024.zkey
+    const SAFE_FILENAME_PATTERN = /^[a-zA-Z0-9_-]+\.(wasm|zkey|json)$/;
+    if (!SAFE_FILENAME_PATTERN.test(sanitizedFilename)) {
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Invalid filename format' 
+      }, { status: 400 });
+    }
+    
+    // Additional check: prevent directory traversal characters
+    if (sanitizedFilename.includes('..') || sanitizedFilename.includes('/') || sanitizedFilename.includes('\\')) {
       return NextResponse.json({ 
         success: false, 
         error: 'Invalid filename' 
@@ -75,14 +87,23 @@ export async function GET(
     }
     
     const vknftPath = path.join(process.cwd(), '..', 'VKNFT');
-    const filePath = path.join(vknftPath, params.year, 'files', filename);
+    const filePath = path.join(vknftPath, params.year, 'files', sanitizedFilename);
     
-    console.log(`[VKNFT API] Reading file for year ${year}:`, filePath);
+    // Verify the resolved path is within the expected directory
+    const resolvedPath = path.resolve(filePath);
+    const expectedBasePath = path.resolve(path.join(vknftPath, params.year, 'files'));
+    if (!resolvedPath.startsWith(expectedBasePath)) {
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Invalid file path' 
+      }, { status: 400 });
+    }
     
     try {
-      const fileContent = await fs.readFile(filePath);
+      const fileContent = await fs.readFile(resolvedPath);
       
-      // Set appropriate content type
+      // Set appropriate content type based on extension
+      const ext = path.extname(sanitizedFilename);
       let contentType = 'application/octet-stream';
       if (ext === '.wasm') {
         contentType = 'application/wasm';
@@ -98,18 +119,16 @@ export async function GET(
           'Cache-Control': 'public, max-age=31536000, immutable',
         },
       });
-    } catch (error) {
-      console.error(`[VKNFT API] Failed to read file ${filename} for year ${year}:`, error);
+    } catch {
       return NextResponse.json({ 
         success: false, 
         error: 'File not found' 
       }, { status: 404 });
     }
-  } catch (error) {
-    console.error('[VKNFT API] Error:', error);
+  } catch {
     return NextResponse.json({ 
       success: false, 
-      error: error instanceof Error ? error.message : 'Unknown error' 
+      error: 'Internal server error' 
     }, { status: 500 });
   }
 }

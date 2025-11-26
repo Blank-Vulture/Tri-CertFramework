@@ -265,9 +265,9 @@ export default function ProofGenerator({
       setDownloadUrl(url);
       setDownloadName(name);
       setDownloadSize(outputPdf.size);
-    } catch (error) {
-      console.error('Error generating proof:', error);
-      setStatus('Error: ' + (error as Error).message);
+    } catch {
+      // Generic error message to prevent information leakage
+      setStatus(t('proofGen.status.error'));
     } finally {
       setIsProcessing(false);
     }
@@ -656,6 +656,13 @@ function getAssetPath(path: string): string {
   return `${normalizedBasePath}${normalizedPath}`;
 }
 
+class ProofGenerationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ProofGenerationError';
+  }
+}
+
 async function generateZKProof(secret: string, pdfHash: string, graduationYear: number, overrideVKey?: VKeyData): Promise<{ proof: ProofData; vkey: VKeyData }> {
   try {
     let vkey = {} as VKeyData;
@@ -721,15 +728,22 @@ async function generateZKProof(secret: string, pdfHash: string, graduationYear: 
       }
     }
 
+    // BN128 scalar field modulus (approximately 254 bits)
+    const FIELD_MODULUS = BigInt('21888242871839275222246405745257275088548364400416034343698204186575808495617');
+    
     const secretBytes = new TextEncoder().encode(secret);
     const secretBigInt = BigInt('0x' + Array.from(secretBytes).map(b => b.toString(16).padStart(2, '0')).join(''));
-    const pdfHashBigInt = BigInt('0x' + pdfHash.slice(0, 60));
+    
+    // Use full SHA3-512 hash (128 hex chars = 512 bits), then reduce modulo field
+    // This preserves maximum entropy while fitting into the field
+    const pdfHashBigInt = BigInt('0x' + pdfHash);
 
     const acceptsYear = await circuitAcceptsSignal(wasmPath, 'graduation_year');
 
     const input: Record<string, string> = {
-      owner_secret: (secretBigInt % BigInt('21888242871839275222246405745257275088548364400416034343698204186575808495617')).toString(),
-      pdf_sha3_512: (pdfHashBigInt % BigInt('21888242871839275222246405745257275088548364400416034343698204186575808495617')).toString(),
+      owner_secret: (secretBigInt % FIELD_MODULUS).toString(),
+      // Apply modular reduction to fit into BN128 field while preserving hash integrity
+      pdf_sha3_512: (pdfHashBigInt % FIELD_MODULUS).toString(),
     };
     if (acceptsYear) {
       input.graduation_year = graduationYear.toString();
@@ -766,9 +780,9 @@ async function generateZKProof(secret: string, pdfHash: string, graduationYear: 
     };
 
     return { proof: proofData, vkey };
-  } catch (error) {
-    console.error('ZKP Generation Error:', error);
-    throw new Error('Failed to generate ZK proof');
+  } catch {
+    // Generic error to prevent leaking internal details
+    throw new ProofGenerationError('Failed to generate proof');
   }
 }
 

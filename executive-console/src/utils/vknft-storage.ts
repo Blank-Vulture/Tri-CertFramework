@@ -1,4 +1,5 @@
-import { readDir, readFile, exists, remove } from '@tauri-apps/plugin-fs'
+import { readDir, readFile, exists, remove, mkdir } from '@tauri-apps/plugin-fs'
+import { invoke } from '@tauri-apps/api/core'
 import { join } from '@tauri-apps/api/path'
 import type { VKInfo, VerificationKey } from '../App'
 
@@ -72,6 +73,30 @@ export function getSavedVknftBaseDir(): string | null {
   return localStorage.getItem(BASE_DIR_STORAGE_KEY)
 }
 
+/**
+ * Get VKNFT base directory, trying automatic detection first
+ */
+export async function getVknftBaseDir(): Promise<string | null> {
+  // Try automatic path from Tauri backend
+  try {
+    const autoPath = await invoke<string>('get_vknft_base_path')
+    if (autoPath) {
+      // Ensure directory exists
+      const dirExists = await exists(autoPath)
+      if (!dirExists) {
+        await mkdir(autoPath, { recursive: true })
+      }
+      localStorage.setItem(BASE_DIR_STORAGE_KEY, autoPath)
+      return autoPath
+    }
+  } catch (error) {
+    console.warn('[VKNFT Storage] Failed to get automatic path:', error)
+  }
+  
+  // Fallback to saved path
+  return getSavedVknftBaseDir()
+}
+
 async function readJsonFile<T>(path: string): Promise<T> {
   const bytes = await readFile(path)
   return JSON.parse(decoder.decode(bytes)) as T
@@ -82,8 +107,12 @@ async function readBinaryFile(path: string): Promise<Uint8Array> {
 }
 
 export async function loadVkInfosFromVknft(): Promise<VKInfo[]> {
-  const baseDir = getSavedVknftBaseDir()
-  if (!isTauri() || !baseDir || !(await exists(baseDir))) {
+  if (!isTauri()) {
+    return []
+  }
+  
+  const baseDir = await getVknftBaseDir()
+  if (!baseDir || !(await exists(baseDir))) {
     return []
   }
 
@@ -177,11 +206,43 @@ export async function loadVkInfosFromVknft(): Promise<VKInfo[]> {
 
 export async function deleteVknftYear(year: number): Promise<void> {
   if (!isTauri()) return
-  const baseDir = getSavedVknftBaseDir()
+  const baseDir = await getVknftBaseDir()
   if (!baseDir) return
 
   const yearDir = await join(baseDir, String(year))
   if (!(await exists(yearDir))) return
 
   await remove(yearDir, { recursive: true })
+}
+
+/**
+ * Get list of available years from VKNFT directory
+ */
+export async function getAvailableYears(): Promise<number[]> {
+  if (!isTauri()) return []
+  
+  const baseDir = await getVknftBaseDir()
+  if (!baseDir || !(await exists(baseDir))) {
+    return []
+  }
+  
+  const entries = await readDir(baseDir)
+  const years: number[] = []
+  
+  for (const entry of entries) {
+    if (!entry.name || !entry.isDirectory) continue
+    if (entry.name.startsWith('.')) continue
+    
+    const year = Number(entry.name)
+    if (!Number.isNaN(year) && year >= 2000 && year <= 2100) {
+      // Verify manifest exists
+      const yearDir = await join(baseDir, entry.name)
+      const manifestPath = await join(yearDir, 'manifest.json')
+      if (await exists(manifestPath)) {
+        years.push(year)
+      }
+    }
+  }
+  
+  return years.sort((a, b) => a - b)
 }

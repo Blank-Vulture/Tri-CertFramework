@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useI18n } from './LanguageProvider';
 import WebAuthnSetup from './WebAuthnSetup';
 import {
@@ -8,7 +8,6 @@ import {
 } from '../../utils/webauthn';
 import {
   verifySalt,
-  calculateActivationHash,
   type SaltVerificationResult,
 } from '../../utils/salt-verifier';
 // @ts-expect-error - snarkjs doesn't have proper TypeScript declarations
@@ -103,6 +102,8 @@ export default function ProofGenerator({
   const [status, setStatus] = useState('');
   const [secretInput, setSecretInput] = useState('');
   const [graduationYear, setGraduationYear] = useState<number>(new Date().getFullYear());
+  const [availableYears, setAvailableYears] = useState<number[]>([]);
+  const [yearsLoading, setYearsLoading] = useState(true);
   const [webauthnCredential, setWebauthnCredential] = useState<WebAuthnCredentialInfo | null>(null);
   const [vkeyFile, setVkeyFile] = useState<File | null>(null);
   const [vkeyHashPreview, setVkeyHashPreview] = useState<string | null>(null);
@@ -116,6 +117,45 @@ export default function ProofGenerator({
   const [studentBirthdate, setStudentBirthdate] = useState('');
   const [saltVerification, setSaltVerification] = useState<SaltVerificationResult | null>(null);
   const [isVerifyingSalt, setIsVerifyingSalt] = useState(false);
+
+  // Check if selected year is available
+  const isYearAvailable = useMemo(() => {
+    if (availableYears.length === 0) return true; // Allow all if no years detected
+    return availableYears.includes(graduationYear);
+  }, [availableYears, graduationYear]);
+
+  // Detect available years from VKNFT directory via API
+  useEffect(() => {
+    const detectAvailableYears = async () => {
+      setYearsLoading(true);
+      
+      try {
+        console.log('[Prover] Fetching available years from VKNFT...');
+        const response = await fetch('/api/vknft/years');
+        const data = await response.json();
+        
+        if (data.success && Array.isArray(data.years)) {
+          console.log('[Prover] Available years from VKNFT:', data.years);
+          setAvailableYears(data.years.sort((a, b) => a - b));
+          
+          // Set default year to most recent available year
+          if (data.years.length > 0 && !data.years.includes(graduationYear)) {
+            setGraduationYear(data.years[data.years.length - 1]);
+          }
+        } else {
+          console.warn('[Prover] No years found in VKNFT directory');
+          setAvailableYears([]);
+        }
+      } catch (error) {
+        console.error('[Prover] Failed to fetch available years:', error);
+        setAvailableYears([]);
+      } finally {
+        setYearsLoading(false);
+      }
+    };
+    
+    detectAvailableYears();
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -791,15 +831,81 @@ async function generateZKProof(secret: string, pdfHash: string, graduationYear: 
   });
   
   try {
-    // Load verification key first to get vkey hash
-    const vkeyPath = getAssetPath('/vkey.json');
-    console.log('Loading verification key from:', vkeyPath);
-    const vkeyResponse = await fetch(vkeyPath);
-    if (!vkeyResponse.ok) {
-      throw new Error(`Failed to load vkey.json: ${vkeyResponse.status} ${vkeyResponse.statusText}`);
+    // Try to load from VKNFT directory first
+    let vkey: VKeyData;
+    let vkeyHash: string;
+    let wasmPath: string;
+    let zkeyPath: string;
+    let useVknftAssets = false;
+    
+    // Attempt to fetch manifest from VKNFT API
+    try {
+      console.log(`[Prover] Fetching VKNFT manifest for year ${graduationYear}...`);
+      const manifestResponse = await fetch(`/api/vknft/${graduationYear}/manifest`);
+      
+      if (manifestResponse.ok) {
+        const manifestData = await manifestResponse.json();
+        
+        if (manifestData.success && manifestData.manifest) {
+          const manifest = manifestData.manifest;
+          console.log('[Prover] VKNFT manifest loaded:', manifest);
+          
+          // Extract file names from manifest
+          const wasmFileName = manifest.files?.wasm?.fileName;
+          const zkeyFileName = manifest.files?.zkey?.fileName;
+          const vkFileName = manifest.files?.vk?.fileName;
+          
+          if (wasmFileName && zkeyFileName && vkFileName) {
+            // Use VKNFT API endpoints
+            wasmPath = `/api/vknft/${graduationYear}/files/${wasmFileName}`;
+            zkeyPath = `/api/vknft/${graduationYear}/files/${zkeyFileName}`;
+            
+            // Load verification key from VKNFT
+            const vkeyResponse = await fetch(`/api/vknft/${graduationYear}/files/${vkFileName}`);
+            if (vkeyResponse.ok) {
+              vkey = overrideVKey ?? (await vkeyResponse.json());
+              vkeyHash = await calculateVKeyHash(vkey);
+              useVknftAssets = true;
+              console.log('[Prover] Using VKNFT assets for year', graduationYear);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('[Prover] Failed to load from VKNFT, falling back to public assets:', error);
     }
-    const vkey: VKeyData = overrideVKey ?? (await vkeyResponse.json());
-    const vkeyHash = await calculateVKeyHash(vkey);
+    
+    // Fallback to public assets if VKNFT not available
+    if (!useVknftAssets) {
+      console.log('[Prover] Using public assets (fallback)');
+      const vkeyPath = getAssetPath('/vkey.json');
+      const vkeyResponse = await fetch(vkeyPath);
+      if (!vkeyResponse.ok) {
+        throw new Error(`Failed to load vkey.json: ${vkeyResponse.status} ${vkeyResponse.statusText}`);
+      }
+      vkey = overrideVKey ?? (await vkeyResponse.json());
+      vkeyHash = await calculateVKeyHash(vkey);
+      
+      // Try year-specific public assets
+      wasmPath = getAssetPath('/commitment_js/commitment.wasm');
+      zkeyPath = getAssetPath('/commitment_final.zkey');
+      
+      try {
+        const wasmYear = getAssetPath(`/commitment_js/commitment_${graduationYear}.wasm`);
+        const zkeyYear = getAssetPath(`/commitment_final_${graduationYear}.zkey`);
+        const [wr, zr] = await Promise.all([
+          fetch(wasmYear, { method: 'HEAD' }).catch(() => null),
+          fetch(zkeyYear, { method: 'HEAD' }).catch(() => null),
+        ]);
+        if (wr && wr.ok && zr && zr.ok) {
+          wasmPath = wasmYear;
+          zkeyPath = zkeyYear;
+          console.log('[Prover] Using year-specific public assets:', { wasmPath, zkeyPath });
+        }
+      } catch (e) {
+        console.warn('[Prover] Asset detection error; using default assets', e);
+      }
+    }
 
     // Prepare circuit inputs (compatible with both legacy and year-aware circuits)
     // Convert secret to field element (mod prime field)
@@ -808,27 +914,6 @@ async function generateZKProof(secret: string, pdfHash: string, graduationYear: 
     
     // Convert PDF hash to field element (use first part)
     const pdfHashBigInt = BigInt('0x' + pdfHash.slice(0, 60)); // Use first 60 chars to fit in field
-    
-    // Prefer year-specific assets if available; fallback to default Phase 0 assets
-    let wasmPath = getAssetPath('/commitment_js/commitment.wasm');
-    let zkeyPath = getAssetPath('/commitment_final.zkey');
-    try {
-      const wasmYear = getAssetPath(`/commitment_js/commitment_${graduationYear}.wasm`);
-      const zkeyYear = getAssetPath(`/commitment_final_${graduationYear}.zkey`);
-      const [wr, zr] = await Promise.all([
-        fetch(wasmYear, { method: 'HEAD' }).catch(() => null),
-        fetch(zkeyYear, { method: 'HEAD' }).catch(() => null),
-      ]);
-      if (wr && wr.ok && zr && zr.ok) {
-        wasmPath = wasmYear;
-        zkeyPath = zkeyYear;
-        console.log('Using year-specific circuit assets:', { wasmPath, zkeyPath });
-      } else {
-        console.log('Year-specific circuit assets not found; using default assets');
-      }
-    } catch (e) {
-      console.warn('Asset detection error; using default assets', e);
-    }
 
     // Introspect circuit to see if it accepts graduation_year as input
     const acceptsYear = await circuitAcceptsSignal(wasmPath, 'graduation_year');

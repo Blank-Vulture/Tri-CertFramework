@@ -1,5 +1,5 @@
 import { exists, writeFile, mkdir, readFile } from '@tauri-apps/plugin-fs'
-import { open } from '@tauri-apps/plugin-dialog'
+import { invoke } from '@tauri-apps/api/core'
 import { join } from '@tauri-apps/api/path'
 
 import { createZipArchive } from './zip'
@@ -51,16 +51,38 @@ export interface VKNFTBundleResult {
 }
 
 async function ensureBaseDir(): Promise<string> {
+  // First, try to get the automatic path from Tauri backend
+  try {
+    const autoPath = await invoke<string>('get_vknft_base_path')
+    console.log('[VKNFT] Got automatic base directory from backend:', autoPath)
+    
+    // Ensure directory exists
+    const dirExists = await exists(autoPath)
+    if (!dirExists) {
+      console.log('[VKNFT] Creating base directory...')
+      await mkdir(autoPath, { recursive: true })
+      console.log('[VKNFT] Base directory created successfully')
+    } else {
+      console.log('[VKNFT] Base directory already exists')
+    }
+    
+    // Save for quick access
+    localStorage.setItem(STORAGE_KEY, autoPath)
+    return autoPath
+  } catch (error) {
+    console.warn('[VKNFT] Failed to get automatic path, trying saved path:', error)
+  }
+  
+  // Fallback: try saved path
   const saved = localStorage.getItem(STORAGE_KEY)
   if (saved) {
     console.log('[VKNFT] Using saved base directory:', saved)
-    // Verify the saved directory still exists
     try {
       const dirExists = await exists(saved)
       if (dirExists) {
         return saved
       } else {
-        console.warn('[VKNFT] Saved directory no longer exists, prompting for new location')
+        console.warn('[VKNFT] Saved directory no longer exists')
         localStorage.removeItem(STORAGE_KEY)
       }
     } catch (error) {
@@ -69,48 +91,8 @@ async function ensureBaseDir(): Promise<string> {
     }
   }
 
-  console.log('[VKNFT] Prompting user to select VKNFT directory...')
-  let selected: string | string[] | null
-  try {
-    selected = await open({
-      title: 'VKNFT の保存先ディレクトリを選択してください',
-      directory: true,
-      multiple: false,
-    })
-  } catch (error) {
-    console.error('[VKNFT] Dialog open failed:', error)
-    throw new Error(`Failed to open directory selection dialog: ${error instanceof Error ? error.message : String(error)}`)
-  }
-
-  if (!selected || Array.isArray(selected)) {
-    throw new Error('VKNFTディレクトリが選択されませんでした')
-  }
-
-  console.log('[VKNFT] User selected directory:', selected)
-  
-  const baseDir = selected.endsWith('VKNFT')
-    ? selected
-    : await join(selected, 'VKNFT')
-  
-  console.log('[VKNFT] Base directory will be:', baseDir)
-
-  try {
-    const dirExists = await exists(baseDir)
-    if (!dirExists) {
-      console.log('[VKNFT] Creating base directory...')
-      await mkdir(baseDir, { recursive: true })
-      console.log('[VKNFT] Base directory created successfully')
-    } else {
-      console.log('[VKNFT] Base directory already exists')
-    }
-  } catch (error) {
-    console.error('[VKNFT] Failed to create base directory:', error)
-    throw new Error(`Failed to create VKNFT base directory: ${error instanceof Error ? error.message : String(error)}`)
-  }
-
-  localStorage.setItem(STORAGE_KEY, baseDir)
-  console.log('[VKNFT] Base directory saved to localStorage')
-  return baseDir
+  // Final fallback: throw error (user should run from correct directory)
+  throw new Error('VKNFT directory not found. Please run Executive Console from the Tri-CertFramework workspace.')
 }
 
 async function sha3(data: Uint8Array | string, outputLength: 256 | 512 = 256): Promise<string> {

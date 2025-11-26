@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import type { VKInfo, VerificationKey } from '../App'
 import { saveBinaryFile, saveJsonFile, saveTextFile, saveZipFile } from '../utils/download'
-import { deployToProver } from '../utils/prover-deployment'
 import { signExistingVknftBundle } from '../utils/vknft-bundle'
 
 interface VKManagerProps {
@@ -15,12 +14,6 @@ const VKManager: React.FC<VKManagerProps> = ({ vkList, onVKDelete, onVKImport, o
   const [selectedVK, setSelectedVK] = useState<VKInfo | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<number | null>(null)
   const [isImporting, setIsImporting] = useState(false)
-  const [deployingVK, setDeployingVK] = useState<number | null>(null)
-  const [deploymentResult, setDeploymentResult] = useState<{
-    success: boolean
-    message: string
-    files: string[]
-  } | null>(null)
   const [signingVK, setSigningVK] = useState<number | null>(null)
   const [signatureResult, setSignatureResult] = useState<{
     success: boolean
@@ -77,40 +70,6 @@ const VKManager: React.FC<VKManagerProps> = ({ vkList, onVKDelete, onVKImport, o
     }
 
     await saveZipFile(`vk_${vk.year}_bundle.zip`, entries)
-  }
-
-  const deployVKToProver = async (vk: VKInfo, index: number) => {
-    try {
-      setDeployingVK(index)
-      setDeploymentResult(null)
-
-      const result = await deployToProver({ vk })
-
-      if (result.success) {
-        setDeploymentResult({
-          success: true,
-          message: `${vk.year}年度のVKとファイルをProverに正常に配置しました！`,
-          files: result.deployedFiles
-        })
-      } else {
-        setDeploymentResult({
-          success: false,
-          message: 'Proverへの配置に失敗しました: ' + result.errors.join(', '),
-          files: result.deployedFiles
-        })
-      }
-    } catch (e) {
-      console.error('Failed to deploy to prover', e)
-      setDeploymentResult({
-        success: false,
-        message: 'Proverへの配置中にエラーが発生しました: ' + (e as Error).message,
-        files: []
-      })
-    } finally {
-      setDeployingVK(null)
-      // Auto-hide result after 5 seconds
-      setTimeout(() => setDeploymentResult(null), 5000)
-    }
   }
 
   const signVKBundle = async (vk: VKInfo, index: number) => {
@@ -383,79 +342,6 @@ const VKManager: React.FC<VKManagerProps> = ({ vkList, onVKDelete, onVKImport, o
         </div>
       </div>
 
-      {/* Deployment Result Notification */}
-      {deploymentResult && (
-        <div className={`relative overflow-hidden rounded-3xl border shadow-xl shadow-black/20 ${
-          deploymentResult.success 
-            ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
-            : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
-        }`}>
-          <div className="p-6">
-            <div className="flex items-start">
-              <div className="flex-shrink-0">
-                {deploymentResult.success ? (
-                  <svg className="h-6 w-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                ) : (
-                  <svg className="h-6 w-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                  </svg>
-                )}
-              </div>
-              <div className="ml-3 flex-1">
-                <h3 className={`text-sm font-medium ${
-                  deploymentResult.success 
-                    ? 'text-green-900 dark:text-green-100'
-                    : 'text-red-900 dark:text-red-100'
-                }`}>
-                  {deploymentResult.success ? 'Prover配置完了' : 'Prover配置失敗'}
-                </h3>
-                <p className={`mt-1 text-sm ${
-                  deploymentResult.success 
-                    ? 'text-green-700 dark:text-green-200'
-                    : 'text-red-700 dark:text-red-200'
-                }`}>
-                  {deploymentResult.message}
-                </p>
-                {deploymentResult.files.length > 0 && (
-                  <div className="mt-2">
-                    <p className={`text-xs font-medium ${
-                      deploymentResult.success 
-                        ? 'text-green-800 dark:text-green-100'
-                        : 'text-red-800 dark:text-red-100'
-                    }`}>
-                      配置されたファイル:
-                    </p>
-                    <ul className={`mt-1 text-xs ${
-                      deploymentResult.success 
-                        ? 'text-green-600 dark:text-green-300'
-                        : 'text-red-600 dark:text-red-300'
-                    } font-mono`}>
-                      {deploymentResult.files.map((file, i) => (
-                        <li key={i}>• {file}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-              <button
-                onClick={() => setDeploymentResult(null)}
-                className={`ml-3 ${
-                  deploymentResult.success 
-                    ? 'text-green-400 hover:text-green-500 dark:text-green-300 dark:hover:text-green-200'
-                    : 'text-red-400 hover:text-red-500 dark:text-red-300 dark:hover:text-red-200'
-                }`}
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Signature Result Notification */}
       {signatureResult && (
         <div className={`relative overflow-hidden rounded-3xl border shadow-xl shadow-black/20 ${
@@ -524,133 +410,144 @@ const VKManager: React.FC<VKManagerProps> = ({ vkList, onVKDelete, onVKImport, o
           <div className="grid gap-4">
             {vkList.map((vk, index) => {
               const hasArtifacts = Boolean(vk.artifacts)
+              const hasSig = Boolean(vk.signaturePath)
               return (
-                <div key={index} className="border border-gray-200 dark:border-slate-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-4">
-                        <div className="flex-shrink-0">
-                          <div className="h-10 w-10 rounded-lg bg-blue-100 dark:bg-blue-800 flex items-center justify-center">
-                          <span className="text-sm font-bold text-blue-600 dark:text-blue-300">{vk.year}</span>
-                        </div>
+                <div key={index} className="border border-gray-200 dark:border-slate-700 rounded-xl overflow-hidden hover:border-blue-300 dark:hover:border-blue-700 transition-colors">
+                  {/* Card Header */}
+                  <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-gray-50 to-transparent dark:from-slate-800/50 dark:to-transparent">
+                    <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
+                      <span className="text-lg font-bold text-white">{vk.year}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-base font-semibold text-fg">{vk.year}年度用検証鍵</h4>
+                        {hasSig && (
+                          <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 rounded-full">
+                            <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                            署名済み
+                          </span>
+                        )}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="text-sm font-medium text-fg">
-                          {vk.year}年度用検証鍵
-                        </h4>
-                        <p className="text-sm muted font-mono truncate">
-                          {vk.circuitId}
-                        </p>
-                        <p className="text-xs muted mt-1">
-                          作成: {formatDate(vk.createdAt)}
-                        </p>
-                      </div>
+                      <p className="text-xs muted font-mono truncate mt-0.5">{vk.circuitId}</p>
+                      <p className="text-xs muted mt-1">作成: {formatDate(vk.createdAt)}</p>
+                    </div>
+                    <button
+                      onClick={() => setSelectedVK(vk)}
+                      className="px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                    >
+                      詳細を見る
+                    </button>
+                  </div>
+                  
+                  {/* VK Hash */}
+                  <div className="px-4 py-2 bg-gray-50/50 dark:bg-slate-800/30 border-t border-b border-gray-100 dark:border-slate-700/50">
+                    <div className="text-xs text-gray-500 dark:text-slate-400 flex items-center gap-2">
+                      <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
+                      </svg>
+                      <span className="font-medium">VK Hash:</span>
+                      <span className="font-mono break-all">{vk.vkeyHash.substring(0, 48)}...</span>
                     </div>
                   </div>
-
-                  <div className="flex items-center space-x-2">
-                    <button onClick={() => setSelectedVK(vk)} className="inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-slate-700 shadow-sm text-xs font-medium rounded text-gray-700 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                      詳細
-                    </button>
-                    <button
-                      onClick={() => downloadVKFile(vk)}
-                      className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                    >
-                      VK DL
-                    </button>
-                    <button
-                      onClick={() => downloadCircuitArtifact(vk, 'wasm')}
-                      disabled={!hasArtifacts}
-                      className={`inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded ${
-                        hasArtifacts
-                          ? 'text-indigo-700 bg-indigo-100 hover:bg-indigo-200'
-                          : 'text-indigo-300 bg-indigo-50 cursor-not-allowed'
-                      } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:focus:ring-0`}
-                    >
-                      WASM
-                    </button>
-                    <button
-                      onClick={() => downloadCircuitArtifact(vk, 'zkey')}
-                      disabled={!hasArtifacts}
-                      className={`inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded ${
-                        hasArtifacts
-                          ? 'text-purple-700 bg-purple-100 hover:bg-purple-200'
-                          : 'text-purple-300 bg-purple-50 cursor-not-allowed'
-                      } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:focus:ring-0`}
-                    >
-                      ZKey
-                    </button>
-                    <button
-                      onClick={() => downloadVkBundle(vk)}
-                      className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-slate-700 bg-slate-100 hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500"
-                    >
-                      ZIP
-                    </button>
-                    <button
-                      onClick={() => deployVKToProver(vk, index)}
-                      disabled={deployingVK === index}
-                      className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-purple-700 bg-purple-100 hover:bg-purple-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {deployingVK === index ? (
-                        <>
-                          <svg className="animate-spin -ml-1 mr-1 h-3 w-3 text-purple-700" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                          配置中
-                        </>
-                      ) : (
-                        'Proverに配置'
-                      )}
-                    </button>
-                    <button
-                      onClick={() => signVKBundle(vk, index)}
-                      disabled={signingVK === index}
-                      className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-amber-700 bg-amber-100 hover:bg-amber-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                      title={vk.signaturePath ? '署名を更新' : '署名を追加'}
-                    >
-                      {signingVK === index ? (
-                        <>
-                          <svg className="animate-spin -ml-1 mr-1 h-3 w-3 text-amber-700" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                          署名中
-                        </>
-                      ) : (
-                        <>
-                          <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                          </svg>
-                          {vk.signaturePath ? '再署名' : '署名'}
-                        </>
-                      )}
-                    </button>
-                    <button
-                      onClick={() => downloadVKHash(vk)}
-                      className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-green-700 bg-green-100 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                    >
-                      Hash DL
-                    </button>
-                    <button
-                      onClick={() => setShowDeleteConfirm(index)}
-                      className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                    >
-                      削除
-                    </button>
+                  
+                  {/* Action Buttons */}
+                  <div className="p-4 flex flex-wrap gap-3">
+                    {/* Primary Actions */}
+                    <div className="flex items-center gap-2 pr-3 border-r border-gray-200 dark:border-slate-700">
+                      <button
+                        onClick={() => signVKBundle(vk, index)}
+                        disabled={signingVK === index}
+                        className={`inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium shadow-sm hover:shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                          hasSig
+                            ? 'text-green-700 bg-green-100 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-300'
+                            : 'text-amber-700 bg-amber-100 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-300'
+                        }`}
+                        title={hasSig ? '署名を更新' : 'Ledgerで署名'}
+                      >
+                        {signingVK === index ? (
+                          <>
+                            <svg className="animate-spin h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                            署名中...
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                            </svg>
+                            {hasSig ? '再署名' : 'Ledger署名'}
+                          </>
+                        )}
+                      </button>
+                    </div>
+                    
+                    {/* Download Actions */}
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs text-gray-400 dark:text-slate-500 mr-1">DL:</span>
+                      <button
+                        onClick={() => downloadVkBundle(vk)}
+                        className="inline-flex items-center px-2.5 py-1.5 rounded-md text-xs font-medium text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                        title="一括ダウンロード"
+                      >
+                        <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" />
+                        </svg>
+                        ZIP
+                      </button>
+                      <button
+                        onClick={() => downloadVKFile(vk)}
+                        className="inline-flex items-center px-2.5 py-1.5 rounded-md text-xs font-medium text-blue-600 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
+                      >
+                        VK
+                      </button>
+                      <button
+                        onClick={() => downloadCircuitArtifact(vk, 'wasm')}
+                        disabled={!hasArtifacts}
+                        className={`inline-flex items-center px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                          hasArtifacts
+                            ? 'text-indigo-600 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50'
+                            : 'text-gray-400 bg-gray-100 dark:bg-slate-800 cursor-not-allowed'
+                        }`}
+                      >
+                        WASM
+                      </button>
+                      <button
+                        onClick={() => downloadCircuitArtifact(vk, 'zkey')}
+                        disabled={!hasArtifacts}
+                        className={`inline-flex items-center px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                          hasArtifacts
+                            ? 'text-purple-600 dark:text-purple-300 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-900/50'
+                            : 'text-gray-400 bg-gray-100 dark:bg-slate-800 cursor-not-allowed'
+                        }`}
+                      >
+                        ZKey
+                      </button>
+                      <button
+                        onClick={() => downloadVKHash(vk)}
+                        className="inline-flex items-center px-2.5 py-1.5 rounded-md text-xs font-medium text-green-600 dark:text-green-300 bg-green-50 dark:bg-green-900/30 hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors"
+                      >
+                        Hash
+                      </button>
+                    </div>
+                    
+                    {/* Delete */}
+                    <div className="ml-auto">
+                      <button
+                        onClick={() => setShowDeleteConfirm(index)}
+                        className="inline-flex items-center px-2.5 py-1.5 rounded-md text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                        title="削除"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
                 </div>
-
-                {/* VK Hash Preview */}
-                  <div className="mt-3 pl-14">
-                    <div className="text-xs text-gray-500 dark:text-slate-400">
-                      <span className="font-medium">VK Hash:</span>
-                      <span className="ml-2 font-mono break-all">
-                        {vk.vkeyHash.substring(0, 32)}...
-                    </span>
-                  </div>
-                </div>
-              </div>
               )
             })}
           </div>

@@ -67,7 +67,19 @@ export async function getLedgerPublicKey(
     return result
   } catch (error) {
     console.error('[Ledger] Failed to get public key:', error)
-    throw new Error(`Failed to get public key from Ledger: ${error}`)
+    console.error('[Ledger] Error details:', JSON.stringify(error, null, 2))
+    
+    // Provide user-friendly error messages
+    const errorStr = String(error)
+    if (errorStr.includes('Device not found')) {
+      throw new Error('Ledger device not connected. Please connect your Ledger and try again.')
+    } else if (errorStr.includes('App not running') || errorStr.includes('6d02')) {
+      throw new Error('Ethereum App is not running on Ledger. Please:\n1. Unlock your Ledger device\n2. Open the "Ethereum" app on your Ledger\n3. Ensure it shows "Application is ready"\n4. Try again')
+    } else if (errorStr.includes('Invalid response')) {
+      throw new Error('Ledger communication error. Please:\n1. Disconnect and reconnect your Ledger\n2. Make sure Ethereum app is open\n3. Try again\n\nIf the problem persists, check the console logs for details.')
+    } else {
+      throw new Error(`Failed to get public key from Ledger: ${error}`)
+    }
   }
 }
 
@@ -104,8 +116,8 @@ export async function signWithLedgerHardware(
     const errorStr = String(error)
     if (errorStr.includes('Device not found')) {
       throw new Error('Ledger device not connected. Please connect your Ledger and try again.')
-    } else if (errorStr.includes('App not running')) {
-      throw new Error('Ethereum App is not running on Ledger. Please open the Ethereum App on your device.')
+    } else if (errorStr.includes('App not running') || errorStr.includes('6d02')) {
+      throw new Error('Ethereum App is not running on Ledger. Please:\n1. Unlock your Ledger device\n2. Open the "Ethereum" app on your Ledger\n3. Ensure it shows "Application is ready"\n4. Try again')
     } else if (errorStr.includes('User denied')) {
       throw new Error('Signature request was denied on the Ledger device.')
     } else {

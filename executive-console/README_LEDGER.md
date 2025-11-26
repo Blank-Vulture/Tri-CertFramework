@@ -25,6 +25,18 @@ Executive Console supports signing VKNFT bundles with Ledger hardware wallets fo
 
 ## 🚀 Quick Start
 
+### ✅ Pre-flight Checklist (Important!)
+
+Before using Ledger with Executive Console, ensure:
+
+1. ✅ **Ledger device connected** via USB
+2. ✅ **Device unlocked** with PIN code
+3. ✅ **Ethereum app installed** on Ledger (via Ledger Live)
+4. ✅ **Ethereum app is OPEN** on the device
+5. ✅ **Screen shows "Application is ready"**
+
+❌ **Common mistake**: Forgetting to open the Ethereum app → causes error `6d02`
+
 ### Development Mode (Auto-selected)
 
 ```bash
@@ -119,13 +131,67 @@ const PRODUCTION_CONFIG: LedgerHardwareSigningConfig = {
 3. Try a different USB port/cable
 4. Check USB permissions (macOS: System Settings → Security & Privacy)
 
-### "Ethereum App not running on Ledger"
+### "Ethereum App not running on Ledger" or "APDU command failed: status=6d02"
+
+**Error Details**: Status code `6d02` means "INS (Instruction) not supported", which indicates the Ethereum app is not running on your Ledger device.
 
 **Solution**:
+1. **Connect and unlock your Ledger device**
+   - Connect via USB
+   - Enter PIN to unlock
+
+2. **Open the Ethereum app on your Ledger**
+   - Navigate to "Ethereum" using the device buttons
+   - Press both buttons to open the app
+   - **Verify the screen shows "Application is ready"**
+
+3. **Try the operation again**
+   - Go back to Executive Console
+   - Retry the signature operation
+   - Or run "Settings → Ledger Diagnostics → 3. Sign Test"
+
+**Important**: If you have Bitcoin, Polkadot, or any other app open, close it and open the Ethereum app instead.
+
+**If the error persists**:
 1. Open Ledger Live
 2. Go to My Ledger → Ethereum
-3. Install/Update Ethereum App
-4. Open Ethereum App on device
+3. Update Ethereum App to the latest version (recommended: v1.10.0 or higher)
+4. Restart Executive Console
+
+### "Invalid response from Ledger"
+
+**Error Details**: Communication with Ledger device failed during data transfer.
+
+**Solution**:
+1. **Check USB Connection**
+   - Use a high-quality USB cable (data transfer capable, not charge-only)
+   - Try a different USB port (USB 2.0 often more stable than USB 3.0)
+   - Connect directly to PC (avoid USB hubs)
+
+2. **Reconnect Ledger**
+   - Disconnect device
+   - Wait 10 seconds
+   - Reconnect and unlock with PIN
+   - Open Ethereum app
+
+3. **Close Competing Applications**
+   - Exit Ledger Live
+   - Close other wallet apps (MetaMask, etc.)
+   - Only run Executive Console
+
+4. **Check Debug Logs**
+   - In the terminal where Executive Console is running, look for `[Ledger]` logs
+   - Check for:
+     ```
+     [Ledger] Found Ledger device: ...
+     [Ledger] Sending APDU command: ...
+     [Ledger] Received response: XX bytes
+     ```
+   - Share these logs if reporting an issue
+
+5. **Automatic Retry**
+   - The system automatically retries up to 3 times on communication errors
+   - If all retries fail, try the above solutions
 
 ### "User denied the request on Ledger"
 

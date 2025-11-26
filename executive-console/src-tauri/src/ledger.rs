@@ -95,13 +95,36 @@ pub fn list_ledger_devices() -> Result<Vec<LedgerDeviceInfo>, LedgerError> {
 
 /// Open the first available Ledger device
 fn open_ledger_device(api: &HidApi) -> Result<HidDevice, LedgerError> {
+    eprintln!("[Ledger] Searching for Ledger devices (Vendor ID: 0x{:04x})...", LEDGER_VENDOR_ID);
+    
+    let mut found_devices = 0;
     for device_info in api.device_list() {
         if device_info.vendor_id() == LEDGER_VENDOR_ID {
-            return device_info
-                .open_device(api)
-                .map_err(|e| LedgerError::DeviceOpenFailed(e.to_string()));
+            found_devices += 1;
+            eprintln!("[Ledger] Found Ledger device:");
+            eprintln!("  Product: {}", device_info.product_string().unwrap_or("Unknown"));
+            eprintln!("  Manufacturer: {}", device_info.manufacturer_string().unwrap_or("Unknown"));
+            eprintln!("  Product ID: 0x{:04x}", device_info.product_id());
+            eprintln!("  Serial: {:?}", device_info.serial_number());
+            
+            eprintln!("[Ledger] Opening device...");
+            match device_info.open_device(api) {
+                Ok(device) => {
+                    eprintln!("[Ledger] Device opened successfully");
+                    return Ok(device);
+                },
+                Err(e) => {
+                    eprintln!("[Ledger] Failed to open device: {}", e);
+                    return Err(LedgerError::DeviceOpenFailed(e.to_string()));
+                }
+            }
         }
     }
+    
+    if found_devices == 0 {
+        eprintln!("[Ledger] No Ledger devices found");
+    }
+    
     Err(LedgerError::DeviceNotFound)
 }
 
@@ -123,8 +146,15 @@ fn send_apdu(
     apdu.push(data.len() as u8);
     apdu.extend_from_slice(data);
     
+    eprintln!("[Ledger] Sending APDU command:");
+    eprintln!("  CLA: 0x{:02x}, INS: 0x{:02x}, P1: 0x{:02x}, P2: 0x{:02x}", cla, ins, p1, p2);
+    eprintln!("  Data length: {} bytes", data.len());
+    eprintln!("  Full APDU: {}", hex::encode(&apdu));
+    
     // Send APDU using HID framing
     send_hid_frames(device, &apdu)?;
+    
+    eprintln!("[Ledger] APDU sent successfully, waiting for response...");
     
     // Receive response
     receive_hid_frames(device)
@@ -139,6 +169,8 @@ fn send_hid_frames(device: &HidDevice, data: &[u8]) -> Result<(), LedgerError> {
     let mut sequence: u16 = 0;
     let total_length = data.len();
     let mut offset = 0;
+    
+    eprintln!("[Ledger] Sending {} bytes in HID frames (packet size: {})", total_length, HID_PACKET_SIZE);
     
     while offset < total_length {
         let mut packet = vec![0u8; HID_PACKET_SIZE + 1]; // +1 for report ID
@@ -170,14 +202,21 @@ fn send_hid_frames(device: &HidDevice, data: &[u8]) -> Result<(), LedgerError> {
         let chunk_size = (HID_PACKET_SIZE - pos + 1).min(total_length - offset);
         packet[pos..pos + chunk_size].copy_from_slice(&data[offset..offset + chunk_size]);
         
+        eprintln!("[Ledger] Sending packet {} with {} bytes of data", sequence, chunk_size);
+        
         // Send packet (skip the first byte which is report ID, handled by OS)
         device
             .write(&packet[1..])
-            .map_err(|e| LedgerError::HidApiError(format!("Write failed: {}", e)))?;
+            .map_err(|e| {
+                eprintln!("[Ledger] Write failed: {}", e);
+                LedgerError::HidApiError(format!("Write failed: {}", e))
+            })?;
         
         offset += chunk_size;
         sequence += 1;
     }
+    
+    eprintln!("[Ledger] All {} packets sent successfully", sequence);
     
     Ok(())
 }
@@ -185,50 +224,85 @@ fn send_hid_frames(device: &HidDevice, data: &[u8]) -> Result<(), LedgerError> {
 /// Receive data in HID frames from Ledger
 fn receive_hid_frames(device: &HidDevice) -> Result<Vec<u8>, LedgerError> {
     const HID_PACKET_SIZE: usize = 64;
-    const TIMEOUT_MS: i32 = 10000; // 10 seconds for user interaction
+    const TIMEOUT_MS: i32 = 30000; // 30 seconds for user interaction (increased)
     
     let mut response_data = Vec::new();
     let mut sequence: u16 = 0;
     let mut total_length: Option<usize> = None;
     
+    eprintln!("[Ledger] Starting to receive HID frames...");
+    
     loop {
         let mut packet = vec![0u8; HID_PACKET_SIZE];
+        
+        eprintln!("[Ledger] Waiting for packet {} (timeout: {}ms)...", sequence, TIMEOUT_MS);
+        
         let bytes_read = device
             .read_timeout(&mut packet, TIMEOUT_MS)
-            .map_err(|e| LedgerError::HidApiError(format!("Read failed: {}", e)))?;
+            .map_err(|e| {
+                eprintln!("[Ledger] HID read failed: {}", e);
+                LedgerError::HidApiError(format!("Read failed after {}ms: {}", TIMEOUT_MS, e))
+            })?;
+        
+        eprintln!("[Ledger] Received {} bytes in packet {}", bytes_read, sequence);
         
         if bytes_read < 7 {
+            eprintln!("[Ledger] Packet too short: {} bytes (minimum 7 required)", bytes_read);
             return Err(LedgerError::InvalidResponse);
         }
         
         let mut pos = 0;
         
-        // Channel ID (skip 2 bytes)
+        // Channel ID (2 bytes)
+        let channel_id = u16::from_be_bytes([packet[pos], packet[pos + 1]]);
         pos += 2;
         
-        // Tag (skip 1 byte)
+        // Tag (1 byte)
+        let tag = packet[pos];
         pos += 1;
         
-        // Sequence number
+        eprintln!("[Ledger] Packet header - Channel: 0x{:04x}, Tag: 0x{:02x}", channel_id, tag);
+        
+        // Sequence number (2 bytes)
         let pkt_seq = u16::from_be_bytes([packet[pos], packet[pos + 1]]);
         pos += 2;
         
         if pkt_seq != sequence {
+            eprintln!("[Ledger] Sequence mismatch: expected {}, got {}", sequence, pkt_seq);
             return Err(LedgerError::InvalidResponse);
         }
         
         if sequence == 0 {
             // First packet: read total length
-            total_length = Some(u16::from_be_bytes([packet[pos], packet[pos + 1]]) as usize);
+            if pos + 2 > bytes_read {
+                eprintln!("[Ledger] First packet too short to read length");
+                return Err(LedgerError::InvalidResponse);
+            }
+            let len = u16::from_be_bytes([packet[pos], packet[pos + 1]]) as usize;
+            total_length = Some(len);
             pos += 2;
+            eprintln!("[Ledger] Total response length: {} bytes", len);
         }
         
         // Copy data
-        let remaining = total_length.unwrap() - response_data.len();
-        let chunk_size = remaining.min(bytes_read - pos);
+        let total = total_length.ok_or_else(|| {
+            eprintln!("[Ledger] Total length not set");
+            LedgerError::InvalidResponse
+        })?;
+        
+        let remaining = total - response_data.len();
+        let available = bytes_read - pos;
+        let chunk_size = remaining.min(available);
+        
+        eprintln!("[Ledger] Copying {} bytes (remaining: {}, available: {})", 
+                  chunk_size, remaining, available);
+        
         response_data.extend_from_slice(&packet[pos..pos + chunk_size]);
         
-        if response_data.len() >= total_length.unwrap() {
+        eprintln!("[Ledger] Response data: {} / {} bytes", response_data.len(), total);
+        
+        if response_data.len() >= total {
+            eprintln!("[Ledger] All data received");
             break;
         }
         
@@ -237,6 +311,7 @@ fn receive_hid_frames(device: &HidDevice) -> Result<Vec<u8>, LedgerError> {
     
     // Parse status word (last 2 bytes)
     if response_data.len() < 2 {
+        eprintln!("[Ledger] Response too short for status word: {} bytes", response_data.len());
         return Err(LedgerError::InvalidResponse);
     }
     
@@ -246,18 +321,38 @@ fn receive_hid_frames(device: &HidDevice) -> Result<Vec<u8>, LedgerError> {
         response_data[data_len - 1],
     ]);
     
+    eprintln!("[Ledger] Status word: 0x{:04x}", status);
+    
     match status {
-        0x9000 => Ok(response_data[..data_len - 2].to_vec()),
-        0x6985 => Err(LedgerError::UserDenied),
-        0x6d00 => Err(LedgerError::AppNotRunning),
-        0x6511 => Err(LedgerError::AppNotRunning), // Ethereum app not open
-        _ => Err(LedgerError::ApduError(status)),
+        0x9000 => {
+            eprintln!("[Ledger] Success status received");
+            Ok(response_data[..data_len - 2].to_vec())
+        },
+        0x6985 => {
+            eprintln!("[Ledger] User denied the request");
+            Err(LedgerError::UserDenied)
+        },
+        0x6d00 | 0x6d02 => {
+            eprintln!("[Ledger] Ethereum app not running (INS not supported)");
+            Err(LedgerError::AppNotRunning)
+        },
+        0x6511 => {
+            eprintln!("[Ledger] Ethereum app not open");
+            Err(LedgerError::AppNotRunning)
+        },
+        _ => {
+            eprintln!("[Ledger] APDU error: 0x{:04x}", status);
+            Err(LedgerError::ApduError(status))
+        }
     }
 }
 
 /// Get public key from Ledger
 /// BIP44 path: m/44'/60'/0'/0/0 (Ethereum default)
 pub fn get_public_key(derivation_path: Option<&str>) -> Result<LedgerPublicKey, LedgerError> {
+    const MAX_RETRIES: u32 = 3;
+    const RETRY_DELAY_MS: u64 = 500;
+    
     let api = HidApi::new().map_err(|e| LedgerError::HidApiError(e.to_string()))?;
     let device = open_ledger_device(&api)?;
     
@@ -265,17 +360,57 @@ pub fn get_public_key(derivation_path: Option<&str>) -> Result<LedgerPublicKey, 
     let path = derivation_path.unwrap_or("44'/60'/0'/0/0");
     let path_data = encode_bip32_path(path)?;
     
-    // P1: 0x00 = no display, P2: 0x01 = return chain code
-    let response = send_apdu(
-        &device,
-        CLA,
-        INS_GET_PUBLIC_KEY,
-        P1_NO_DISPLAY,
-        P2_WITH_CHAINCODE,
-        &path_data,
-    )?;
+    eprintln!("[Ledger] Requesting public key with path: {}", path);
+    eprintln!("[Ledger] Encoded path data: {} bytes", path_data.len());
     
-    if response.len() < 65 {
+    // Try with retries to improve stability
+    let mut last_error = None;
+    for attempt in 1..=MAX_RETRIES {
+        if attempt > 1 {
+            eprintln!("[Ledger] Retry attempt {} of {}", attempt, MAX_RETRIES);
+            std::thread::sleep(std::time::Duration::from_millis(RETRY_DELAY_MS));
+        }
+        
+        // P1: 0x00 = no display, P2: 0x01 = return chain code
+        match send_apdu(
+            &device,
+            CLA,
+            INS_GET_PUBLIC_KEY,
+            P1_NO_DISPLAY,
+            P2_WITH_CHAINCODE,
+            &path_data,
+        ) {
+            Ok(response) => {
+                eprintln!("[Ledger] Got response on attempt {}", attempt);
+                return parse_public_key_response(response);
+            },
+            Err(e) => {
+                eprintln!("[Ledger] Attempt {} failed: {:?}", attempt, e);
+                last_error = Some(e);
+                
+                // Don't retry user denial or app not running
+                match &last_error.as_ref().unwrap() {
+                    LedgerError::UserDenied | LedgerError::AppNotRunning => {
+                        break;
+                    },
+                    _ => continue,
+                }
+            }
+        }
+    }
+    
+    Err(last_error.unwrap_or(LedgerError::InvalidResponse))
+}
+
+/// Parse public key response from Ledger
+fn parse_public_key_response(response: Vec<u8>) -> Result<LedgerPublicKey, LedgerError> {
+    eprintln!("[Ledger] Parsing public key response: {} bytes", response.len());
+    eprintln!("[Ledger] Response hex: {}", hex::encode(&response));
+    
+    // Minimum response should have at least:
+    // 1 byte (pubkey len) + 65 bytes (pubkey) + 1 byte (addr len) + addr
+    if response.len() < 67 {
+        eprintln!("[Ledger] Response too short: expected at least 67 bytes, got {}", response.len());
         return Err(LedgerError::InvalidResponse);
     }
     
@@ -288,42 +423,81 @@ pub fn get_public_key(derivation_path: Option<&str>) -> Result<LedgerPublicKey, 
     // [108..140]: chain code (32 bytes)
     
     let mut pos = 0;
+    
+    // Parse public key length
+    if pos >= response.len() {
+        eprintln!("[Ledger] Cannot read public key length at position {}", pos);
+        return Err(LedgerError::InvalidResponse);
+    }
     let public_key_len = response[pos] as usize;
     pos += 1;
     
+    eprintln!("[Ledger] Public key length: {}", public_key_len);
+    
     if public_key_len != 65 {
+        eprintln!("[Ledger] Invalid public key length: expected 65, got {}", public_key_len);
         return Err(LedgerError::InvalidResponse);
     }
     
+    // Parse public key
+    if pos + public_key_len > response.len() {
+        eprintln!("[Ledger] Not enough data for public key: need {} bytes, have {} remaining", 
+                  public_key_len, response.len() - pos);
+        return Err(LedgerError::InvalidResponse);
+    }
     let public_key = &response[pos..pos + public_key_len];
     pos += public_key_len;
     
+    eprintln!("[Ledger] Public key parsed: {}", hex::encode(public_key));
+    
+    // Parse address length
     if pos >= response.len() {
+        eprintln!("[Ledger] Cannot read address length at position {}", pos);
         return Err(LedgerError::InvalidResponse);
     }
-    
     let address_len = response[pos] as usize;
     pos += 1;
     
+    eprintln!("[Ledger] Address length: {}", address_len);
+    
+    // Parse address
     if pos + address_len > response.len() {
+        eprintln!("[Ledger] Not enough data for address: need {} bytes, have {} remaining", 
+                  address_len, response.len() - pos);
         return Err(LedgerError::InvalidResponse);
     }
-    
     let address = &response[pos..pos + address_len];
     pos += address_len;
     
-    // Chain code is optional
+    eprintln!("[Ledger] Address parsed: {}", String::from_utf8_lossy(address));
+    
+    // Chain code is optional (with P2_WITH_CHAINCODE, it should be present)
     let chain_code = if pos < response.len() {
-        let chain_code_len = response[pos] as usize;
-        pos += 1;
-        if pos + chain_code_len <= response.len() && chain_code_len == 32 {
-            &response[pos..pos + chain_code_len]
-        } else {
+        if pos >= response.len() {
+            eprintln!("[Ledger] No chain code length byte available");
             &[]
+        } else {
+            let chain_code_len = response[pos] as usize;
+            pos += 1;
+            
+            eprintln!("[Ledger] Chain code length: {}", chain_code_len);
+            
+            if chain_code_len == 32 && pos + chain_code_len <= response.len() {
+                let cc = &response[pos..pos + chain_code_len];
+                eprintln!("[Ledger] Chain code parsed: {}", hex::encode(cc));
+                cc
+            } else {
+                eprintln!("[Ledger] Chain code invalid or missing (len={}, remaining={})", 
+                          chain_code_len, response.len() - pos);
+                &[]
+            }
         }
     } else {
+        eprintln!("[Ledger] No chain code in response");
         &[]
     };
+    
+    eprintln!("[Ledger] Successfully parsed public key response");
     
     Ok(LedgerPublicKey {
         public_key_hex: hex::encode(public_key),
@@ -335,7 +509,11 @@ pub fn get_public_key(derivation_path: Option<&str>) -> Result<LedgerPublicKey, 
 /// Sign data with Ledger using Personal Message Signing
 /// The data should be a 32-byte hash (e.g., SHA-256)
 pub fn sign_hash(hash: &[u8], derivation_path: Option<&str>) -> Result<LedgerSignature, LedgerError> {
+    const MAX_RETRIES: u32 = 3;
+    const RETRY_DELAY_MS: u64 = 500;
+    
     if hash.len() != 32 {
+        eprintln!("[Ledger] Invalid hash length: {} (expected 32)", hash.len());
         return Err(LedgerError::InvalidResponse);
     }
     
@@ -346,6 +524,9 @@ pub fn sign_hash(hash: &[u8], derivation_path: Option<&str>) -> Result<LedgerSig
     let path = derivation_path.unwrap_or("44'/60'/0'/0/0");
     let path_data = encode_bip32_path(path)?;
     
+    eprintln!("[Ledger] Signing hash: {}", hex::encode(hash));
+    eprintln!("[Ledger] Derivation path: {}", path);
+    
     // Build signing payload for first chunk:
     // - BIP32 path (encoded)
     // - Message length (4 bytes, big-endian)
@@ -354,17 +535,54 @@ pub fn sign_hash(hash: &[u8], derivation_path: Option<&str>) -> Result<LedgerSig
     payload.extend_from_slice(&(hash.len() as u32).to_be_bytes());
     payload.extend_from_slice(hash);
     
-    // P1: 0x00 = first chunk (also last in this case), P2: 0x00
-    let response = send_apdu(
-        &device,
-        CLA,
-        INS_SIGN_PERSONAL_MESSAGE,
-        P1_FIRST_CHUNK,
-        0x00,
-        &payload,
-    )?;
+    eprintln!("[Ledger] Sign payload length: {} bytes", payload.len());
+    
+    // Try with retries to improve stability
+    let mut last_error = None;
+    for attempt in 1..=MAX_RETRIES {
+        if attempt > 1 {
+            eprintln!("[Ledger] Sign retry attempt {} of {}", attempt, MAX_RETRIES);
+            std::thread::sleep(std::time::Duration::from_millis(RETRY_DELAY_MS));
+        }
+        
+        // P1: 0x00 = first chunk (also last in this case), P2: 0x00
+        match send_apdu(
+            &device,
+            CLA,
+            INS_SIGN_PERSONAL_MESSAGE,
+            P1_FIRST_CHUNK,
+            0x00,
+            &payload,
+        ) {
+            Ok(response) => {
+                eprintln!("[Ledger] Got signature response on attempt {}", attempt);
+                return parse_signature_response(response);
+            },
+            Err(e) => {
+                eprintln!("[Ledger] Sign attempt {} failed: {:?}", attempt, e);
+                last_error = Some(e);
+                
+                // Don't retry user denial or app not running
+                match &last_error.as_ref().unwrap() {
+                    LedgerError::UserDenied | LedgerError::AppNotRunning => {
+                        break;
+                    },
+                    _ => continue,
+                }
+            }
+        }
+    }
+    
+    Err(last_error.unwrap_or(LedgerError::InvalidResponse))
+}
+
+/// Parse signature response from Ledger
+fn parse_signature_response(response: Vec<u8>) -> Result<LedgerSignature, LedgerError> {
+    eprintln!("[Ledger] Parsing signature response: {} bytes", response.len());
+    eprintln!("[Ledger] Response hex: {}", hex::encode(&response));
     
     if response.len() < 65 {
+        eprintln!("[Ledger] Signature response too short: expected at least 65 bytes, got {}", response.len());
         return Err(LedgerError::InvalidResponse);
     }
     
@@ -376,6 +594,11 @@ pub fn sign_hash(hash: &[u8], derivation_path: Option<&str>) -> Result<LedgerSig
     let v = response[0];
     let r = &response[1..33];
     let s = &response[33..65];
+    
+    eprintln!("[Ledger] Signature parsed successfully:");
+    eprintln!("  v: {}", v);
+    eprintln!("  r: {}", hex::encode(r));
+    eprintln!("  s: {}", hex::encode(s));
     
     Ok(LedgerSignature {
         r: hex::encode(r),

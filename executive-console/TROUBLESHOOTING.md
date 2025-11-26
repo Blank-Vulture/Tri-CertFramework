@@ -83,6 +83,7 @@ console.log(localStorage.getItem('tricert.vknft.baseDir'))
 **症状**
 - ZIPファイルは作成されるが、署名ファイル（.sig）が作成されない
 - manifest.jsonに `ledgerSignature: null` と記録される
+- 設定画面の診断ツールで「❌ Failed to sign: APDU command failed: status=6d02」エラー
 
 **確認事項**
 1. Consoleで `[Ledger]` のログを確認
@@ -90,37 +91,111 @@ console.log(localStorage.getItem('tricert.vknft.baseDir'))
 
 **考えられる原因と対処法**
 
-#### 原因A: WebAuthn非対応環境
+#### 原因A: **Ethereum アプリが起動していない（最も多い原因）**
 ```
-Error: WebAuthn is not supported in this environment
+Error: APDU command failed: status=6d02
+Error: Ethereum App is not running on Ledger
+```
+
+**症状**: エラーコード `6d02` は「INS not supported」を意味し、Ledger側でEthereumアプリが起動していないことを示します。
+
+**対処法（重要）**: 
+1. **Ledgerデバイスを接続してロック解除**
+   - USBケーブルでPCに接続
+   - PINコードを入力してロック解除
+
+2. **Ledger上で「Ethereum」アプリを開く**
+   - デバイスのボタンで「Ethereum」を選択
+   - 両方のボタンを押して起動
+   - **画面に "Application is ready" と表示されることを確認**
+
+3. **再度署名を試行**
+   - Executive Consoleで署名操作をやり直す
+   - または設定画面の診断ツールで「3. 署名テスト」を実行
+
+**注意**: Bitcoin、Polkadot、その他のアプリが開いている場合もこのエラーが発生します。必ず **Ethereum アプリ** を開いてください。
+
+#### 原因B: Ledgerデバイスが接続されていない
+```
+Error: Ledger device not found
+Error: Device not connected
 ```
 **対処**: 
-- Chromiumベースのブラウザを使用していることを確認
-- Tauriの最新版を使用していることを確認
+1. Ledger Nano S/X/S Plus をUSBで接続
+2. デバイスのロックを解除
+3. 接続を確認: 設定画面の「1. デバイス検出」テストを実行
 
-#### 原因B: セキュアコンテキスト問題
+#### 原因C: ユーザーが署名を拒否
 ```
-Error: WebAuthn requires a secure context
+Error: User denied the request on Ledger
+Error: Signature request was denied
 ```
 **対処**: 
-- この問題は修正済みですが、もし発生する場合はTauriアプリを再起動
+- Ledgerデバイスで署名リクエストが表示されたら、両方のボタンを押して承認してください
+- 拒否した場合は、再度署名操作をやり直してください
 
-#### 原因C: Ledgerデバイスが接続されていない
-```
-Error: Ledger signing was cancelled
-```
+#### 原因D: Ethereumアプリのバージョンが古い
 **対処**: 
-- Fallbackのソフトウェア署名が自動的に使用されます
-- ハードウェア署名を行いたい場合:
-  1. Ledger Nano X をUSBで接続
-  2. デバイスのロックを解除
-  3. 署名リクエストを承認
+1. Ledger Live を開く
+2. 「My Ledger」タブへ移動
+3. Ethereum アプリを最新版にアップデート（推奨: v1.10.0以上）
 
-#### 原因D: WebAuthn登録が必要
-**対処**: 初回のみ、Ledgerの登録プロセスが実行されます
-1. 「登録」ダイアログが表示される
-2. Ledgerデバイスで承認
-3. 登録後、自動的に署名が実行される
+#### 原因E: HID通信エラー（Invalid response from Ledger）
+```
+Error: Invalid response from Ledger
+```
+
+**症状**: Ledgerとの通信が途中で失敗する
+
+**原因**: 
+- USBケーブルの不具合
+- USB HIDドライバの問題
+- Ledgerファームウェアのバグ
+- 他のアプリケーションとの競合
+
+**対処法**:
+1. **USBケーブルを交換**
+   - 純正または高品質なUSBケーブルを使用
+   - データ転送に対応したケーブルを使用（充電専用ケーブルは不可）
+
+2. **USBポートを変更**
+   - 別のUSBポートに接続を試す
+   - USB 3.0ポートよりUSB 2.0ポートの方が安定する場合があります
+   - USBハブを使わず、PCに直接接続
+
+3. **Ledgerを再接続**
+   - デバイスを一度抜いて10秒待つ
+   - 再度接続してEthereumアプリを開く
+
+4. **他のLedgerアプリを閉じる**
+   - Ledger Liveを終了
+   - 他のウォレットアプリ（MetaMask等）を閉じる
+
+5. **Ledgerを再起動**
+   - デバイスの電源を切る（USBを抜く）
+   - 10秒待ってから再接続
+   - PINを入力してロック解除
+
+6. **デバッグログを確認**
+   - Executive Consoleを起動したターミナルを確認
+   - `[Ledger]` で始まる詳細ログが出力されます
+   - 以下の情報をチェック:
+     ```
+     [Ledger] Found Ledger device: ...
+     [Ledger] Device opened successfully
+     [Ledger] Sending APDU command: ...
+     [Ledger] Received response: XX bytes
+     [Ledger] Response hex: ...
+     ```
+
+7. **自動リトライ**
+   - 通信エラーが発生した場合、最大3回まで自動的に再試行されます
+   - エラーが続く場合は上記の対処法を試してください
+
+**予防策**:
+- 安定したUSB接続を使用
+- Ledgerファームウェアを最新に保つ
+- 同時に複数のLedgerアプリを起動しない
 
 ---
 

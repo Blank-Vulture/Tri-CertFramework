@@ -62,20 +62,9 @@ interface OutputDisplayProps {
   signatureData: SignatureData;
 }
 
-export default function OutputDisplay({ outputPdf, proofData, vkeyData, signatureData }: OutputDisplayProps) {
+export default function OutputDisplay({ outputPdf: _outputPdf, proofData, vkeyData, signatureData }: OutputDisplayProps) {
   const { t } = useI18n();
   const [showDetails, setShowDetails] = useState(false);
-
-  const downloadPdf = () => {
-    const url = URL.createObjectURL(outputPdf);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'secured-certificate.pdf';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
 
   const downloadJson = (data: ProofData | VKeyData | SignatureData['webauthn_pub'] | SignatureData['sig_target'], filename: string) => {
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -96,20 +85,6 @@ export default function OutputDisplay({ outputPdf, proofData, vkeyData, signatur
         <h3 className="text-xl font-bold text-gray-900">{t('output.successTitle')}</h3>
         <p className="text-gray-600 mt-1">{t('output.successSubtitle')}</p>
       </div>
-      
-      {/* Main Download Button - Large and Prominent */}
-      <button
-        onClick={downloadPdf}
-        className="w-full py-5 px-6 rounded-2xl font-bold text-xl text-white bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 transition-all shadow-xl hover:shadow-2xl transform hover:scale-[1.02]"
-      >
-        <span className="flex items-center justify-center gap-3">
-          <svg className="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" />
-          </svg>
-          {t('output.securedPdf')}
-        </span>
-        <span className="text-sm font-normal text-green-100 mt-1 block">{t('output.securedPdfCaption')}</span>
-      </button>
 
       {/* Additional Files - Collapsible */}
       <div className="border border-gray-200 rounded-xl overflow-hidden">

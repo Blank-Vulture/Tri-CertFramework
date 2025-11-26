@@ -117,7 +117,7 @@
   "download": {
     "readyTitle": "ダウンロード準備完了",
     "aria": "保護されたPDFをダウンロード",
-    "button": "PDFをダウンロード",
+    "button": "証明ファイル付きPDFをダウンロード",
     "afterHint": "ダウンロード後、Verifierアプリで検証できます"
   },
   "webauthn": {

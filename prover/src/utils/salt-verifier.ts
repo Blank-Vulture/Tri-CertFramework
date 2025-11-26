@@ -30,8 +30,8 @@ export interface SaltVerificationResult {
 const DEFAULT_ALLOWLIST_URL = 'https://raw.githubusercontent.com/Blank-Vulture/Tri-CertFramework/main/registrations/commit-allowlist.json';
 const ALLOWLIST_URL = process.env.NEXT_PUBLIC_ALLOWLIST_URL || DEFAULT_ALLOWLIST_URL;
 
-// Expected schema for integrity verification
-const EXPECTED_ALLOWLIST_SCHEMA = 'tri-cert/commit-allowlist@1';
+// Expected schema prefix for integrity verification
+const EXPECTED_SCHEMA_PREFIX = 'tri-cert/commit-allowlist@';
 
 /**
  * Validate allowlist structure for integrity
@@ -40,8 +40,8 @@ function validateAllowlistIntegrity(data: unknown): data is AllowlistFile {
   if (!data || typeof data !== 'object') return false;
   const obj = data as Record<string, unknown>;
   
-  // Schema validation
-  if (typeof obj.schema !== 'string' || !obj.schema.startsWith('tri-cert/commit-allowlist@')) {
+  // Schema validation - must match expected prefix
+  if (typeof obj.schema !== 'string' || !obj.schema.startsWith(EXPECTED_SCHEMA_PREFIX)) {
     return false;
   }
   
@@ -210,7 +210,7 @@ export async function verifySalt(
       activationHash,
       error: 'This salt is not registered. Please contact your registrar.',
     };
-  } catch (error) {
+  } catch {
     return {
       isValid: false,
       error: 'Verification failed. Please try again.',
@@ -220,9 +220,11 @@ export async function verifySalt(
 
 /**
  * Set the allowlist URL (for different deployments)
+ * Note: URL is configured via NEXT_PUBLIC_ALLOWLIST_URL environment variable
+ * This function is kept for API compatibility but does not change runtime URL
  */
-export function setAllowlistURL(url: string): void {
-  console.log('To change allowlist URL, update ALLOWLIST_URL in salt-verifier.ts');
-  console.log('Requested URL:', url);
+export function setAllowlistURL(_url: string): void {
+  // URL configuration is done via environment variable NEXT_PUBLIC_ALLOWLIST_URL
+  // This function is kept for API compatibility only
 }
 

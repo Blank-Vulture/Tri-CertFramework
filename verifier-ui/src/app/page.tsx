@@ -9,6 +9,12 @@ import VerificationAnimation from './components/VerificationAnimation';
 import { verifyWebAuthnComplete } from '../utils/webauthn-verifier';
 import type { SignatureVerificationContext } from '../types/webauthn';
 import { checkRegistration, verifyProofRegistration } from '../utils/registration-checker';
+import {
+  extractProofFromTail,
+  calculateRawPdfHash,
+  isValidProofBundle,
+  type ProofBundle,
+} from '../utils/pdf-proof-utils';
 
 // Type definitions
 interface ProofData {
@@ -74,6 +80,7 @@ interface ExtractedData {
     circuit_id: string;
     vkey_hash: string;
     pdf_sha3_512: string;
+    graduation_year?: string;
     commit: string;
     issued_at: string;
   };
@@ -86,6 +93,9 @@ interface ExtractedData {
     alg: string;
     kid: string;
   };
+  // Added for tail-append method support
+  hashMethod?: 'raw' | 'normalized';
+  originalPdfBuffer?: ArrayBuffer;
 }
 
 // Verification step type
@@ -211,9 +221,19 @@ export default function Home() {
       setCurrentStepIndex(1);
       
       // Step 2: Calculate hash
+      // Use appropriate hash method based on how the proof was attached
       await delay(300);
       updateStepStatus('hash', 'running');
-      const calculatedHash = await calculatePdfHash(pdfBuffer);
+      let calculatedHash: string;
+      
+      if (extractedData.hashMethod === 'raw' && extractedData.originalPdfBuffer) {
+        // Tail-append method: use raw hash of original PDF (without proof data)
+        calculatedHash = await calculateRawPdfHash(extractedData.originalPdfBuffer);
+      } else {
+        // Subject method: use normalized hash
+        calculatedHash = await calculatePdfHash(pdfBuffer);
+      }
+      
       const expectedHash = extractedData.proof?.public_signals?.pdf_sha3_512;
       const hashValid = expectedHash === `hex:${calculatedHash}`;
       updateStepStatus('hash', hashValid ? 'success' : 'error');
@@ -576,6 +596,44 @@ function isValidProofData(data: unknown): data is ProofData {
 
 // Helper functions
 async function extractPdfData(pdfBuffer: ArrayBuffer): Promise<ExtractedData> {
+  // First, try tail-append method (for encrypted/password-protected PDFs)
+  const tailResult = extractProofFromTail(pdfBuffer);
+  if (tailResult && isValidProofBundle(tailResult.proofBundle)) {
+    const bundle = tailResult.proofBundle as ProofBundle;
+    const result: ExtractedData = {
+      hashMethod: bundle.hash_method,
+      originalPdfBuffer: tailResult.originalPdf,
+    };
+    
+    // Extract proof data
+    if (bundle.proof && isValidProofData(bundle.proof)) {
+      result.proof = bundle.proof as ProofData;
+    }
+    
+    // Extract vkey
+    if (bundle.vkey) {
+      result.vkey = bundle.vkey as VKeyData;
+    }
+    
+    // Extract WebAuthn signature
+    if (bundle.webauthn_sig) {
+      result.webauthnSignature = bundle.webauthn_sig as ExtractedData['webauthnSignature'];
+    }
+    
+    // Extract sig_target
+    if (bundle.sig_target) {
+      result.sigTarget = bundle.sig_target as ExtractedData['sigTarget'];
+    }
+    
+    // Extract public key
+    if (bundle.webauthn_pub) {
+      result.publicKey = bundle.webauthn_pub as ExtractedData['publicKey'];
+    }
+    
+    return result;
+  }
+  
+  // Fallback: try Subject metadata method (for regular PDFs)
   try {
     const { PDFDocument } = await import('pdf-lib');
     const pdfDoc = await PDFDocument.load(pdfBuffer);
@@ -589,7 +647,9 @@ async function extractPdfData(pdfBuffer: ArrayBuffer): Promise<ExtractedData> {
       }
       
       const attachments = metadata.attachments;
-      const result: ExtractedData = {};
+      const result: ExtractedData = {
+        hashMethod: 'normalized', // Subject method always uses normalized hash
+      };
       
       for (const attachment of attachments) {
         if (!attachment.name || !attachment.data) continue;

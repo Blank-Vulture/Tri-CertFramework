@@ -10,6 +10,12 @@ import {
   verifySalt,
   type SaltVerificationResult,
 } from '../../utils/salt-verifier';
+import {
+  isEncryptedPdf,
+  calculateRawPdfHash,
+  attachProofToTail,
+  type ProofBundle,
+} from '../../utils/pdf-proof-utils';
 // @ts-expect-error - snarkjs doesn't have proper TypeScript declarations
 import * as snarkjs from 'snarkjs';
 
@@ -232,7 +238,15 @@ export default function ProofGenerator({
       setStatus(t('proofGen.status.calcHash'));
       onProgress?.({ step: 1, message: t('proofGen.progress.hash') });
       const pdfBuffer = await pdfFile.arrayBuffer();
-      const pdfHash = await calculatePdfHash(new Uint8Array(pdfBuffer));
+      const pdfBytes = new Uint8Array(pdfBuffer);
+      
+      // Detect if PDF is encrypted (password-protected)
+      const isEncrypted = isEncryptedPdf(pdfBytes);
+      
+      // Use raw hash for encrypted PDFs, normalized hash for regular PDFs
+      const pdfHash = isEncrypted
+        ? await calculateRawPdfHash(pdfBytes)
+        : await calculatePdfHash(pdfBytes);
 
       // Step 2: Generate ZKP
       setStatus(t('proofGen.status.generatingZkp'));
@@ -257,9 +271,31 @@ export default function ProofGenerator({
       const signature = await createWebAuthnSignature(proof, vkey, pdfHash, webauthnCredential);
 
       // Step 4: Attach to PDF
+      // Use tail-append method for encrypted PDFs, Subject metadata for regular PDFs
       setStatus(t('proofGen.status.attaching'));
       onProgress?.({ step: 4, message: t('proofGen.progress.attach') });
-      const outputPdf = await attachToPdf(pdfBuffer, proof, signature, vkey);
+      
+      let outputPdf: Blob;
+      if (isEncrypted) {
+        // Encrypted PDF: Use tail-append method (doesn't require opening the PDF)
+        const proofBundle: ProofBundle = {
+          version: '1.0',
+          hash_method: 'raw',
+          proof,
+          vkey,
+          webauthn_sig: signature.webauthn,
+          webauthn_pub: signature.webauthn_pub,
+          sig_target: signature.sig_target,
+        };
+        const resultBytes = attachProofToTail(pdfBytes, proofBundle);
+        // Create a new ArrayBuffer copy for Blob compatibility
+        const arrayBuffer = new ArrayBuffer(resultBytes.length);
+        new Uint8Array(arrayBuffer).set(resultBytes);
+        outputPdf = new Blob([arrayBuffer], { type: 'application/pdf' });
+      } else {
+        // Regular PDF: Use Subject metadata method
+        outputPdf = await attachToPdf(pdfBuffer, proof, signature, vkey);
+      }
 
       setStatus(t('proofGen.status.complete'));
       onProgress?.({ step: 4, message: t('proofGen.progress.done') });

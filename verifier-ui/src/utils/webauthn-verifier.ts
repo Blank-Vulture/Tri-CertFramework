@@ -25,8 +25,10 @@ const ALLOWED_ORIGINS = [
   // Development
   'http://localhost:3000',
   'http://localhost:3001',
+  'http://localhost:3002',
   'http://127.0.0.1:3000',
   'http://127.0.0.1:3001',
+  'http://127.0.0.1:3002',
 ];
 
 /**
@@ -175,10 +177,30 @@ export async function verifyWebAuthnSignature(
       // We need to decode it and compare with our expected challenge
       const receivedChallengeBuffer = base64urlToArrayBuffer(clientData.challenge);
       const receivedChallengeStr = new TextDecoder().decode(receivedChallengeBuffer);
-      const expectedChallengeStr = JSON.stringify(expectedChallenge);
       
-      if (receivedChallengeStr !== expectedChallengeStr) {
-        return false;
+      // Parse and deep compare to handle property order differences
+      // (JSON.stringify order may differ after parse/stringify cycles)
+      try {
+        const receivedObj = JSON.parse(receivedChallengeStr);
+        const expectedObj = expectedChallenge;
+        
+        // Deep equality check for sig_target objects
+        const keysMatch = (obj1: Record<string, unknown>, obj2: Record<string, unknown>): boolean => {
+          const keys1 = Object.keys(obj1).sort();
+          const keys2 = Object.keys(obj2).sort();
+          if (keys1.length !== keys2.length) return false;
+          return keys1.every((key, i) => key === keys2[i] && obj1[key] === obj2[key]);
+        };
+        
+        if (!keysMatch(receivedObj as Record<string, unknown>, expectedObj as Record<string, unknown>)) {
+          return false;
+        }
+      } catch {
+        // Fallback to string comparison if parsing fails
+        const expectedChallengeStr = JSON.stringify(expectedChallenge);
+        if (receivedChallengeStr !== expectedChallengeStr) {
+          return false;
+        }
       }
     }
 

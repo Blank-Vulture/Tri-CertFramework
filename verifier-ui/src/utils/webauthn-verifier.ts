@@ -76,6 +76,57 @@ export function parseAuthenticatorData(authDataBuffer: ArrayBuffer): Authenticat
 }
 
 /**
+ * Verify RP ID hash matches the expected origin
+ * This ensures the signature was created for the correct relying party
+ */
+export async function verifyRPIDHash(
+  rpIdHash: ArrayBuffer,
+  origin: string
+): Promise<boolean> {
+  try {
+    console.log('=== Verifying RP ID hash ===');
+    
+    // Extract hostname from origin (e.g., "https://example.com" -> "example.com")
+    const url = new URL(origin);
+    const rpId = url.hostname;
+    
+    console.log('RP ID verification:', {
+      origin,
+      rpId,
+    });
+
+    // Calculate expected RP ID hash
+    const encoder = new TextEncoder();
+    const rpIdData = encoder.encode(rpId);
+    const expectedHash = await crypto.subtle.digest('SHA-256', rpIdData);
+
+    // Compare hashes
+    const actualHashArray = new Uint8Array(rpIdHash);
+    const expectedHashArray = new Uint8Array(expectedHash);
+
+    const hashesMatch = actualHashArray.length === expectedHashArray.length &&
+      actualHashArray.every((byte, index) => byte === expectedHashArray[index]);
+
+    console.log('RP ID hash comparison:', {
+      actual: arrayBufferToBase64url(rpIdHash).substring(0, 16) + '...',
+      expected: arrayBufferToBase64url(expectedHash).substring(0, 16) + '...',
+      match: hashesMatch,
+    });
+
+    if (!hashesMatch) {
+      console.error('RP ID hash mismatch - signature was not created for this origin');
+      return false;
+    }
+
+    console.log('✅ RP ID hash verified successfully');
+    return true;
+  } catch (error) {
+    console.error('RP ID hash verification error:', error);
+    return false;
+  }
+}
+
+/**
  * Create signature verification data for WebAuthn
  */
 export function createSignatureData(
@@ -164,6 +215,13 @@ export async function verifyWebAuthnSignature(
       dataLength: authenticatorDataBuffer.byteLength
     });
 
+    // Verify RP ID hash
+    const rpIdHashValid = await verifyRPIDHash(authData.rpIdHash, clientData.origin);
+    if (!rpIdHashValid) {
+      console.error('RP ID hash verification failed');
+      return false;
+    }
+
     // Verify User Present flag (UP) is set
     if (!(authData.flags & 0x01)) {
       console.error('User Present flag not set, flags:', `0x${authData.flags.toString(16)}`);
@@ -171,6 +229,15 @@ export async function verifyWebAuthnSignature(
     }
 
     console.log('User Present flag verification passed');
+
+    // Optional: Verify User Verified flag (UV) for enhanced security
+    // This ensures biometric/PIN verification was performed
+    const userVerified = !!(authData.flags & 0x04);
+    if (userVerified) {
+      console.log('✅ User Verified flag is set (biometric/PIN authentication confirmed)');
+    } else {
+      console.log('ℹ️ User Verified flag not set (user presence only)');
+    }
 
     // Create client data hash
     const clientDataHash = await crypto.subtle.digest('SHA-256', clientDataBuffer);
@@ -249,23 +316,75 @@ export async function importWebAuthnPublicKey(
 }
 
 /**
- * Verify WebAuthn credential ID binding
+ * Calculate JWK Thumbprint (RFC 7638) for credential binding verification
  */
-export function verifyCredentialBinding(
+async function calculateJWKThumbprint(jwk: {
+  kty: string;
+  crv: string;
+  x: string;
+  y: string;
+}): Promise<string> {
+  // Create canonical JSON (lexicographically ordered)
+  const canonical = {
+    crv: jwk.crv,
+    kty: jwk.kty,
+    x: jwk.x,
+    y: jwk.y,
+  };
+
+  // Marshal to JSON
+  const canonicalJSON = JSON.stringify(canonical);
+
+  // Calculate SHA-256 hash
+  const encoder = new TextEncoder();
+  const data = encoder.encode(canonicalJSON);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+
+  // Convert to base64url (no padding)
+  return arrayBufferToBase64url(hashBuffer);
+}
+
+/**
+ * Verify WebAuthn credential ID binding
+ * This ensures the signature was created by the claimed public key
+ */
+export async function verifyCredentialBinding(
   context: SignatureVerificationContext
-): boolean {
+): Promise<boolean> {
   try {
-    // Verify that the credential ID in the signature matches the public key
+    console.log('=== Verifying credential binding ===');
+    
     const expectedKid = context.webauthn_pub.kid;
     const actualCredentialId = context.webauthn.credentialId;
 
-    // The kid should be the base64url-encoded credential ID or JWK thumbprint
-    if (expectedKid && expectedKid !== actualCredentialId) {
-      // If kid is a JWK thumbprint, we would need to compute it and compare
-      console.warn('Credential ID binding verification not fully implemented');
+    console.log('Credential binding check:', {
+      kid: expectedKid.substring(0, 16) + '...',
+      credentialId: actualCredentialId.substring(0, 16) + '...',
+    });
+
+    // The kid should be the JWK thumbprint
+    // Calculate the thumbprint from the public key and compare
+    const calculatedThumbprint = await calculateJWKThumbprint({
+      kty: context.webauthn_pub.kty,
+      crv: context.webauthn_pub.crv,
+      x: context.webauthn_pub.x,
+      y: context.webauthn_pub.y,
+    });
+
+    console.log('JWK Thumbprint verification:', {
+      calculated: calculatedThumbprint.substring(0, 16) + '...',
+      expected: expectedKid.substring(0, 16) + '...',
+      match: calculatedThumbprint === expectedKid,
+    });
+
+    // Verify that the kid matches the calculated thumbprint
+    if (calculatedThumbprint !== expectedKid) {
+      console.error('JWK Thumbprint mismatch - public key does not match kid');
+      return false;
     }
 
-    return true; // For now, always pass this check
+    console.log('✅ Credential binding verified successfully');
+    return true;
   } catch (error) {
     console.error('Credential binding verification error:', error);
     return false;
@@ -282,28 +401,63 @@ export async function verifyWebAuthnComplete(
   details: {
     signatureValid: boolean;
     credentialBindingValid: boolean;
+    rpIdHashValid?: boolean;
+    userPresent?: boolean;
+    userVerified?: boolean;
     error?: string;
   };
 }> {
   try {
-    // Verify credential binding
-    const credentialBindingValid = verifyCredentialBinding(context);
+    console.log('=== Starting comprehensive WebAuthn verification ===');
+    
+    // Verify credential binding (ensures public key matches kid)
+    const credentialBindingValid = await verifyCredentialBinding(context);
+    
+    if (!credentialBindingValid) {
+      console.error('❌ Credential binding verification failed');
+      return {
+        isValid: false,
+        details: {
+          signatureValid: false,
+          credentialBindingValid: false,
+          error: 'Credential binding verification failed',
+        },
+      };
+    }
 
     // Verify signature with sig_target as challenge
     const signatureValid = await verifyWebAuthnSignature(context, context.sig_target);
 
+    // Parse authenticator data for additional details
+    const authenticatorDataBuffer = base64urlToArrayBuffer(context.webauthn.authenticatorData);
+    const authData = parseAuthenticatorData(authenticatorDataBuffer);
+    const userPresent = !!(authData.flags & 0x01);
+    const userVerified = !!(authData.flags & 0x04);
+
     const isValid = signatureValid && credentialBindingValid;
+
+    console.log('=== WebAuthn verification summary ===');
+    console.log('Overall result:', isValid ? '✅ VALID' : '❌ INVALID');
+    console.log('Details:', {
+      signatureValid,
+      credentialBindingValid,
+      userPresent,
+      userVerified,
+    });
 
     return {
       isValid,
       details: {
         signatureValid,
         credentialBindingValid,
+        rpIdHashValid: true, // Already verified in verifyWebAuthnSignature
+        userPresent,
+        userVerified,
       },
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error('Complete WebAuthn verification failed:', errorMessage);
+    console.error('❌ Complete WebAuthn verification failed:', errorMessage);
 
     return {
       isValid: false,

@@ -73,6 +73,26 @@
       "changeFile": "ファイルを変更",
       "help": "任意のフェイルセーフ：Executive Console からエクスポートした VK を選択できます。未選択の場合は既定の公開 VK を使用します。",
       "hash": "ハッシュ"
+    },
+    "salt": {
+      "title": "学生登録確認",
+      "desc": "Registrar Consoleから発行されたsaltを入力して、登録済み学生であることを確認してください。",
+      "label": "Salt",
+      "placeholder": "例: MTFSJGBMQX5SW23TJNC34APYLYPY2",
+      "name": "氏名",
+      "namePlaceholder": "例: 山田 太郎",
+      "birthdate": "生年月日",
+      "verify": "Saltを検証",
+      "verifying": "検証中...",
+      "verified": "登録確認済み",
+      "invalid": "登録が確認できません",
+      "activationHash": "Activation Hash",
+      "alert": {
+        "enterSalt": "Saltを入力してください",
+        "enterName": "氏名を入力してください",
+        "enterBirthdate": "生年月日を入力してください",
+        "verifySaltFirst": "証明を生成する前にSaltを検証してください"
+      }
     }
   },
   "common": {

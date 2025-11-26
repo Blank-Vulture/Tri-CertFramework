@@ -51,12 +51,34 @@
     "signature": "電子署名",
     "hash": "PDFハッシュ整合性",
     "vkeyHash": "検証キーのハッシュ",
+    "registration": "学生登録（公開鍵）",
     "possibleIssues": "想定される問題",
     "issue": {
       "zkp": "ゼロ知識証明の検証に失敗しました",
-      "signature": "電子署名が無効です",
+      "signature": "電子署名が無効です - 署名の暗号学的検証に失敗しました",
       "hash": "PDFの内容が変更されています",
-      "vkeyHash": "検証キーが一致しません"
+      "vkeyHash": "検証キーが一致しません",
+      "registration": "学生が登録されていません",
+      "saltRegistration": "Salt登録が確認できません"
+    },
+    "signatureDetails": {
+      "valid": "有効なWebAuthn署名",
+      "keyBinding": "公開鍵バインディング検証済み",
+      "originVerified": "Origin検証合格",
+      "userPresent": "ユーザー存在確認済み",
+      "userVerified": "生体認証/PIN認証検証済み",
+      "signatureFailed": "暗号署名検証失敗",
+      "bindingFailed": "公開鍵バインディング検証失敗"
+    },
+    "saltRegistration": {
+      "label": "学生登録確認",
+      "verified": "✅ 登録済み学生 - このPDFはRegistrar Consoleで登録された学生により生成されました",
+      "notFound": "Salt登録情報がありません",
+      "notIncluded": "⚠️ この証明にはSalt登録情報が含まれていません（旧バージョンの可能性）",
+      "invalid": "❌ Salt登録が確認できません - Registrar Consoleで登録されていない可能性があります",
+      "failed": "⚠️ 登録確認に失敗しました",
+      "error": "エラー",
+      "registeredAt": "登録日"
     }
   }
 }

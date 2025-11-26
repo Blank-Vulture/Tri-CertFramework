@@ -7,7 +7,7 @@ import KeyUpload from './components/KeyUpload';
 import VerificationResults from './components/VerificationResults';
 import { verifyWebAuthnComplete } from '../utils/webauthn-verifier';
 import type { SignatureVerificationContext } from '../types/webauthn';
-import { checkRegistration } from '../utils/registration-checker';
+import { checkRegistration, verifyProofRegistration, type ActivationHashCheckResult } from '../utils/registration-checker';
 
 // Type definitions
 interface ProofData {
@@ -23,6 +23,12 @@ interface ProofData {
     pi_a: string[];
     pi_b: string[][];
     pi_c: string[];
+  };
+  // Salt-based registration info (added by prover when verified)
+  registration?: {
+    activation_hash: string;
+    student_id_hash: string;
+    verified_at: string;
   };
 }
 
@@ -44,12 +50,14 @@ interface VerificationResult {
   hashValid: boolean;
   vkeyHashValid: boolean;
   registrationValid?: boolean;
+  saltRegistrationValid?: boolean;
   details: {
     zkp?: string;
     signature?: string;
     hash?: string;
     vkeyHash?: string;
     registration?: string;
+    saltRegistration?: string;
   };
 }
 
@@ -295,21 +303,56 @@ export default function Home() {
           try {
             const result = await verifyWebAuthnComplete(verificationContext);
             signatureValid = result.isValid;
-            signatureDetails = result.isValid 
-              ? 'Valid WebAuthn signature - Biometric authentication verified' 
-              : `Invalid WebAuthn signature: ${result.details.error || 'Cryptographic verification failed'}`;
+            
+            if (result.isValid) {
+              // Build detailed success message
+              const details: string[] = ['✅ Valid WebAuthn signature'];
+              
+              if (result.details.credentialBindingValid) {
+                details.push('• Public key binding verified');
+              }
+              if (result.details.rpIdHashValid) {
+                details.push('• Origin verification passed');
+              }
+              if (result.details.userPresent) {
+                details.push('• User presence confirmed');
+              }
+              if (result.details.userVerified) {
+                details.push('• Biometric/PIN authentication verified');
+              }
+              
+              signatureDetails = details.join('\n');
+            } else {
+              // Build detailed error message
+              const errors: string[] = ['❌ Invalid WebAuthn signature'];
+              
+              if (!result.details.signatureValid) {
+                errors.push('• Cryptographic signature verification failed');
+              }
+              if (!result.details.credentialBindingValid) {
+                errors.push('• Public key binding verification failed');
+              }
+              if (result.details.error) {
+                errors.push(`• Error: ${result.details.error}`);
+              }
+              
+              signatureDetails = errors.join('\n');
+            }
               
             console.log('=== WebAuthn verification completed ===');
             console.log('Final result:', {
               isValid: result.isValid,
               signatureValid: result.details.signatureValid,
               credentialBindingValid: result.details.credentialBindingValid,
+              rpIdHashValid: result.details.rpIdHashValid,
+              userPresent: result.details.userPresent,
+              userVerified: result.details.userVerified,
               error: result.details.error
             });
           } catch (verificationError) {
             console.error('WebAuthn verification threw an error:', verificationError);
             signatureValid = false;
-            signatureDetails = `WebAuthn verification error: ${verificationError instanceof Error ? verificationError.message : 'Unknown error'}`;
+            signatureDetails = `❌ WebAuthn verification error: ${verificationError instanceof Error ? verificationError.message : 'Unknown error'}`;
           }
         } else {
           console.warn('No public key available for WebAuthn verification');
@@ -323,37 +366,98 @@ export default function Home() {
         });
       }
       
-      // Check student registration
-      let registrationValid = false;
-      let registrationDetails = 'Registration check not performed';
+      // Check student registration (JWK thumbprint based - optional)
+      // This check is optional and will be skipped if index.json is not available or empty
+      let registrationValid: boolean | undefined = undefined;
+      let registrationDetails = 'Public key registration check not available (using Salt registration instead)';
       
       if (extractedData.publicKey || (publicKeyFile && extractedData.webauthnSignature)) {
         const pubKey = publicKeyFile ? JSON.parse(await publicKeyFile.text()) : extractedData.publicKey;
         
         if (pubKey) {
-          console.log('=== Starting Registration Check ===');
+          console.log('=== Starting Registration Check (Optional) ===');
           try {
             const registrationResult = await checkRegistration(pubKey);
-            registrationValid = registrationResult.isRegistered;
             
-            if (registrationResult.isRegistered) {
-              registrationDetails = '✅ Registered Student - This PDF was submitted by a verified student';
-            } else if (registrationResult.error) {
-              registrationDetails = `⚠️ Registration check failed: ${registrationResult.error}`;
+            // Check if registry is available and has entries
+            const isRegistryEmpty = registrationResult.error?.includes('empty');
+            const isRegistryUnavailable = registrationResult.error === 'Failed to fetch student registry';
+            
+            if (isRegistryUnavailable) {
+              // Registry not available - skip this check
+              console.log('Public key registry not available, skipping this check');
+              registrationValid = undefined;
+              registrationDetails = 'ℹ️ Public key registration check skipped (registry not available)';
+            } else if (isRegistryEmpty) {
+              // Registry is empty - skip this check (no public keys registered yet)
+              console.log('Public key registry is empty, skipping this check');
+              registrationValid = undefined;
+              registrationDetails = 'ℹ️ Public key registration check skipped (no public keys registered yet)';
+            } else if (!registrationResult.error) {
+              // Registry is available and has entries - perform check
+              registrationValid = registrationResult.isRegistered;
+              
+              if (registrationResult.isRegistered) {
+                registrationDetails = '✅ Registered Student - This PDF was submitted by a verified student (public key verified)';
+              } else {
+                registrationDetails = '⚠️ Unregistered Public Key - This signature is valid but the public key is not in the registry';
+              }
             } else {
-              registrationDetails = '❌ Unregistered Public Key - This signature is valid but the student is not registered in the system';
+              // Other error - skip this check
+              console.warn('Public key registration check error:', registrationResult.error);
+              registrationValid = undefined;
+              registrationDetails = `ℹ️ Public key registration check skipped (${registrationResult.error})`;
             }
             
             console.log('Registration check result:', {
               isRegistered: registrationResult.isRegistered,
               thumbprint: registrationResult.thumbprint,
               error: registrationResult.error,
+              registrationValid,
             });
           } catch (registrationError) {
             console.error('Registration check error:', registrationError);
-            registrationDetails = `Registration check error: ${registrationError instanceof Error ? registrationError.message : 'Unknown error'}`;
+            // Don't fail verification if this optional check fails
+            registrationValid = undefined;
+            registrationDetails = 'ℹ️ Public key registration check skipped (error occurred)';
           }
         }
+      }
+
+      // Check salt-based registration (activation hash based - new)
+      let saltRegistrationValid = false;
+      let saltRegistrationDetails = t('results.saltRegistration.notFound');
+      
+      if (extractedData.proof?.registration) {
+        console.log('=== Starting Salt Registration Check ===');
+        try {
+          const saltResult = await verifyProofRegistration(extractedData.proof.registration);
+          saltRegistrationValid = saltResult.isValid;
+          
+          if (saltResult.isValid) {
+            saltRegistrationDetails = t('results.saltRegistration.verified');
+            if (saltResult.registeredAt) {
+              saltRegistrationDetails += ` (${t('results.saltRegistration.registeredAt')}: ${new Date(saltResult.registeredAt).toLocaleDateString()})`;
+            }
+          } else if (saltResult.error) {
+            saltRegistrationDetails = `${t('results.saltRegistration.failed')}: ${saltResult.error}`;
+          } else {
+            saltRegistrationDetails = t('results.saltRegistration.invalid');
+          }
+          
+          console.log('Salt registration check result:', {
+            isValid: saltResult.isValid,
+            activationHash: saltResult.activationHash,
+            studentIdHash: saltResult.studentIdHash,
+            error: saltResult.error,
+          });
+        } catch (saltError) {
+          console.error('Salt registration check error:', saltError);
+          saltRegistrationDetails = `${t('results.saltRegistration.error')}: ${saltError instanceof Error ? saltError.message : 'Unknown error'}`;
+        }
+      } else {
+        console.log('No salt registration info found in proof');
+        saltRegistrationDetails = t('results.saltRegistration.notIncluded');
       }
       
       // Verify PDF hash (re-use pre-calculated value)
@@ -379,12 +483,14 @@ export default function Home() {
         hashValid,
         vkeyHashValid,
         registrationValid,
+        saltRegistrationValid,
         details: {
           zkp: zkpDetails,
           signature: signatureDetails,
           hash: hashValid ? 'PDF hash matches' : 'PDF hash mismatch',
           vkeyHash: vkeyHashValid ? 'VKey hash matches' : 'VKey hash mismatch',
           registration: registrationDetails,
+          saltRegistration: saltRegistrationDetails,
         }
       });
     } catch (error) {

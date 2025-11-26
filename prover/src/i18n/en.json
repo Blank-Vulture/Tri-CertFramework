@@ -73,6 +73,26 @@
       "changeFile": "Change file",
       "help": "Optional fail-safe: Select VK exported from Executive Console. If not selected, the default public VK is used.",
       "hash": "hash"
+    },
+    "salt": {
+      "title": "Student Registration Verification",
+      "desc": "Enter the salt issued by Registrar Console to verify your registration.",
+      "label": "Salt",
+      "placeholder": "e.g., MTFSJGBMQX5SW23TJNC34APYLYPY2",
+      "name": "Full Name",
+      "namePlaceholder": "e.g., John Doe",
+      "birthdate": "Date of Birth",
+      "verify": "Verify Salt",
+      "verifying": "Verifying...",
+      "verified": "Registration Verified",
+      "invalid": "Registration not found",
+      "activationHash": "Activation Hash",
+      "alert": {
+        "enterSalt": "Please enter your salt",
+        "enterName": "Please enter your name",
+        "enterBirthdate": "Please enter your date of birth",
+        "verifySaltFirst": "Please verify your salt before generating proof"
+      }
     }
   },
   "common": {

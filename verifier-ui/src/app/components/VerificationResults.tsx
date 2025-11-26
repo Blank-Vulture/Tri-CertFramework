@@ -8,12 +8,14 @@ interface VerificationResult {
   hashValid: boolean;
   vkeyHashValid: boolean;
   registrationValid?: boolean;
+  saltRegistrationValid?: boolean;
   details: {
     zkp?: string;
     signature?: string;
     hash?: string;
     vkeyHash?: string;
     registration?: string;
+    saltRegistration?: string;
   };
 }
 
@@ -23,7 +25,11 @@ interface VerificationResultsProps {
 
 export default function VerificationResults({ result }: VerificationResultsProps) {
   const { t } = useI18n();
-  const overallValid = result.zkpValid && result.signatureValid && result.hashValid && result.vkeyHashValid && (result.registrationValid !== false);
+  // Overall validity requires ZKP, signature, hash, vkeyHash, and salt registration (if present)
+  // Public key registration is optional (undefined means not checked/not available)
+  const overallValid = result.zkpValid && result.signatureValid && result.hashValid && result.vkeyHashValid && 
+    (result.registrationValid !== false) && 
+    (result.saltRegistrationValid === true); // Salt registration must be explicitly true
   
   const ResultItem = ({ 
     label, 
@@ -35,10 +41,10 @@ export default function VerificationResults({ result }: VerificationResultsProps
     details?: string; 
   }) => (
     <div className="flex items-center justify-between p-3 border-b border-gray-100 last:border-b-0">
-      <div>
+      <div className="flex-1">
         <span className="font-medium text-gray-900">{label}</span>
         {details && (
-          <p className="text-sm text-gray-600 mt-1">{details}</p>
+          <p className="text-sm text-gray-600 mt-1 whitespace-pre-line">{details}</p>
         )}
       </div>
       <div className={`flex items-center px-3 py-1 rounded-full text-sm font-medium ${
@@ -122,11 +128,19 @@ export default function VerificationResults({ result }: VerificationResultsProps
               isValid={result.vkeyHashValid}
               details={result.details.vkeyHash}
             />
-            {result.registrationValid !== undefined && (
+            {/* Only show public key registration if it was actually checked (not undefined) */}
+            {result.registrationValid !== undefined && result.registrationValid !== null && (
               <ResultItem 
-                label="Student Registration" 
+                label={t('results.registration')}
                 isValid={result.registrationValid}
                 details={result.details.registration}
+              />
+            )}
+            {result.saltRegistrationValid !== undefined && (
+              <ResultItem 
+                label={t('results.saltRegistration.label')}
+                isValid={result.saltRegistrationValid}
+                details={result.details.saltRegistration}
               />
             )}
           </div>
@@ -147,7 +161,8 @@ export default function VerificationResults({ result }: VerificationResultsProps
                       {!result.signatureValid && <li>{t('results.issue.signature')}</li>}
                       {!result.hashValid && <li>{t('results.issue.hash')}</li>}
                       {!result.vkeyHashValid && <li>{t('results.issue.vkeyHash')}</li>}
-                      {result.registrationValid === false && <li>Student is not registered in the system</li>}
+                      {result.registrationValid === false && <li>{t('results.issue.registration')}</li>}
+                      {result.saltRegistrationValid === false && <li>{t('results.issue.saltRegistration')}</li>}
                     </ul>
                   </div>
                 </div>

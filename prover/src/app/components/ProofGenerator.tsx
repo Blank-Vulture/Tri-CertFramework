@@ -6,6 +6,11 @@ import WebAuthnSetup from './WebAuthnSetup';
 import {
   createWebAuthnAssertion,
 } from '../../utils/webauthn';
+import {
+  verifySalt,
+  calculateActivationHash,
+  type SaltVerificationResult,
+} from '../../utils/salt-verifier';
 // @ts-expect-error - snarkjs doesn't have proper TypeScript declarations
 import * as snarkjs from 'snarkjs';
 
@@ -23,6 +28,12 @@ interface ProofData {
     pi_a: string[];
     pi_b: string[][];
     pi_c: string[];
+  };
+  // Salt-based registration info (added by prover when verified)
+  registration?: {
+    activation_hash: string;
+    student_id_hash: string;
+    verified_at: string;
   };
 }
 
@@ -98,6 +109,13 @@ export default function ProofGenerator({
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [downloadName, setDownloadName] = useState<string | null>(null);
   const [downloadSize, setDownloadSize] = useState<number | null>(null);
+  
+  // Salt-based registration fields
+  const [saltInput, setSaltInput] = useState('');
+  const [studentName, setStudentName] = useState('');
+  const [studentBirthdate, setStudentBirthdate] = useState('');
+  const [saltVerification, setSaltVerification] = useState<SaltVerificationResult | null>(null);
+  const [isVerifyingSalt, setIsVerifyingSalt] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -131,6 +149,44 @@ export default function ProofGenerator({
     return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
   };
 
+  // Verify salt against allowlist
+  const handleVerifySalt = async () => {
+    if (!saltInput.trim()) {
+      alert(t('proofGen.salt.alert.enterSalt'));
+      return;
+    }
+    if (!studentName.trim()) {
+      alert(t('proofGen.salt.alert.enterName'));
+      return;
+    }
+    if (!studentBirthdate.trim()) {
+      alert(t('proofGen.salt.alert.enterBirthdate'));
+      return;
+    }
+
+    setIsVerifyingSalt(true);
+    setSaltVerification(null);
+
+    try {
+      const result = await verifySalt(saltInput.trim(), studentName.trim(), studentBirthdate.trim());
+      setSaltVerification(result);
+      
+      if (result.isValid) {
+        console.log('Salt verified successfully:', result);
+      } else {
+        console.warn('Salt verification failed:', result.error);
+      }
+    } catch (error) {
+      console.error('Salt verification error:', error);
+      setSaltVerification({
+        isValid: false,
+        error: error instanceof Error ? error.message : 'Verification failed',
+      });
+    } finally {
+      setIsVerifyingSalt(false);
+    }
+  };
+
   const generateProof = async () => {
     if (!secretInput) {
       alert(t('proofGen.alert.enterSecret'));
@@ -144,6 +200,12 @@ export default function ProofGenerator({
 
     if (!webauthnCredential) {
       alert(t('proofGen.alert.setupWebAuthn'));
+      return;
+    }
+
+    // Require salt verification before generating proof
+    if (!saltVerification?.isValid) {
+      alert(t('proofGen.salt.alert.verifySaltFirst'));
       return;
     }
 
@@ -174,6 +236,15 @@ export default function ProofGenerator({
         selectedVKey = JSON.parse(await vkeyFile.text());
       }
       const { proof, vkey } = await generateZKProof(secretInput, pdfHash, graduationYear, selectedVKey);
+
+      // Add registration info to proof (from verified salt)
+      if (saltVerification?.isValid && saltVerification.activationHash && saltVerification.studentIdHash) {
+        proof.registration = {
+          activation_hash: saltVerification.activationHash,
+          student_id_hash: saltVerification.studentIdHash,
+          verified_at: new Date().toISOString(),
+        };
+      }
 
       // Step 3: Sign with WebAuthn
       setStatus(t('proofGen.status.signing'));
@@ -209,6 +280,135 @@ export default function ProofGenerator({
         <h3 className="text-lg font-semibold text-gray-900 mb-6">{t('section.generateTitle')}</h3>
         
         <div className="space-y-8">
+          {/* Salt Registration Verification */}
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 p-6 border border-amber-200">
+            <div className="flex items-center space-x-2 mb-4">
+              <div className="h-6 w-6 rounded bg-gradient-to-br from-amber-500 to-orange-600 p-1">
+                <svg className="h-full w-full text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+              </div>
+              <h4 className="text-lg font-semibold text-gray-900">{t('proofGen.salt.title')}</h4>
+            </div>
+            
+            <p className="text-sm text-gray-600 mb-4">{t('proofGen.salt.desc')}</p>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              {/* Salt Input */}
+              <div>
+                <label htmlFor="salt" className="block text-sm font-medium text-gray-700 mb-1">
+                  {t('proofGen.salt.label')}
+                </label>
+                <input
+                  type="text"
+                  id="salt"
+                  value={saltInput}
+                  onChange={(e) => {
+                    setSaltInput(e.target.value);
+                    setSaltVerification(null);
+                  }}
+                  className="block w-full rounded-lg border-gray-300 border px-3 py-2 text-sm focus:border-amber-500 focus:ring-amber-500 disabled:bg-gray-100 disabled:text-gray-500 font-mono"
+                  placeholder={t('proofGen.salt.placeholder')}
+                  disabled={isProcessing || isVerifyingSalt}
+                />
+              </div>
+
+              {/* Name Input */}
+              <div>
+                <label htmlFor="studentName" className="block text-sm font-medium text-gray-700 mb-1">
+                  {t('proofGen.salt.name')}
+                </label>
+                <input
+                  type="text"
+                  id="studentName"
+                  value={studentName}
+                  onChange={(e) => {
+                    setStudentName(e.target.value);
+                    setSaltVerification(null);
+                  }}
+                  className="block w-full rounded-lg border-gray-300 border px-3 py-2 text-sm focus:border-amber-500 focus:ring-amber-500 disabled:bg-gray-100 disabled:text-gray-500"
+                  placeholder={t('proofGen.salt.namePlaceholder')}
+                  disabled={isProcessing || isVerifyingSalt}
+                />
+              </div>
+
+              {/* Birthdate Input */}
+              <div>
+                <label htmlFor="studentBirthdate" className="block text-sm font-medium text-gray-700 mb-1">
+                  {t('proofGen.salt.birthdate')}
+                </label>
+                <input
+                  type="date"
+                  id="studentBirthdate"
+                  value={studentBirthdate}
+                  onChange={(e) => {
+                    setStudentBirthdate(e.target.value);
+                    setSaltVerification(null);
+                  }}
+                  className="block w-full rounded-lg border-gray-300 border px-3 py-2 text-sm focus:border-amber-500 focus:ring-amber-500 disabled:bg-gray-100 disabled:text-gray-500"
+                  disabled={isProcessing || isVerifyingSalt}
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <button
+                type="button"
+                onClick={handleVerifySalt}
+                disabled={isProcessing || isVerifyingSalt || !saltInput.trim() || !studentName.trim() || !studentBirthdate.trim()}
+                className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+              >
+                {isVerifyingSalt ? (
+                  <>
+                    <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                    {t('proofGen.salt.verifying')}
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    {t('proofGen.salt.verify')}
+                  </>
+                )}
+              </button>
+
+              {/* Verification Status */}
+              {saltVerification && (
+                <div className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium ${
+                  saltVerification.isValid
+                    ? 'bg-green-100 text-green-800 border border-green-200'
+                    : 'bg-red-100 text-red-800 border border-red-200'
+                }`}>
+                  {saltVerification.isValid ? (
+                    <>
+                      <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                      {t('proofGen.salt.verified')}
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      </svg>
+                      {saltVerification.error || t('proofGen.salt.invalid')}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {saltVerification?.isValid && (
+              <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                <p className="text-sm text-green-800">
+                  <span className="font-medium">{t('proofGen.salt.activationHash')}:</span>{' '}
+                  <span className="font-mono text-xs break-all">{saltVerification.activationHash}</span>
+                </p>
+              </div>
+            )}
+          </div>
+
           {/* WebAuthn Setup */}
           <WebAuthnSetup
             onCredentialRegistered={setWebauthnCredential}
@@ -367,7 +567,7 @@ export default function ProofGenerator({
           <div>
             <button
               onClick={generateProof}
-              disabled={isProcessing || !secretInput || !webauthnCredential}
+              disabled={isProcessing || !secretInput || !webauthnCredential || !saltVerification?.isValid}
               className="group relative w-full flex items-center justify-center px-8 py-4 border border-transparent rounded-2xl text-base font-semibold text-white bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700 hover:from-blue-700 hover:via-blue-800 hover:to-indigo-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all duration-300 shadow-xl hover:shadow-2xl disabled:shadow-none transform hover:scale-105 disabled:transform-none"
             >
               <div className="absolute inset-0 bg-gradient-to-r from-blue-400/20 to-indigo-400/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-300 opacity-0 group-hover:opacity-100"></div>

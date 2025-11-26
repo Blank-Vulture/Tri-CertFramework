@@ -1,0 +1,17 @@
+# Protect personal information
+# Only commit the public registry files
+
+# Individual student data (contains personal info)
+students/
+exports/
+
+# Issuance log (contains personal info)
+issuance-log.json
+
+# macOS
+.DS_Store
+
+# Allow these public files to be committed:
+# - commit-allowlist.json (activation hashes only, no personal info)
+# - index.json (JWK thumbprints only, no personal info)
+

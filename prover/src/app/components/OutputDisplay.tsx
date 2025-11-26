@@ -1,7 +1,8 @@
 "use client";
+
+import { useState } from 'react';
 import { useI18n } from './LanguageProvider';
 
-// Type definitions
 interface ProofData {
   schema: string;
   circuit_id: string;
@@ -32,9 +33,9 @@ interface VKeyData {
 interface SignatureData {
   webauthn: {
     credentialId: string;
-    authenticatorData: string; // base64url
-    clientDataJSON: string; // base64url
-    signature: string; // base64url
+    authenticatorData: string;
+    clientDataJSON: string;
+    signature: string;
   };
   sig_target: {
     schema: string;
@@ -63,11 +64,13 @@ interface OutputDisplayProps {
 
 export default function OutputDisplay({ outputPdf, proofData, vkeyData, signatureData }: OutputDisplayProps) {
   const { t } = useI18n();
+  const [showDetails, setShowDetails] = useState(false);
+
   const downloadPdf = () => {
     const url = URL.createObjectURL(outputPdf);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'output.pdf';
+    a.download = 'secured-certificate.pdf';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -87,102 +90,103 @@ export default function OutputDisplay({ outputPdf, proofData, vkeyData, signatur
   };
 
   return (
-    <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-xl p-6 space-y-6">
+    <div className="space-y-6">
+      {/* Success Header */}
       <div className="text-center">
-        <h3 className="text-xl font-bold text-gray-900 mb-2">{t('output.successTitle')}</h3>
-        <p className="text-gray-600">{t('output.successSubtitle')}</p>
+        <h3 className="text-xl font-bold text-gray-900">{t('output.successTitle')}</h3>
+        <p className="text-gray-600 mt-1">{t('output.successSubtitle')}</p>
       </div>
       
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        <button
-          onClick={downloadPdf}
-          className="flex flex-col items-center p-4 border border-transparent text-sm font-medium rounded-lg shadow-md text-white bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200"
-        >
-          <svg className="h-6 w-6 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+      {/* Main Download Button - Large and Prominent */}
+      <button
+        onClick={downloadPdf}
+        className="w-full py-5 px-6 rounded-2xl font-bold text-xl text-white bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 transition-all shadow-xl hover:shadow-2xl transform hover:scale-[1.02]"
+      >
+        <span className="flex items-center justify-center gap-3">
+          <svg className="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" />
           </svg>
-          <span className="font-semibold">{t('output.securedPdf')}</span>
-          <span className="text-xs opacity-90">{t('output.securedPdfCaption')}</span>
-        </button>
+          {t('output.securedPdf')}
+        </span>
+        <span className="text-sm font-normal text-green-100 mt-1 block">{t('output.securedPdfCaption')}</span>
+      </button>
 
+      {/* Additional Files - Collapsible */}
+      <div className="border border-gray-200 rounded-xl overflow-hidden">
         <button
-          onClick={() => downloadJson(proofData, 'proof.json')}
-          className="flex flex-col items-center p-4 border border-gray-200 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200"
+          type="button"
+          onClick={() => setShowDetails(!showDetails)}
+          className="w-full px-5 py-3 flex items-center justify-between text-gray-500 hover:bg-gray-50 transition-colors"
         >
-          <svg className="h-6 w-6 mb-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          <span className="text-sm font-medium">{t('output.previewTitle')}</span>
+          <svg 
+            className={`w-5 h-5 transition-transform ${showDetails ? 'rotate-180' : ''}`} 
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
-          <span className="font-semibold">{t('output.zkProof')}</span>
-          <span className="text-xs text-gray-500">proof.json</span>
         </button>
+        
+        {showDetails && (
+          <div className="p-5 bg-gray-50 border-t border-gray-200 space-y-4">
+            {/* Additional download buttons - Compact */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <button
+                onClick={() => downloadJson(proofData, 'proof.json')}
+                className="flex items-center justify-center gap-2 p-3 rounded-xl text-xs font-medium bg-white border border-gray-200 hover:bg-blue-50 hover:border-blue-200 transition-colors"
+              >
+                <span className="text-blue-500">📋</span>
+                {t('output.zkProof')}
+              </button>
 
-        <button
-          onClick={() => downloadJson(vkeyData, 'vkey.json')}
-          className="flex flex-col items-center p-4 border border-gray-200 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-all duration-200"
-        >
-          <svg className="h-6 w-6 mb-2 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-          </svg>
-          <span className="font-semibold">{t('output.vkey')}</span>
-          <span className="text-xs text-gray-500">vkey.json</span>
-        </button>
+              <button
+                onClick={() => downloadJson(vkeyData, 'vkey.json')}
+                className="flex items-center justify-center gap-2 p-3 rounded-xl text-xs font-medium bg-white border border-gray-200 hover:bg-purple-50 hover:border-purple-200 transition-colors"
+              >
+                <span className="text-purple-500">🔑</span>
+                {t('output.vkey')}
+              </button>
 
-        <button
-          onClick={() => downloadJson(signatureData.webauthn_pub, 'webauthn_pub.jwk.json')}
-          className="flex flex-col items-center p-4 border border-gray-200 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-all duration-200"
-        >
-          <svg className="h-6 w-6 mb-2 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-          </svg>
-          <span className="font-semibold">{t('output.publicKey')}</span>
-          <span className="text-xs text-gray-500">webauthn_pub.jwk.json</span>
-        </button>
+              <button
+                onClick={() => downloadJson(signatureData.webauthn_pub, 'webauthn_pub.jwk.json')}
+                className="flex items-center justify-center gap-2 p-3 rounded-xl text-xs font-medium bg-white border border-gray-200 hover:bg-orange-50 hover:border-orange-200 transition-colors"
+              >
+                <span className="text-orange-500">🔐</span>
+                {t('output.publicKey')}
+              </button>
 
-        <button
-          onClick={() => {
-            const blob = new Blob([JSON.stringify(signatureData.webauthn, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'webauthn_sig.json';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-          }}
-          className="flex flex-col items-center p-3 border border-gray-200 shadow-sm text-xs font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-all duration-200"
-        >
-          <svg className="h-5 w-5 mb-1 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16l2.879-2.879m0 0a3 3 0 104.243-4.242 3 3 0 00-4.243 4.242zM21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <span className="font-semibold">{t('output.signature')}</span>
-          <span className="text-xs text-gray-500">webauthn_sig.json</span>
-        </button>
+              <button
+                onClick={() => {
+                  const blob = new Blob([JSON.stringify(signatureData.webauthn, null, 2)], { type: 'application/json' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = 'webauthn_sig.json';
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(url);
+                }}
+                className="flex items-center justify-center gap-2 p-3 rounded-xl text-xs font-medium bg-white border border-gray-200 hover:bg-yellow-50 hover:border-yellow-200 transition-colors"
+              >
+                <span className="text-yellow-500">✍️</span>
+                {t('output.signature')}
+              </button>
+            </div>
 
-        <button
-          onClick={() => downloadJson(signatureData.sig_target, 'sig_target.json')}
-          className="flex flex-col items-center p-3 border border-gray-200 shadow-sm text-xs font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200"
-        >
-          <svg className="h-5 w-5 mb-1 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-          </svg>
-          <span className="font-semibold">{t('output.sigTarget')}</span>
-          <span className="text-xs text-gray-500">sig_target.json</span>
-        </button>
-      </div>
-
-      <div className="bg-white rounded-lg p-4 border border-gray-200">
-        <h4 className="text-sm font-semibold text-gray-800 mb-3 flex items-center">
-          <svg className="w-4 h-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-          </svg>
-          {t('output.previewTitle')}
-        </h4>
-        <div className="bg-gray-50 rounded-lg p-4 max-h-64 overflow-y-auto">
-          <pre className="text-xs text-gray-700 font-mono leading-relaxed">
-            {JSON.stringify(proofData, null, 2)}
-          </pre>
-        </div>
+            {/* JSON Preview */}
+            <div className="bg-white rounded-xl p-4 border border-gray-200">
+              <h4 className="text-xs font-medium text-gray-500 mb-2">証明データ（JSON）</h4>
+              <div className="bg-gray-900 rounded-lg p-4 max-h-48 overflow-y-auto">
+                <pre className="text-xs text-green-400 font-mono leading-relaxed">
+                  {JSON.stringify(proofData, null, 2)}
+                </pre>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

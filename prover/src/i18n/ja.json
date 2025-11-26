@@ -6,174 +6,182 @@
     "en": "English",
     "ja": "日本語"
   },
+  "page": {
+    "title": "証明書の保護",
+    "complete": {
+      "title": "保護が完了しました！",
+      "subtitle": "下のボタンからダウンロードしてください"
+    },
+    "activityLog": "処理ログ"
+  },
   "hero": {
     "subtitle": {
-      "prover": "PDFに対するゼロ知識証明と電子署名を生成します。"
+      "prover": "PDFに暗号学的な証明と署名を付けて、改ざんを防ぎます"
     },
     "status": {
-      "online": "システムオンライン"
+      "online": "システム稼働中"
     }
   },
   "steps": {
-    "upload": "ドキュメントのアップロード",
-    "hash": "ハッシュ計算",
+    "upload": "ファイル選択",
+    "hash": "ハッシュ",
     "proof": "証明生成",
-    "signature": "電子署名",
-    "export": "書き出し・ダウンロード"
+    "signature": "署名",
+    "export": "完了"
   },
   "section": {
-    "generateTitle": "暗号学的証明の生成"
+    "generateTitle": "証明を生成する"
   },
   "fileUpload": {
-    "title": "ドキュメントをアップロード",
-    "choose": "PDFファイルを選択",
-    "orDrop": "または、この領域にドラッグ＆ドロップ",
+    "title": "PDFファイルを選んでください",
+    "choose": "ファイルを選択",
+    "orDrop": "または、ここにドラッグ＆ドロップ",
     "pdfOnly": "PDFファイルのみ",
-    "documentReady": "ドキュメントの準備ができました",
+    "documentReady": "ファイルの準備ができました",
     "validPdf": "有効なPDF",
-    "readyToProve": "証明の準備完了",
-    "sizeReady": "MB・処理の準備完了"
+    "readyToProve": "次へ進めます",
+    "sizeReady": "MB"
   },
   "proofGen": {
+    "mainButton": "証明を生成して保護する",
+    "mainButtonProcessing": "処理中...",
     "secret": {
-      "label": "任意の文字列を入力",
-      "placeholder": "証明生成に使用する任意の文字列を入力してください...",
-      "help": "この情報は公開されず、後に必要となることはありません"
+      "label": "秘密の文字列",
+      "placeholder": "好きな文字や数字を入力（例：hogehoge123）",
+      "help": "この文字列は外部に送信されません。覚える必要もありません"
     },
     "year": {
-      "label": "卒業年度",
-      "or": "または",
-      "placeholder": "2024",
-      "help": "卒業年度を選択してください（2000〜2050、数字のみ）"
+      "label": "卒業年度を選択",
+      "or": "または直接入力→",
+      "placeholder": "年",
+      "help": "証明書の卒業年度"
     },
     "alert": {
-      "enterSecret": "秘密情報を入力してください",
-      "yearInvalid": "有効な卒業年度（2000-2050）を入力してください",
-      "setupWebAuthn": "先にWebAuthn認証器を設定してください"
+      "enterSecret": "秘密の文字列を入力してください",
+      "yearInvalid": "正しい年度（2000〜2050）を入力してください",
+      "setupWebAuthn": "認証器の設定が必要です"
     },
     "status": {
-      "processingPdf": "PDFを処理中...",
-      "calcHash": "PDFハッシュを計算中...",
-      "generatingZkp": "ゼロ知識証明を生成中...",
-      "signing": "電子署名を作成中...",
-      "attaching": "出力PDFを作成中...",
-      "complete": "完了！"
+      "processingPdf": "PDFを読み込んでいます...",
+      "calcHash": "ハッシュを計算中...",
+      "generatingZkp": "証明を生成中...",
+      "signing": "署名を作成中...",
+      "attaching": "PDFに埋め込み中...",
+      "complete": "完了しました！"
     },
     "progress": {
       "selected": "📄 PDFを選択しました",
-      "hash": "🔎 PDFハッシュを計算中",
-      "zkp": "🧮 ZK証明を生成中（groth16）",
-      "sign": "✍️ 電子署名を作成中（WebAuthn ES256）",
-      "attach": "📎 証明・署名を添付しPDFを書き出し",
-      "done": "✅ すべてのステップが完了"
+      "hash": "🔍 ハッシュを計算しています",
+      "zkp": "🔐 暗号証明を生成しています",
+      "sign": "✍️ 電子署名を作成しています",
+      "attach": "📎 PDFに埋め込んでいます",
+      "done": "✅ すべて完了しました"
     },
     "vkey": {
-      "label": "検証キー（vkey.json）",
-      "select": "vkey.jsonを選択",
-      "changeFile": "ファイルを変更",
-      "help": "任意のフェイルセーフ：Executive Console からエクスポートした VK を選択できます。未選択の場合は既定の公開 VK を使用します。",
+      "label": "検証キー",
+      "select": "ファイルを選択",
+      "changeFile": "変更",
+      "help": "通常は変更不要です",
       "hash": "ハッシュ"
     },
     "salt": {
-      "title": "学生登録確認",
-      "desc": "Registrar Consoleから発行されたsaltを入力して、登録済み学生であることを確認してください。",
-      "label": "Salt",
-      "placeholder": "例: MTFSJGBMQX5SW23TJNC34APYLYPY2",
+      "title": "本人確認",
+      "desc": "発行された認証コードと個人情報を入力してください",
+      "label": "認証コード",
+      "placeholder": "例: ABCDEF1234567890",
       "name": "氏名",
       "namePlaceholder": "例: 山田 太郎",
       "birthdate": "生年月日",
-      "verify": "Saltを検証",
-      "verifying": "検証中...",
-      "verified": "登録確認済み",
-      "invalid": "登録が確認できません",
-      "activationHash": "Activation Hash",
+      "verify": "確認する",
+      "verifying": "確認中...",
+      "verified": "確認できました",
+      "invalid": "確認できません",
+      "activationHash": "認証ID",
       "alert": {
-        "enterSalt": "Saltを入力してください",
+        "enterSalt": "認証コードを入力してください",
         "enterName": "氏名を入力してください",
         "enterBirthdate": "生年月日を入力してください",
-        "verifySaltFirst": "証明を生成する前にSaltを検証してください"
+        "verifySaltFirst": "先に本人確認を完了してください"
       }
+    },
+    "advanced": {
+      "title": "詳細設定",
+      "show": "詳細設定を表示",
+      "hide": "詳細設定を隠す"
     }
   },
   "common": {
     "clear": "クリア"
   },
   "download": {
-    "readyTitle": "保護されたPDFの準備ができました",
+    "readyTitle": "ダウンロード準備完了",
     "aria": "保護されたPDFをダウンロード",
-    "button": "保護されたPDFをダウンロード",
-    "afterHint": "ダウンロード後は Verifier アプリで検証できます。"
+    "button": "PDFをダウンロード",
+    "afterHint": "ダウンロード後、Verifierアプリで検証できます"
   },
   "webauthn": {
-    "title": "WebAuthn 電子署名",
+    "title": "認証器の設定",
     "notSupported": {
-      "title": "WebAuthn がサポートされていません",
-      "desc": "ご利用のブラウザは WebAuthn に対応していません。Chrome / Firefox / Safari など最新のブラウザをご利用ください。"
+      "title": "この機能は使えません",
+      "desc": "Chrome / Safari / Firefox など最新のブラウザでお試しください"
     },
     "status": {
-      "api": "WebAuthn API",
-      "platform": "プラットフォーム認証器",
-      "supported": "利用可",
-      "notSupported": "未対応",
-      "available": "利用可能",
-      "notAvailable": "未利用"
+      "api": "認証機能",
+      "platform": "内蔵認証器",
+      "supported": "対応",
+      "notSupported": "非対応",
+      "available": "使用可能",
+      "notAvailable": "使用不可"
     },
     "registered": {
-      "title": "認証器を登録しました。",
-      "desc": "生体認証器で電子署名の準備ができています。この登録はこのセッションのみ有効です。",
-      "credentialId": "クレデンシャルID",
+      "title": "認証器が準備できました",
+      "desc": "指紋や顔認証で署名できます",
+      "credentialId": "認証ID",
       "registeredAt": "登録日時"
     },
     "setup": {
-      "title": "認証器の設定が必要です",
-      "desc": "電子署名のために生体認証器（指紋・顔・PIN）を一時登録してください。",
-      "pointPrivacy": "この登録は一時的なものです。生体情報は端末の外へ送信されません。",
-      "pointUnique": "各署名は暗号的に一意です",
-      "pointNoPassword": "パスワードや秘密の記憶は不要です",
-      "pointPlatformReady": "Touch ID / Face ID / Windows Hello 対応",
+      "title": "認証器を設定してください",
+      "desc": "指紋・顔認証・PINなどで本人確認します",
+      "pointPrivacy": "生体情報は端末から外に出ません",
+      "pointUnique": "署名は暗号的に保護されます",
+      "pointNoPassword": "パスワードを覚える必要はありません",
+      "pointPlatformReady": "Touch ID / Face ID 対応",
       "pointExternalRequired": "外部認証器が必要です"
     },
     "guide": {
-      "title": "💡 セットアップ手順:",
-      "text": "「認証器を設定」をクリック → ブラウザの案内に従う → 使用するのは",
-      "biometric": "生体認証",
+      "title": "💡 設定方法",
+      "text": "「設定する」を押す → 画面の指示に従う → 使用：",
+      "biometric": "指紋 / 顔認証",
       "pinOrKey": "PIN / セキュリティキー"
     },
     "button": {
-      "settingUp": "認証器を設定中...",
-      "setup": "認証器を設定"
+      "settingUp": "設定中...",
+      "setup": "認証器を設定する"
     },
     "error": {
-      "title": "登録に失敗しました",
+      "title": "設定に失敗しました",
       "setupFailed": "認証器の設定に失敗しました",
-      "notSupported": "このブラウザは WebAuthn をサポートしていません",
-      "invalidResponse": "不正なクレデンシャル応答形式です",
-      "keyExtractionFailed": "公開鍵の抽出に失敗しました",
-      "unknown": "不明なエラー",
-      "deviceNoBio": "このデバイスは生体認証に対応していません",
-      "securityHttps": "セキュリティエラー：HTTPS でアクセスしてください",
-      "cancelled": "認証がキャンセルされたか許可されませんでした",
-      "alreadyRegistered": "このアカウントにはすでに認証器が登録されています",
-      "compatibility": "デバイス互換性の問題：別の認証器をお試しください"
+      "notSupported": "このブラウザは対応していません",
+      "invalidResponse": "認証に問題がありました",
+      "keyExtractionFailed": "鍵の取得に失敗しました",
+      "unknown": "エラーが発生しました",
+      "deviceNoBio": "このデバイスでは使用できません",
+      "securityHttps": "セキュアな接続（HTTPS）が必要です",
+      "cancelled": "キャンセルされました",
+      "alreadyRegistered": "すでに登録されています",
+      "compatibility": "互換性の問題があります"
     }
   },
   "output": {
-    "successTitle": "🎉 証明の生成が完了しました！",
-    "successSubtitle": "暗号的に保護されたファイルをダウンロードできます",
-    "securedPdf": "保護されたPDF",
-    "securedPdfCaption": "ZKPと署名付き",
-    "zkProof": "ZK証明",
+    "successTitle": "🎉 保護されたPDFができました！",
+    "successSubtitle": "ダウンロードしてください",
+    "securedPdf": "保護済みPDF",
+    "securedPdfCaption": "証明・署名付き",
+    "zkProof": "証明データ",
     "vkey": "検証キー",
     "publicKey": "公開鍵",
     "signature": "署名",
     "sigTarget": "署名対象",
-    "previewTitle": "ゼロ知識証明データのプレビュー"
-  },
-  "page": {
-    "complete": {
-      "title": "処理が完了しました！",
-      "subtitle": "保護されたPDFと検証ファイルのダウンロード準備が整いました。"
-    },
-    "activityLog": "アクティビティログ"
+    "previewTitle": "証明データの詳細（技術者向け）"
   }
 }

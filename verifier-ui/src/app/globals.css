@@ -6,7 +6,9 @@
   --verifier-emerald: #059669;
 }
 
-html { scroll-behavior: smooth; }
+html { 
+  scroll-behavior: smooth; 
+}
 
 /* Custom scrollbar styling */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -15,11 +17,113 @@ html { scroll-behavior: smooth; }
 ::-webkit-scrollbar-thumb:hover { background: linear-gradient(135deg, #059669, #0d9488); }
 
 /* Glass morphism */
-.glass { background: rgba(255,255,255,0.25); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.18); }
+.glass { 
+  background: rgba(255,255,255,0.25); 
+  backdrop-filter: blur(10px); 
+  border: 1px solid rgba(255,255,255,0.18); 
+}
 
 /* Gradient text */
-.gradient-text { background: linear-gradient(135deg, var(--verifier-green), var(--verifier-teal)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.gradient-text { 
+  background: linear-gradient(135deg, var(--verifier-green), var(--verifier-teal)); 
+  -webkit-background-clip: text; 
+  background-clip: text; 
+  -webkit-text-fill-color: transparent; 
+}
 
 /* Card hover */
 .card-hover { transition: all .3s cubic-bezier(0.4,0,0.2,1); }
 .card-hover:hover { transform: translateY(-4px); box-shadow: 0 20px 25px -5px rgba(0,0,0,.1), 0 10px 10px -5px rgba(0,0,0,.04); }
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.5s ease-out;
+}
+
+.animate-slideIn {
+  animation: slideIn 0.4s ease-out;
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 2s ease-in-out infinite;
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+/* Verification step animations */
+.verification-step {
+  transition: all 0.3s ease-out;
+}
+
+.verification-step.active {
+  transform: scale(1.02);
+}
+
+.verification-step.completed {
+  opacity: 0.8;
+}
+
+/* Progress bar animation */
+.progress-bar {
+  transition: width 0.3s ease-out;
+}
+
+/* Focus styles for accessibility */
+*:focus-visible {
+  outline: 2px solid var(--verifier-green);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Large touch targets for accessibility */
+button, 
+a, 
+input[type="file"]::file-selector-button {
+  min-height: 44px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .bg-gradient-to-br {
+    background: var(--verifier-green);
+  }
+  
+  button {
+    border: 2px solid currentColor;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

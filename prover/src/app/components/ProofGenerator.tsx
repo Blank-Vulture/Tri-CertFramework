@@ -28,7 +28,6 @@ interface ProofData {
     pi_b: string[][];
     pi_c: string[];
   };
-  // Salt-based registration info (added by prover when verified)
   registration?: {
     activation_hash: string;
     student_id_hash: string;
@@ -51,9 +50,9 @@ interface VKeyData {
 interface SignatureData {
   webauthn: {
     credentialId: string;
-    authenticatorData: string; // base64url
-    clientDataJSON: string; // base64url
-    signature: string; // base64url
+    authenticatorData: string;
+    clientDataJSON: string;
+    signature: string;
   };
   sig_target: {
     schema: string;
@@ -105,7 +104,6 @@ export default function ProofGenerator({
   const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [webauthnCredential, setWebauthnCredential] = useState<WebAuthnCredentialInfo | null>(null);
   const [vkeyFile, setVkeyFile] = useState<File | null>(null);
-  const [vkeyHashPreview, setVkeyHashPreview] = useState<string | null>(null);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [downloadName, setDownloadName] = useState<string | null>(null);
   const [downloadSize, setDownloadSize] = useState<number | null>(null);
@@ -116,62 +114,41 @@ export default function ProofGenerator({
   const [studentBirthdate, setStudentBirthdate] = useState('');
   const [saltVerification, setSaltVerification] = useState<SaltVerificationResult | null>(null);
   const [isVerifyingSalt, setIsVerifyingSalt] = useState(false);
+  
+  // UI state
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   // Detect available years from VKNFT directory via API
   useEffect(() => {
     const detectAvailableYears = async () => {
       try {
-        console.log('[Prover] Fetching available years from VKNFT...');
         const response = await fetch('/api/vknft/years');
         const data = await response.json();
         
         if (data.success && Array.isArray(data.years)) {
-          console.log('[Prover] Available years from VKNFT:', data.years);
           const years = (data.years as number[]).sort((a: number, b: number) => a - b);
           setAvailableYears(years);
           
-          // Set default year to most recent available year
-          const currentGradYear = graduationYear;
-          if (years.length > 0 && !years.includes(currentGradYear)) {
+          if (years.length > 0 && !years.includes(graduationYear)) {
             setGraduationYear(years[years.length - 1]);
           }
         } else {
-          console.warn('[Prover] No years found in VKNFT directory');
           setAvailableYears([]);
         }
-      } catch (error) {
-        console.error('[Prover] Failed to fetch available years:', error);
+      } catch {
         setAvailableYears([]);
       }
     };
     
     detectAvailableYears();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run on mount
+  }, []);
 
   useEffect(() => {
     return () => {
       if (downloadUrl) URL.revokeObjectURL(downloadUrl);
     };
   }, [downloadUrl]);
-
-  // When a VK file is selected, pre-compute and show its hash (for operator confidence)
-  useEffect(() => {
-    (async () => {
-      try {
-        if (!vkeyFile) {
-          setVkeyHashPreview(null);
-          return;
-        }
-        const json = JSON.parse(await vkeyFile.text());
-        const hash = await calculateVKeyHash(json);
-        setVkeyHashPreview(`sha3-256:${hash}`);
-      } catch (e) {
-        console.warn('Failed to preview VK hash', e);
-        setVkeyHashPreview(null);
-      }
-    })();
-  }, [vkeyFile]);
 
   const formatBytes = (bytes: number) => {
     if (bytes === 0) return '0 B';
@@ -202,14 +179,7 @@ export default function ProofGenerator({
     try {
       const result = await verifySalt(saltInput.trim(), studentName.trim(), studentBirthdate.trim());
       setSaltVerification(result);
-      
-      if (result.isValid) {
-        console.log('Salt verified successfully:', result);
-      } else {
-        console.warn('Salt verification failed:', result.error);
-      }
     } catch (error) {
-      console.error('Salt verification error:', error);
       setSaltVerification({
         isValid: false,
         error: error instanceof Error ? error.message : 'Verification failed',
@@ -235,7 +205,6 @@ export default function ProofGenerator({
       return;
     }
 
-    // Require salt verification before generating proof
     if (!saltVerification?.isValid) {
       alert(t('proofGen.salt.alert.verifySaltFirst'));
       return;
@@ -262,14 +231,12 @@ export default function ProofGenerator({
       // Step 2: Generate ZKP
       setStatus(t('proofGen.status.generatingZkp'));
       onProgress?.({ step: 2, message: t('proofGen.progress.zkp') });
-      // If a local VK is selected, use it; otherwise fetch default public VK
       let selectedVKey: VKeyData | undefined = undefined;
       if (vkeyFile) {
         selectedVKey = JSON.parse(await vkeyFile.text());
       }
       const { proof, vkey } = await generateZKProof(secretInput, pdfHash, graduationYear, selectedVKey);
 
-      // Add registration info to proof (from verified salt)
       if (saltVerification?.isValid && saltVerification.activationHash && saltVerification.studentIdHash) {
         proof.registration = {
           activation_hash: saltVerification.activationHash,
@@ -306,197 +273,154 @@ export default function ProofGenerator({
     }
   };
 
+  // Check if can proceed
+  const canGenerate = secretInput && webauthnCredential && saltVerification?.isValid;
+
   return (
-    <div className="space-y-8">
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-6">{t('section.generateTitle')}</h3>
+    <div className="space-y-6">
+      {/* Section Title */}
+      <div className="text-center mb-2">
+        <h3 className="text-xl font-bold text-gray-900">{t('section.generateTitle')}</h3>
+      </div>
+
+      {/* Step 1: Identity Verification - Most Important */}
+      <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-5 border-2 border-amber-200">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center text-white font-bold">1</div>
+          <h4 className="text-lg font-bold text-gray-900">{t('proofGen.salt.title')}</h4>
+          {saltVerification?.isValid && (
+            <span className="ml-auto bg-green-500 text-white px-3 py-1 rounded-full text-sm font-medium">
+              ✓ {t('proofGen.salt.verified')}
+            </span>
+          )}
+        </div>
         
-        <div className="space-y-8">
-          {/* Salt Registration Verification */}
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 p-6 border border-amber-200">
-            <div className="flex items-center space-x-2 mb-4">
-              <div className="h-6 w-6 rounded bg-gradient-to-br from-amber-500 to-orange-600 p-1">
-                <svg className="h-full w-full text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                </svg>
-              </div>
-              <h4 className="text-lg font-semibold text-gray-900">{t('proofGen.salt.title')}</h4>
+        <p className="text-sm text-gray-600 mb-4">{t('proofGen.salt.desc')}</p>
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {t('proofGen.salt.label')}
+            </label>
+            <input
+              type="text"
+              value={saltInput}
+              onChange={(e) => { setSaltInput(e.target.value); setSaltVerification(null); }}
+              className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-amber-500 focus:ring-0 text-lg font-mono"
+              placeholder={t('proofGen.salt.placeholder')}
+              disabled={isProcessing || isVerifyingSalt}
+            />
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {t('proofGen.salt.name')}
+              </label>
+              <input
+                type="text"
+                value={studentName}
+                onChange={(e) => { setStudentName(e.target.value); setSaltVerification(null); }}
+                className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-amber-500 focus:ring-0"
+                placeholder={t('proofGen.salt.namePlaceholder')}
+                disabled={isProcessing || isVerifyingSalt}
+              />
             </div>
-            
-            <p className="text-sm text-gray-600 mb-4">{t('proofGen.salt.desc')}</p>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-              {/* Salt Input */}
-              <div>
-                <label htmlFor="salt" className="block text-sm font-medium text-gray-700 mb-1">
-                  {t('proofGen.salt.label')}
-                </label>
-                <input
-                  type="text"
-                  id="salt"
-                  value={saltInput}
-                  onChange={(e) => {
-                    setSaltInput(e.target.value);
-                    setSaltVerification(null);
-                  }}
-                  className="block w-full rounded-lg border-gray-300 border px-3 py-2 text-sm focus:border-amber-500 focus:ring-amber-500 disabled:bg-gray-100 disabled:text-gray-500 font-mono"
-                  placeholder={t('proofGen.salt.placeholder')}
-                  disabled={isProcessing || isVerifyingSalt}
-                />
-              </div>
-
-              {/* Name Input */}
-              <div>
-                <label htmlFor="studentName" className="block text-sm font-medium text-gray-700 mb-1">
-                  {t('proofGen.salt.name')}
-                </label>
-                <input
-                  type="text"
-                  id="studentName"
-                  value={studentName}
-                  onChange={(e) => {
-                    setStudentName(e.target.value);
-                    setSaltVerification(null);
-                  }}
-                  className="block w-full rounded-lg border-gray-300 border px-3 py-2 text-sm focus:border-amber-500 focus:ring-amber-500 disabled:bg-gray-100 disabled:text-gray-500"
-                  placeholder={t('proofGen.salt.namePlaceholder')}
-                  disabled={isProcessing || isVerifyingSalt}
-                />
-              </div>
-
-              {/* Birthdate Input */}
-              <div>
-                <label htmlFor="studentBirthdate" className="block text-sm font-medium text-gray-700 mb-1">
-                  {t('proofGen.salt.birthdate')}
-                </label>
-                <input
-                  type="date"
-                  id="studentBirthdate"
-                  value={studentBirthdate}
-                  onChange={(e) => {
-                    setStudentBirthdate(e.target.value);
-                    setSaltVerification(null);
-                  }}
-                  className="block w-full rounded-lg border-gray-300 border px-3 py-2 text-sm focus:border-amber-500 focus:ring-amber-500 disabled:bg-gray-100 disabled:text-gray-500"
-                  disabled={isProcessing || isVerifyingSalt}
-                />
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {t('proofGen.salt.birthdate')}
+              </label>
+              <input
+                type="date"
+                value={studentBirthdate}
+                onChange={(e) => { setStudentBirthdate(e.target.value); setSaltVerification(null); }}
+                className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-amber-500 focus:ring-0"
+                disabled={isProcessing || isVerifyingSalt}
+              />
             </div>
-
-            <div className="flex items-center gap-4">
-              <button
-                type="button"
-                onClick={handleVerifySalt}
-                disabled={isProcessing || isVerifyingSalt || !saltInput.trim() || !studentName.trim() || !studentBirthdate.trim()}
-                className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-              >
-                {isVerifyingSalt ? (
-                  <>
-                    <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-                    {t('proofGen.salt.verifying')}
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    {t('proofGen.salt.verify')}
-                  </>
-                )}
-              </button>
-
-              {/* Verification Status */}
-              {saltVerification && (
-                <div className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium ${
-                  saltVerification.isValid
-                    ? 'bg-green-100 text-green-800 border border-green-200'
-                    : 'bg-red-100 text-red-800 border border-red-200'
-                }`}>
-                  {saltVerification.isValid ? (
-                    <>
-                      <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                      </svg>
-                      {t('proofGen.salt.verified')}
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                      </svg>
-                      {saltVerification.error || t('proofGen.salt.invalid')}
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {saltVerification?.isValid && (
-              <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-                <p className="text-sm text-green-800">
-                  <span className="font-medium">{t('proofGen.salt.activationHash')}:</span>{' '}
-                  <span className="font-mono text-xs break-all">{saltVerification.activationHash}</span>
-                </p>
-              </div>
-            )}
           </div>
 
-          {/* WebAuthn Setup */}
+          <button
+            onClick={handleVerifySalt}
+            disabled={isProcessing || isVerifyingSalt || !saltInput.trim() || !studentName.trim() || !studentBirthdate.trim()}
+            className="w-full py-3 px-4 rounded-xl font-bold text-white bg-amber-500 hover:bg-amber-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+          >
+            {isVerifyingSalt ? t('proofGen.salt.verifying') : t('proofGen.salt.verify')}
+          </button>
+
+          {saltVerification && !saltVerification.isValid && (
+            <div className="bg-red-100 text-red-700 px-4 py-3 rounded-xl text-sm">
+              ❌ {saltVerification.error || t('proofGen.salt.invalid')}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Step 2: Authenticator Setup */}
+      <div className={`rounded-2xl p-5 border-2 transition-all ${
+        saltVerification?.isValid 
+          ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-200' 
+          : 'bg-gray-50 border-gray-200 opacity-60'
+      }`}>
+        <div className="flex items-center gap-3 mb-4">
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${
+            saltVerification?.isValid ? 'bg-green-500' : 'bg-gray-400'
+          }`}>2</div>
+          <h4 className="text-lg font-bold text-gray-900">{t('webauthn.title')}</h4>
+          {webauthnCredential && (
+            <span className="ml-auto bg-green-500 text-white px-3 py-1 rounded-full text-sm font-medium">
+              ✓ {t('webauthn.registered.title')}
+            </span>
+          )}
+        </div>
+        
+        {saltVerification?.isValid ? (
           <WebAuthnSetup
             onCredentialRegistered={setWebauthnCredential}
             registeredCredential={webauthnCredential}
             isDisabled={isProcessing}
           />
+        ) : (
+          <p className="text-gray-500 text-center py-4">
+            {t('proofGen.salt.alert.verifySaltFirst')}
+          </p>
+        )}
+      </div>
 
-          {/* Secret Input */}
-          <div className="relative">
-            <label htmlFor="secret" className="block text-sm font-medium text-gray-900 mb-3">
-              <div className="flex items-center space-x-2">
-                <div className="h-5 w-5 rounded bg-gradient-to-br from-blue-500 to-indigo-600 p-1">
-                  <svg className="h-full w-full text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                  </svg>
-                </div>
-                <span>{t('proofGen.secret.label')}</span>
-              </div>
-            </label>
-            <div className="relative">
+      {/* Step 3: Secret & Year Selection */}
+      <div className={`rounded-2xl p-5 border-2 transition-all ${
+        webauthnCredential 
+          ? 'bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200' 
+          : 'bg-gray-50 border-gray-200 opacity-60'
+      }`}>
+        <div className="flex items-center gap-3 mb-4">
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${
+            webauthnCredential ? 'bg-blue-500' : 'bg-gray-400'
+          }`}>3</div>
+          <h4 className="text-lg font-bold text-gray-900">{t('proofGen.secret.label')}</h4>
+        </div>
+
+        {webauthnCredential ? (
+          <div className="space-y-4">
+            {/* Secret Input - Simplified */}
+            <div>
               <input
                 type="password"
-                id="secret"
                 value={secretInput}
                 onChange={(e) => setSecretInput(e.target.value)}
-                className="block w-full rounded-2xl border-0 bg-gray-50 px-4 py-4 text-gray-900 placeholder:text-gray-400 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 disabled:bg-gray-100 disabled:text-gray-500"
+                className="w-full px-4 py-4 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-0 text-lg"
                 placeholder={t('proofGen.secret.placeholder')}
                 disabled={isProcessing}
               />
-              <div className="absolute inset-y-0 right-0 flex items-center pr-4">
-                <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                </svg>
-              </div>
+              <p className="mt-2 text-sm text-gray-500">{t('proofGen.secret.help')}</p>
             </div>
-            <p className="mt-2 text-sm text-gray-600">
-              {t('proofGen.secret.help')}
-            </p>
-          </div>
 
-          {/* Graduation Year Input */}
-          <div className="relative">
-            <label htmlFor="graduation-year" className="block text-sm font-medium text-gray-900 mb-3">
-              <div className="flex items-center space-x-2">
-                <div className="h-5 w-5 rounded bg-gradient-to-br from-green-500 to-emerald-600 p-1">
-                  <svg className="h-full w-full text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M8 7v8a2 2 0 002 2h8a2 2 0 002-2V9a2 2 0 00-2-2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-1" />
-                  </svg>
-                </div>
-                <span>{t('proofGen.year.label')}</span>
-              </div>
-            </label>
-            <div className="flex items-center space-x-4">
-              {/* Quick Select Buttons */}
-              <div className="flex space-x-2">
+            {/* Year Selection - Simplified */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {t('proofGen.year.label')}
+              </label>
+              <div className="flex flex-wrap gap-2">
                 {(availableYears.length > 0 
                   ? availableYears 
                   : [new Date().getFullYear() - 1, new Date().getFullYear(), new Date().getFullYear() + 1]
@@ -505,10 +429,10 @@ export default function ProofGenerator({
                     key={year}
                     type="button"
                     onClick={() => setGraduationYear(year)}
-                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    className={`px-6 py-3 rounded-xl text-lg font-bold transition-all ${
                       graduationYear === year
-                        ? 'bg-green-500 text-white shadow-md'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        ? 'bg-blue-500 text-white shadow-lg'
+                        : 'bg-white text-gray-700 border-2 border-gray-200 hover:border-blue-300'
                     }`}
                     disabled={isProcessing}
                   >
@@ -516,229 +440,156 @@ export default function ProofGenerator({
                   </button>
                 ))}
               </div>
-              
-              {/* Custom Year Input */}
-              <div className="flex items-center space-x-2">
-                <span className="text-sm text-gray-500">{t('proofGen.year.or')}</span>
-                <input
-                  type="text"
-                  id="graduation-year"
-                  value={graduationYear}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/[^0-9]/g, ''); // Remove non-numeric characters
-                    if (value === '') {
-                      setGraduationYear(new Date().getFullYear());
-                    } else {
-                      const year = parseInt(value, 10);
-                      if (year >= 2000 && year <= 2050) {
-                        setGraduationYear(year);
-                      }
-                    }
-                  }}
-                  placeholder={t('proofGen.year.placeholder')}
-                  maxLength={4}
-                  className="block w-20 rounded-lg border-gray-300 border px-3 py-2 text-center text-sm focus:border-green-500 focus:ring-green-500 disabled:bg-gray-100 disabled:text-gray-500"
-                  disabled={isProcessing}
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                />
-                <span className="text-sm text-gray-500">年</span>
-              </div>
             </div>
-            <p className="mt-2 text-sm text-gray-600">
-              {t('proofGen.year.help')}
-            </p>
           </div>
+        ) : (
+          <p className="text-gray-500 text-center py-4">
+            {t('proofGen.alert.setupWebAuthn')}
+          </p>
+        )}
+      </div>
 
-          {/* Verification Key Selection (Fail-safe) */}
-          <div className="relative">
-            <label className="block text-sm font-medium text-gray-900 mb-3">
-              <div className="flex items-center space-x-2">
-                <div className="h-5 w-5 rounded bg-gradient-to-br from-emerald-500 to-teal-600 p-1">
-                  <svg className="h-full w-full text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                </div>
-                <span>{t('proofGen.vkey.label')}</span>
-              </div>
-            </label>
+      {/* Advanced Settings - Collapsible */}
+      <div className="border border-gray-200 rounded-xl overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setShowAdvanced(!showAdvanced)}
+          className="w-full px-5 py-3 flex items-center justify-between text-gray-500 hover:bg-gray-50 transition-colors"
+        >
+          <span className="text-sm font-medium">{t('proofGen.advanced.title')}</span>
+          <svg 
+            className={`w-5 h-5 transition-transform ${showAdvanced ? 'rotate-180' : ''}`} 
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+        
+        {showAdvanced && (
+          <div className="px-5 py-4 bg-gray-50 border-t border-gray-200">
             <div className="flex items-center gap-3">
-              <label className="inline-flex items-center px-3 py-2 rounded-lg border border-gray-300 bg-gray-50 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer">
+              <span className="text-sm text-gray-600">{t('proofGen.vkey.label')}:</span>
+              <label className="cursor-pointer">
                 <input
                   type="file"
-                  accept=".json,application/json"
-                  className="sr-only"
+                  accept=".json"
+                  className="hidden"
                   onChange={(e) => setVkeyFile(e.target.files?.[0] || null)}
                   disabled={isProcessing}
                 />
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v16c0 1.1.9 2 2 2h12a2 2 0 002-2V8l-6-4H6a2 2 0 00-2 2z" />
-                </svg>
-                <span>{vkeyFile ? t('proofGen.vkey.changeFile') : t('proofGen.vkey.select')}</span>
+                <span className="text-sm text-blue-600 hover:underline">
+                  {vkeyFile ? vkeyFile.name : t('proofGen.vkey.select')}
+                </span>
               </label>
               {vkeyFile && (
-                <div className="text-xs text-gray-600">
-                  <div className="font-medium">{vkeyFile.name}</div>
-                  {vkeyHashPreview && (
-                    <div className="text-emerald-600">{t('proofGen.vkey.hash')}: {vkeyHashPreview.substring(0, 20)}...</div>
-                  )}
-                </div>
-              )}
-              {vkeyFile && (
                 <button
-                  type="button"
                   onClick={() => setVkeyFile(null)}
-                  className="ml-auto text-xs text-red-600 hover:text-red-700"
-                  disabled={isProcessing}
+                  className="text-xs text-red-500 hover:text-red-700"
                 >
                   {t('common.clear')}
                 </button>
               )}
             </div>
-            <p className="mt-2 text-sm text-gray-600">{t('proofGen.vkey.help')}</p>
+            <p className="text-xs text-gray-400 mt-2">{t('proofGen.vkey.help')}</p>
           </div>
-
-          {/* Generate Button */}
-          <div>
-            <button
-              onClick={generateProof}
-              disabled={isProcessing || !secretInput || !webauthnCredential || !saltVerification?.isValid}
-              className="group relative w-full flex items-center justify-center px-8 py-4 border border-transparent rounded-2xl text-base font-semibold text-white bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700 hover:from-blue-700 hover:via-blue-800 hover:to-indigo-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all duration-300 shadow-xl hover:shadow-2xl disabled:shadow-none transform hover:scale-105 disabled:transform-none"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-400/20 to-indigo-400/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-300 opacity-0 group-hover:opacity-100"></div>
-              <div className="relative flex items-center">
-                {isProcessing ? (
-                  <>
-                    <div className="mr-3">
-                      <div className="animate-spin h-6 w-6 border-2 border-white border-t-transparent rounded-full"></div>
-                    </div>
-                    <span>Generating Proof...</span>
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                    </svg>
-                    <span>Generate Proof & Digital Signature</span>
-                  </>
-                )}
-              </div>
-            </button>
-          </div>
-        </div>
+        )}
       </div>
+
+      {/* Main Action Button */}
+      <button
+        onClick={generateProof}
+        disabled={isProcessing || !canGenerate}
+        className="w-full py-5 px-6 rounded-2xl font-bold text-xl text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed transition-all transform hover:scale-[1.02] disabled:transform-none shadow-xl hover:shadow-2xl disabled:shadow-none"
+      >
+        {isProcessing ? (
+          <span className="flex items-center justify-center gap-3">
+            <svg className="animate-spin h-6 w-6" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+            {t('proofGen.mainButtonProcessing')}
+          </span>
+        ) : (
+          <span className="flex items-center justify-center gap-2">
+            🔐 {t('proofGen.mainButton')}
+          </span>
+        )}
+      </button>
 
       {/* Status Display */}
       {status && (
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 p-6 border border-blue-200">
-          <div className="flex items-start space-x-4">
-            <div className="flex-shrink-0">
-              <div className="h-10 w-10 rounded-xl bg-blue-100 p-2">
-                {isProcessing ? (
-                  <div className="h-full w-full rounded-full border-2 border-blue-500 border-t-transparent animate-spin"></div>
-                ) : (
-                  <svg className="h-full w-full text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                )}
-              </div>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-blue-900 mb-1">Processing Status</p>
-              <p className="text-sm text-blue-700">{status}</p>
-              {isProcessing && (
-                <div className="mt-3">
-                  <div className="h-1 bg-blue-200 rounded-full overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full animate-pulse"></div>
-                  </div>
-                </div>
-              )}
-            </div>
+        <div className={`rounded-xl p-4 ${
+          status.includes('Error') 
+            ? 'bg-red-50 border border-red-200' 
+            : 'bg-blue-50 border border-blue-200'
+        }`}>
+          <div className="flex items-center gap-3">
+            {isProcessing && !status.includes('Error') && (
+              <svg className="animate-spin h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+            )}
+            <span className={status.includes('Error') ? 'text-red-700' : 'text-blue-700'}>
+              {status}
+            </span>
           </div>
         </div>
       )}
 
+      {/* Download Section */}
       {downloadUrl && !isProcessing && (
-        <div className="relative overflow-hidden rounded-2xl bg-white p-6 border border-gray-200 shadow-sm">
+        <div className="bg-green-50 rounded-2xl p-5 border-2 border-green-200">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <p className="text-sm font-semibold text-gray-900">{t('download.readyTitle')}</p>
-              <p className="text-sm text-gray-600 mt-1">
-                {downloadName} {typeof downloadSize === 'number' && (
-                  <span className="text-gray-500">({formatBytes(downloadSize)})</span>
-                )}
+              <p className="font-bold text-green-800">{t('download.readyTitle')}</p>
+              <p className="text-sm text-green-600 mt-1">
+                {downloadName} {typeof downloadSize === 'number' && `(${formatBytes(downloadSize)})`}
               </p>
             </div>
-            <div className="flex items-center gap-3">
-              <a
-                href={downloadUrl}
-                download={downloadName || 'secured.pdf'}
-                className="inline-flex items-center justify-center px-5 py-3 rounded-xl text-sm font-semibold text-white bg-green-600 hover:bg-green-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-green-500 transition-colors"
-                aria-label={t('download.aria')}
-              >
-                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" />
-                </svg>
-                {t('download.button')}
-              </a>
-              <button
-                type="button"
-                onClick={() => {
-                  if (downloadUrl) URL.revokeObjectURL(downloadUrl);
-                  setDownloadUrl(null);
-                  setDownloadName(null);
-                  setDownloadSize(null);
-                }}
-                className="inline-flex items-center justify-center px-4 py-3 rounded-xl text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-gray-400 transition-colors"
-              >
-                {t('common.clear')}
-              </button>
-            </div>
+            <a
+              href={downloadUrl}
+              download={downloadName || 'secured.pdf'}
+              className="inline-flex items-center justify-center px-8 py-4 rounded-xl font-bold text-white bg-green-600 hover:bg-green-700 transition-colors shadow-lg"
+            >
+              <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" />
+              </svg>
+              {t('download.button')}
+            </a>
           </div>
-          <p className="sr-only">{t('download.afterHint')}</p>
         </div>
       )}
     </div>
   );
 }
 
-// Helper functions - Real implementation
+// Helper functions
 async function calculatePdfHash(pdfData: Uint8Array): Promise<string> {
-  // Use SHA3-512 as specified in Phase 0
-  // Process PDF to normalize state for consistent hashing
   try {
     const { PDFDocument } = await import('pdf-lib');
     const pdfDoc = await PDFDocument.load(pdfData);
     
-    console.log('Prover: Original PDF loaded, normalizing for hash calculation...');
-    
-    // Clear any existing metadata/attachments for consistent hashing
     pdfDoc.setSubject('');
     pdfDoc.setTitle('');
     pdfDoc.setCreator('');
     pdfDoc.setProducer('');
     
-    // Set consistent dates (matches Verifier)
     const epochDate = new Date('1970-01-01T00:00:00Z');
     pdfDoc.setCreationDate(epochDate);
     pdfDoc.setModificationDate(epochDate);
     
-    // Save normalized PDF
     const normalizedPdfBytes = await pdfDoc.save();
-    
-    console.log('Prover: Normalized PDF size:', normalizedPdfBytes.length);
     
     const crypto = await import('crypto-js');
     const wordArray = crypto.lib.WordArray.create(normalizedPdfBytes);
     const hash = crypto.SHA3(wordArray, { outputLength: 512 });
     
-    const hashString = hash.toString();
-    console.log('Prover: Calculated hash:', hashString.substring(0, 20) + '...');
-    
-    return hashString;
+    return hash.toString();
   } catch (error) {
     console.error('PDF hash calculation error:', error);
-    // Fallback to direct hash for development
     const crypto = await import('crypto-js');
     const wordArray = crypto.lib.WordArray.create(pdfData);
     const hash = crypto.SHA3(wordArray, { outputLength: 512 });
@@ -746,7 +597,6 @@ async function calculatePdfHash(pdfData: Uint8Array): Promise<string> {
   }
 }
 
-// Minimal FNV-1a 64-bit hash to mirror witness_calculator behavior
 function fnv1a64(str: string): string {
   const uint64Max = BigInt(2) ** BigInt(64);
   let hash = BigInt('0xCBF29CE484222325');
@@ -778,32 +628,21 @@ async function circuitAcceptsSignal(wasmPath: string, signalName: string): Promi
     const hLSB = parseInt(h.slice(8, 16), 16);
     const size = (instance.exports as { getInputSignalSize: (msb: number, lsb: number) => number }).getInputSignalSize(hMSB, hLSB);
     return size > 0;
-  } catch (e) {
-    // If introspection fails, default to not including optional signals
-    console.warn('Circuit introspection failed; skipping optional signal', signalName, e);
+  } catch {
     return false;
   }
 }
 
-// Helper function to get base path for asset loading
-// This is needed because fetch() calls don't automatically use Next.js basePath
 function getAssetPath(path: string): string {
-  // Detect basePath from the current location if deployed to GitHub Pages
-  // GitHub Pages URL pattern: https://username.github.io/repo-name/app/
   let basePath = '';
   
   if (typeof window !== 'undefined') {
-    // Get the pathname and extract basePath
-    // For example: /Tri-CertFramework/prover/... -> basePath = /Tri-CertFramework/prover
     const pathname = window.location.pathname;
-    
-    // Match the pattern /Tri-CertFramework/prover or /Tri-CertFramework/verifier-ui
     const match = pathname.match(/^(\/Tri-CertFramework\/(?:prover|verifier-ui))/);
     if (match) {
       basePath = match[1];
     }
     
-    // Fallback: Try to get from environment variable (set during build)
     if (!basePath) {
       const envBasePath = process.env.NEXT_PUBLIC_BASE_PATH;
       if (envBasePath && typeof envBasePath === 'string') {
@@ -812,30 +651,20 @@ function getAssetPath(path: string): string {
     }
   }
   
-  // Remove trailing slash from basePath if present, ensure path starts with /
   const normalizedBasePath = basePath.endsWith('/') ? basePath.slice(0, -1) : basePath;
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
   return `${normalizedBasePath}${normalizedPath}`;
 }
 
 async function generateZKProof(secret: string, pdfHash: string, graduationYear: number, overrideVKey?: VKeyData): Promise<{ proof: ProofData; vkey: VKeyData }> {
-  console.log('Starting ZKP generation with:', { 
-    secret: secret.substring(0, 10) + '...', 
-    pdfHash: pdfHash.substring(0, 20) + '...', 
-    graduationYear 
-  });
-  
   try {
-    // Try to load from VKNFT directory first
     let vkey = {} as VKeyData;
     let vkeyHash = '';
     let wasmPath = '';
     let zkeyPath = '';
     let useVknftAssets = false;
     
-    // Attempt to fetch manifest from VKNFT API
     try {
-      console.log(`[Prover] Fetching VKNFT manifest for year ${graduationYear}...`);
       const manifestResponse = await fetch(`/api/vknft/${graduationYear}/manifest`);
       
       if (manifestResponse.ok) {
@@ -843,45 +672,36 @@ async function generateZKProof(secret: string, pdfHash: string, graduationYear: 
         
         if (manifestData.success && manifestData.manifest) {
           const manifest = manifestData.manifest;
-          console.log('[Prover] VKNFT manifest loaded:', manifest);
-          
-          // Extract file names from manifest
           const wasmFileName = manifest.files?.wasm?.fileName;
           const zkeyFileName = manifest.files?.zkey?.fileName;
           const vkFileName = manifest.files?.vk?.fileName;
           
           if (wasmFileName && zkeyFileName && vkFileName) {
-            // Use VKNFT API endpoints
             wasmPath = `/api/vknft/${graduationYear}/files/${wasmFileName}`;
             zkeyPath = `/api/vknft/${graduationYear}/files/${zkeyFileName}`;
             
-            // Load verification key from VKNFT
             const vkeyResponse = await fetch(`/api/vknft/${graduationYear}/files/${vkFileName}`);
             if (vkeyResponse.ok) {
               vkey = overrideVKey ?? (await vkeyResponse.json());
               vkeyHash = await calculateVKeyHash(vkey);
               useVknftAssets = true;
-              console.log('[Prover] Using VKNFT assets for year', graduationYear);
             }
           }
         }
       }
-    } catch (error) {
-      console.warn('[Prover] Failed to load from VKNFT, falling back to public assets:', error);
+    } catch {
+      // Fallback to public assets
     }
     
-    // Fallback to public assets if VKNFT not available
     if (!useVknftAssets) {
-      console.log('[Prover] Using public assets (fallback)');
       const vkeyPath = getAssetPath('/vkey.json');
       const vkeyResponse = await fetch(vkeyPath);
       if (!vkeyResponse.ok) {
-        throw new Error(`Failed to load vkey.json: ${vkeyResponse.status} ${vkeyResponse.statusText}`);
+        throw new Error(`Failed to load vkey.json: ${vkeyResponse.status}`);
       }
       vkey = overrideVKey ?? (await vkeyResponse.json());
       vkeyHash = await calculateVKeyHash(vkey);
       
-      // Try year-specific public assets
       wasmPath = getAssetPath('/commitment_js/commitment.wasm');
       zkeyPath = getAssetPath('/commitment_final.zkey');
       
@@ -895,22 +715,16 @@ async function generateZKProof(secret: string, pdfHash: string, graduationYear: 
         if (wr && wr.ok && zr && zr.ok) {
           wasmPath = wasmYear;
           zkeyPath = zkeyYear;
-          console.log('[Prover] Using year-specific public assets:', { wasmPath, zkeyPath });
         }
-      } catch (e) {
-        console.warn('[Prover] Asset detection error; using default assets', e);
+      } catch {
+        // Use default assets
       }
     }
 
-    // Prepare circuit inputs (compatible with both legacy and year-aware circuits)
-    // Convert secret to field element (mod prime field)
     const secretBytes = new TextEncoder().encode(secret);
     const secretBigInt = BigInt('0x' + Array.from(secretBytes).map(b => b.toString(16).padStart(2, '0')).join(''));
-    
-    // Convert PDF hash to field element (use first part)
-    const pdfHashBigInt = BigInt('0x' + pdfHash.slice(0, 60)); // Use first 60 chars to fit in field
+    const pdfHashBigInt = BigInt('0x' + pdfHash.slice(0, 60));
 
-    // Introspect circuit to see if it accepts graduation_year as input
     const acceptsYear = await circuitAcceptsSignal(wasmPath, 'graduation_year');
 
     const input: Record<string, string> = {
@@ -921,33 +735,19 @@ async function generateZKProof(secret: string, pdfHash: string, graduationYear: 
       input.graduation_year = graduationYear.toString();
     }
 
-    console.log('Circuit inputs prepared:', input);
-    
-    console.log('Loading circuit files:', { wasmPath, zkeyPath });
-    
-    // Verify assets exist before attempting proof generation
     const [wasmCheck, zkeyCheck] = await Promise.all([
       fetch(wasmPath, { method: 'HEAD' }).catch(() => null),
       fetch(zkeyPath, { method: 'HEAD' }).catch(() => null),
     ]);
     
     if (!wasmCheck || !wasmCheck.ok) {
-      throw new Error(`WASM file not found: ${wasmPath} (status: ${wasmCheck?.status || 'network error'})`);
+      throw new Error(`WASM file not found: ${wasmPath}`);
     }
     if (!zkeyCheck || !zkeyCheck.ok) {
-      throw new Error(`ZKey file not found: ${zkeyPath} (status: ${zkeyCheck?.status || 'network error'})`);
+      throw new Error(`ZKey file not found: ${zkeyPath}`);
     }
     
-    console.log('Circuit assets verified, generating proof...');
-    
-    // Generate proof using snarkjs
-    const { proof, publicSignals } = await snarkjs.groth16.fullProve(
-      input,
-      wasmPath,
-      zkeyPath
-    );
-
-    console.log('ZKP generated successfully:', { publicSignals });
+    const { proof, publicSignals } = await snarkjs.groth16.fullProve(input, wasmPath, zkeyPath);
 
     const proofData: ProofData = {
       schema: "tri-cert/proof@0",
@@ -960,7 +760,6 @@ async function generateZKProof(secret: string, pdfHash: string, graduationYear: 
       },
       proof: {
         pi_a: [proof.pi_a[0], proof.pi_a[1]],
-        // Keep snarkjs ordering intact (no swapping)
         pi_b: [[proof.pi_b[0][0], proof.pi_b[0][1]], [proof.pi_b[1][0], proof.pi_b[1][1]]],
         pi_c: [proof.pi_c[0], proof.pi_c[1]]
       }
@@ -969,7 +768,7 @@ async function generateZKProof(secret: string, pdfHash: string, graduationYear: 
     return { proof: proofData, vkey };
   } catch (error) {
     console.error('ZKP Generation Error:', error);
-    throw new Error('Failed to generate ZK proof. Ensure circuit assets are available and try again.');
+    throw new Error('Failed to generate ZK proof');
   }
 }
 
@@ -979,81 +778,56 @@ async function calculateVKeyHash(vkey: VKeyData): Promise<string> {
   return crypto.SHA3(canonicalJson, { outputLength: 256 }).toString();
 }
 
-// removed mock proof generation
-
 async function createWebAuthnSignature(
   proof: ProofData, 
   vkey: VKeyData, 
   pdfHash: string,
-  webauthnCredential: WebAuthnCredentialInfo
+  webauthnCredential: { credentialId: string; publicKey: { x: string; y: string }; createdAt: string }
 ): Promise<SignatureData> {
-  try {
-    console.log('Creating WebAuthn signature with credential:', webauthnCredential);
+  const sigTarget = {
+    schema: "tri-cert/sig-target@0",
+    circuit_id: proof.circuit_id,
+    vkey_hash: proof.vkey_hash,
+    pdf_sha3_512: `hex:${pdfHash}`,
+    graduation_year: proof.public_signals.graduation_year,
+    commit: proof.public_signals.commit,
+    issued_at: new Date().toISOString()
+  };
 
-    // Prepare payload to bind all critical artifacts
-    const sigTarget = {
-      schema: "tri-cert/sig-target@0",
-      circuit_id: proof.circuit_id,
-      vkey_hash: proof.vkey_hash,
-      pdf_sha3_512: `hex:${pdfHash}`,
-      graduation_year: proof.public_signals.graduation_year,
-      commit: proof.public_signals.commit,
-      issued_at: new Date().toISOString()
-    };
+  const webauthnResponse = await createWebAuthnAssertion(webauthnCredential.credentialId, sigTarget);
 
-    console.log('Signature target prepared:', sigTarget);
+  const { calculateJwkThumbprint } = await import('jose');
+  const kid = await calculateJwkThumbprint({
+    kty: 'EC',
+    crv: 'P-256',
+    x: webauthnCredential.publicKey.x,
+    y: webauthnCredential.publicKey.y,
+  });
 
-    // Create WebAuthn assertion
-    const webauthnResponse = await createWebAuthnAssertion(
-      webauthnCredential.credentialId,
-      sigTarget
-    );
-
-    console.log('WebAuthn assertion created:', webauthnResponse);
-
-    // Compute JWK thumbprint for kid
-    const { calculateJwkThumbprint } = await import('jose');
-    const kid = await calculateJwkThumbprint({
+  return {
+    webauthn: {
+      credentialId: webauthnResponse.credentialId,
+      authenticatorData: webauthnResponse.authenticatorData,
+      clientDataJSON: webauthnResponse.clientDataJSON,
+      signature: webauthnResponse.signature,
+    },
+    sig_target: sigTarget,
+    webauthn_pub: {
       kty: 'EC',
       crv: 'P-256',
       x: webauthnCredential.publicKey.x,
       y: webauthnCredential.publicKey.y,
-    });
-
-    return {
-      webauthn: {
-        credentialId: webauthnResponse.credentialId,
-        authenticatorData: webauthnResponse.authenticatorData,
-        clientDataJSON: webauthnResponse.clientDataJSON,
-        signature: webauthnResponse.signature,
-      },
-      sig_target: sigTarget,
-      webauthn_pub: {
-        kty: 'EC',
-        crv: 'P-256',
-        x: webauthnCredential.publicKey.x,
-        y: webauthnCredential.publicKey.y,
-        alg: 'ES256',
-        kid,
-      },
-    };
-  } catch (error) {
-    console.error('WebAuthn signature creation error:', error);
-    throw new Error(`WebAuthn signature failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-  }
+      alg: 'ES256',
+      kid,
+    },
+  };
 }
-
-// WebAuthn-based signature implementation
 
 async function attachToPdf(pdfBuffer: ArrayBuffer, proof: ProofData, signature: SignatureData, vkey: VKeyData): Promise<Blob> {
   try {
-    // Use pdf-lib to attach files to PDF (Phase 0 simplified implementation)
     const { PDFDocument } = await import('pdf-lib');
-    
-    // Load the original PDF (should be clean/normalized)
     const pdfDoc = await PDFDocument.load(pdfBuffer);
     
-    // Prepare attachment data
     const attachments = {
       'proof.json': JSON.stringify(proof, null, 2),
       'webauthn_sig.json': JSON.stringify(signature.webauthn, null, 2),
@@ -1062,8 +836,6 @@ async function attachToPdf(pdfBuffer: ArrayBuffer, proof: ProofData, signature: 
       'sig_target.json': JSON.stringify(signature.sig_target, null, 2)
     };
 
-    // Store attachment metadata in PDF Subject only for Phase 0
-    // Keep other metadata fields empty to match the hash calculation
     const metadata = {
       attachments: Object.keys(attachments).map(filename => ({
         name: filename,
@@ -1072,16 +844,11 @@ async function attachToPdf(pdfBuffer: ArrayBuffer, proof: ProofData, signature: 
       }))
     };
 
-    // Only set Subject for attachments - keep other metadata empty to preserve hash
     pdfDoc.setSubject(JSON.stringify(metadata));
-    // Do NOT set title, creator, producer, dates to preserve original PDF hash
 
-    // Save the PDF with metadata
     const pdfBytes = await pdfDoc.save();
     return new Blob([new Uint8Array(pdfBytes)], { type: 'application/pdf' });
-  } catch (error) {
-    console.error('PDF attachment error:', error);
-    // Fallback to original PDF for development
+  } catch {
     return new Blob([pdfBuffer], { type: 'application/pdf' });
   }
 }

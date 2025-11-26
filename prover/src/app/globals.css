@@ -39,16 +39,39 @@ html {
 
 /* Custom animations */
 @keyframes float {
-  0%, 100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
 }
 
 .animate-float {
   animation: float 6s ease-in-out infinite;
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.5s ease-out;
+}
+
+.animate-slideIn {
+  animation: slideIn 0.4s ease-out;
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 2s ease-in-out infinite;
 }
 
 /* Gradient text */
@@ -88,12 +111,8 @@ html {
 
 /* Progress ring animation */
 @keyframes progress-ring {
-  0% {
-    stroke-dashoffset: 283;
-  }
-  100% {
-    stroke-dashoffset: 0;
-  }
+  0% { stroke-dashoffset: 283; }
+  100% { stroke-dashoffset: 0; }
 }
 
 .progress-ring {
@@ -108,9 +127,38 @@ html {
   background-size: 20px 20px;
 }
 
-/* Enhanced focus styles */
+/* Enhanced focus styles for accessibility */
 *:focus-visible {
   outline: 2px solid var(--scholar-blue);
   outline-offset: 2px;
   border-radius: 4px;
+}
+
+/* Large touch targets for accessibility */
+button, 
+a, 
+input[type="file"]::file-selector-button {
+  min-height: 44px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .bg-gradient-to-br {
+    background: var(--scholar-blue);
+  }
+  
+  button {
+    border: 2px solid currentColor;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

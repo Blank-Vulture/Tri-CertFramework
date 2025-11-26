@@ -21,19 +21,19 @@ function getFromPath(obj: Record<string, unknown>, path: string): string | undef
 const I18nContext = createContext<I18nContextType | null>(null);
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  // Avoid hydration mismatch: default to 'en' for SSR/first paint, then update after mount
-  const [lang, setLangState] = useState<Lang>('en');
+  // Default to Japanese as primary language for this deployment
+  const [lang, setLangState] = useState<Lang>('ja');
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const urlLang = new URLSearchParams(window.location.search).get('lang');
     const saved = window.localStorage.getItem('lang');
-    const nav = navigator.language || navigator.languages?.[0] || 'en';
+    // Only switch to English if explicitly requested
     const preferred = (urlLang === 'ja' || urlLang === 'en')
       ? (urlLang as Lang)
       : (saved === 'ja' || saved === 'en')
         ? (saved as Lang)
-        : (nav.toLowerCase().startsWith('ja') ? 'ja' : 'en');
+        : 'ja'; // Default to Japanese
     if (preferred !== lang) setLangState(preferred);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run once on mount to initialize language

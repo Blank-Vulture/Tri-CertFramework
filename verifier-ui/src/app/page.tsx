@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
-import { useI18n } from './components/LanguageProvider';
+import { useState, useEffect, useCallback } from 'react';
+import { useI18n, HeaderLangSwitcher } from './components/LanguageProvider';
 import PdfUpload from './components/PdfUpload';
 import KeyUpload from './components/KeyUpload';
 import VerificationResults from './components/VerificationResults';
+import VerificationAnimation from './components/VerificationAnimation';
 import { verifyWebAuthnComplete } from '../utils/webauthn-verifier';
 import type { SignatureVerificationContext } from '../types/webauthn';
 import { checkRegistration, verifyProofRegistration } from '../utils/registration-checker';
@@ -24,7 +25,6 @@ interface ProofData {
     pi_b: string[][];
     pi_c: string[];
   };
-  // Salt-based registration info (added by prover when verified)
   registration?: {
     activation_hash: string;
     student_id_hash: string;
@@ -88,6 +88,14 @@ interface ExtractedData {
   };
 }
 
+// Verification step type
+interface VerificationStep {
+  id: string;
+  name: string;
+  description: string;
+  status: 'pending' | 'running' | 'success' | 'error';
+}
+
 export default function Home() {
   const { t } = useI18n();
   const [pdfFile, setPdfFile] = useState<File | null>(null);
@@ -95,87 +103,82 @@ export default function Home() {
   const [publicKeyFile, setPublicKeyFile] = useState<File | null>(null);
   const [verificationResult, setVerificationResult] = useState<VerificationResult | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
+  const [verificationSteps, setVerificationSteps] = useState<VerificationStep[]>([]);
+  const [currentStepIndex, setCurrentStepIndex] = useState(-1);
 
-  // Function to load VK based on graduation year
+  // Initialize verification steps
+  const initializeSteps = useCallback(() => {
+    return [
+      { id: 'extract', name: t('verify.step.extract'), description: t('verify.step.extractDesc'), status: 'pending' as const },
+      { id: 'hash', name: t('verify.step.hash'), description: t('verify.step.hashDesc'), status: 'pending' as const },
+      { id: 'zkp', name: t('verify.step.zkp'), description: t('verify.step.zkpDesc'), status: 'pending' as const },
+      { id: 'signature', name: t('verify.step.signature'), description: t('verify.step.signatureDesc'), status: 'pending' as const },
+      { id: 'registration', name: t('verify.step.registration'), description: t('verify.step.registrationDesc'), status: 'pending' as const },
+    ];
+  }, [t]);
+
+  // Update step status helper
+  const updateStepStatus = (stepId: string, status: 'running' | 'success' | 'error') => {
+    setVerificationSteps(prev => 
+      prev.map(step => step.id === stepId ? { ...step, status } : step)
+    );
+  };
+
+  // Load VK by year
   const loadVKByYear = async (year: number): Promise<VKeyData | null> => {
     try {
-      // Try to fetch from public directory with year-specific filename
       const response = await fetch(`/vkey_${year}.json`);
-      if (response.ok) {
-        return await response.json();
-      }
+      if (response.ok) return await response.json();
       
-      // Fallback to default vkey.json
       const fallbackResponse = await fetch('/vkey.json');
-      if (fallbackResponse.ok) {
-        console.warn(`VK for year ${year} not found, using default vkey.json`);
-        return await fallbackResponse.json();
-      }
-      console.warn(`No VK found for year ${year} and no fallback available`);
+      if (fallbackResponse.ok) return await fallbackResponse.json();
       return null;
-    } catch (error) {
-      console.error(`Failed to load VK for year ${year}:`, error);
+    } catch {
       return null;
     }
   };
 
-  // Function to auto-detect graduation year from proof
+  // Detect graduation year from proof
   const detectGraduationYear = (proof: ProofData): number | null => {
     try {
       if (proof.public_signals?.graduation_year) {
         const year = parseInt(proof.public_signals.graduation_year, 10);
-        if (year >= 2000 && year <= 2050) {
-          return year;
-        }
+        if (year >= 2000 && year <= 2050) return year;
       }
       
-      // Try to extract from circuit_id (e.g., commitment_poseidon_2024_v1)
       const circuitIdMatch = proof.circuit_id?.match(/(\d{4})/);
       if (circuitIdMatch) {
         const year = parseInt(circuitIdMatch[1], 10);
-        if (year >= 2000 && year <= 2050) {
-          return year;
-        }
+        if (year >= 2000 && year <= 2050) return year;
       }
-      
       return null;
-    } catch (error) {
-      console.warn('Failed to detect graduation year from proof:', error);
+    } catch {
       return null;
     }
   };
 
   async function readFileToArrayBuffer(file: File): Promise<ArrayBuffer> {
-    // Primary: modern File.arrayBuffer(); Fallback: FileReader for older/locked edge cases
     try {
       return await file.arrayBuffer();
-    } catch (err) {
-      console.warn('arrayBuffer() failed, falling back to FileReader', err);
-      // Retry once via FileReader to mitigate NotReadableError intermittently seen on locked files
+    } catch {
       const reader = new FileReader();
       return await new Promise<ArrayBuffer>((resolve, reject) => {
-        reader.onerror = () => {
-          reject(reader.error || new DOMException('File read failed'));
-        };
+        reader.onerror = () => reject(reader.error || new DOMException('File read failed'));
         reader.onload = () => {
           if (reader.result instanceof ArrayBuffer) {
             resolve(reader.result);
-          } else if (reader.result) {
-            // result may be a string in readAsText scenarios; convert if needed
-            const enc = new TextEncoder();
-            resolve(enc.encode(String(reader.result)).buffer);
           } else {
             reject(new DOMException('Empty file read result'));
           }
         };
-        try {
-          reader.readAsArrayBuffer(file);
-        } catch (e) {
-          reject(e);
-        }
+        reader.readAsArrayBuffer(file);
       });
     }
   }
+
+  // Delay helper for animation
+  const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
   const handleVerify = async () => {
     if (!pdfFile) {
@@ -184,298 +187,167 @@ export default function Home() {
     }
 
     setIsVerifying(true);
+    setVerificationResult(null);
+    
+    // Initialize steps
+    const steps = initializeSteps();
+    setVerificationSteps(steps);
+    setCurrentStepIndex(0);
     
     try {
-      // Extract data from PDF
+      // Step 1: Extract data from PDF
+      updateStepStatus('extract', 'running');
+      await delay(500);
+      
       let pdfBuffer: ArrayBuffer;
       try {
         pdfBuffer = await readFileToArrayBuffer(pdfFile);
-      } catch (e) {
-        console.error('Failed to read PDF file:', e);
-        const errorName = e instanceof Error ? e.name : e instanceof DOMException ? e.name : '';
-        // Provide actionable hints for NotReadableError / SecurityError
-        let msg = 'Failed to read the selected PDF file.';
-        if (errorName === 'NotReadableError' || errorName === 'SecurityError' || (e instanceof DOMException && (e.name === 'NotReadableError' || e.name === 'SecurityError'))) {
-          msg += '\n\nTips:\n• Close the PDF if it is open in another app (Preview/Adobe).\n• Re-select the file from disk (do not drag from recent downloads banner).\n• If stored on network/Cloud Drive, copy it locally and try again.';
-        }
-        alert(msg);
-        setIsVerifying(false);
-        return;
+      } catch {
+        updateStepStatus('extract', 'error');
+        throw new Error('PDF読み込み失敗');
       }
       const extractedData = await extractPdfData(pdfBuffer);
-      // Pre-calculate normalized PDF hash for ZKP public signal reconstruction
-      const calculatedHash = await calculatePdfHash(pdfBuffer);
+      updateStepStatus('extract', 'success');
+      setCurrentStepIndex(1);
       
-      // Verify ZKP
+      // Step 2: Calculate hash
+      await delay(300);
+      updateStepStatus('hash', 'running');
+      const calculatedHash = await calculatePdfHash(pdfBuffer);
+      const expectedHash = extractedData.proof?.public_signals?.pdf_sha3_512;
+      const hashValid = expectedHash === `hex:${calculatedHash}`;
+      updateStepStatus('hash', hashValid ? 'success' : 'error');
+      setCurrentStepIndex(2);
+      
+      // Step 3: Verify ZKP
+      await delay(300);
+      updateStepStatus('zkp', 'running');
       let zkpValid = false;
-      let zkpDetails = 'No proof found';
+      let zkpDetails = t('results.noProofFound');
       let vkeyUsedForZkp: VKeyData | null = null;
+      
       if (extractedData.proof) {
         let vkey = null;
-        // Prefer user-selected local VK file
+        
         if (vkeyFile) {
-          const selected = JSON.parse(await vkeyFile.text());
-          // If proof carries a vkey_hash, prefer a VK that matches it
-          if (extractedData.proof?.vkey_hash) {
-            const selectedHash = `sha3-256:${await calculateVKeyHash(selected as VKeyData)}`;
-            if (selectedHash !== extractedData.proof.vkey_hash) {
-              // Try embedded VK as fallback if it matches the hash
-              if (extractedData.vkey) {
-                const embeddedHash = `sha3-256:${await calculateVKeyHash(extractedData.vkey)}`;
-                if (embeddedHash === extractedData.proof.vkey_hash) {
-                  vkey = extractedData.vkey;
-                  zkpDetails = 'Local VK hash mismatch. Using VK embedded in PDF.';
-                } else {
-                  // Proceed with selected VK but note mismatch
-                  vkey = selected;
-                  zkpDetails = 'Using locally selected VK file (hash mismatch with proof)';
-                }
-              } else {
-                vkey = selected;
-                zkpDetails = 'Using locally selected VK file (hash mismatch with proof)';
-              }
-            } else {
-              vkey = selected;
-              zkpDetails = 'Using locally selected VK file';
-            }
-          } else {
-            vkey = selected;
-            zkpDetails = 'Using locally selected VK file';
-          }
+          vkey = JSON.parse(await vkeyFile.text());
+          zkpDetails = t('results.usingLocalVK');
         } else if (extractedData.vkey) {
-          // Fallback to VK embedded in PDF if present
           vkey = extractedData.vkey;
-          zkpDetails = 'Using VK embedded in PDF';
+          zkpDetails = t('results.usingEmbeddedVK');
         } else {
-          // Optional: attempt to auto-detect year and load from public if available
           const detectedYear = detectGraduationYear(extractedData.proof);
           if (detectedYear) {
             const autoVkey = await loadVKByYear(detectedYear);
             if (autoVkey) {
               vkey = autoVkey;
-              zkpDetails = `Using VK found for year ${detectedYear}`;
-            } else {
-              zkpDetails = 'No VK available. Please select a local VK file.';
+              zkpDetails = t('results.usingAutoVK').replace('{year}', detectedYear.toString());
             }
-          } else {
-            zkpDetails = 'No VK available. Please select a local VK file.';
           }
         }
         
-        // Perform ZKP verification
         if (vkey) {
           vkeyUsedForZkp = vkey as VKeyData;
-          // Pass calculated PDF hash to help reconstruct field input for year-aware circuits
           const pdfHex = (extractedData.proof.public_signals.pdf_sha3_512 || '').replace('hex:', '');
-          const calculatedPdfHash = calculatedHash; // computed later as hex string
-          const preferHex = pdfHex && pdfHex.length > 0 ? pdfHex : calculatedPdfHash;
+          const preferHex = pdfHex && pdfHex.length > 0 ? pdfHex : calculatedHash;
           zkpValid = await verifyZKP(extractedData.proof, vkey, { calculatedPdfHashHex: preferHex });
-          zkpDetails = zkpValid ? `Valid proof (${zkpDetails})` : `Invalid proof (${zkpDetails})`;
-        } else {
-          zkpDetails = 'No VK available for verification';
+          zkpDetails = zkpValid ? `✅ ${zkpDetails}` : `❌ ${zkpDetails}`;
         }
       }
+      updateStepStatus('zkp', zkpValid ? 'success' : 'error');
+      setCurrentStepIndex(3);
       
-      // Verify WebAuthn signature
+      // Step 4: Verify signature
+      await delay(300);
+      updateStepStatus('signature', 'running');
       let signatureValid = false;
-      let signatureDetails = 'No WebAuthn signature found';
+      let signatureDetails = t('results.noSignatureFound');
+      
       if (extractedData.webauthnSignature && extractedData.sigTarget && (publicKeyFile || extractedData.publicKey)) {
         const pubKey = publicKeyFile ? JSON.parse(await publicKeyFile.text()) : extractedData.publicKey;
         
         if (pubKey) {
-          console.log('=== Starting WebAuthn Verification Process ===');
-          console.log('Extracted WebAuthn data:', {
-            hasSignature: !!extractedData.webauthnSignature,
-            hasSigTarget: !!extractedData.sigTarget,
-            hasPublicKey: !!pubKey,
-            credentialId: extractedData.webauthnSignature.credentialId,
-            sigTargetSchema: extractedData.sigTarget.schema
-          });
-
           const verificationContext: SignatureVerificationContext = {
             webauthn: extractedData.webauthnSignature,
             sig_target: extractedData.sigTarget,
             webauthn_pub: pubKey,
           };
-
-          console.log('WebAuthn verification context prepared');
           
           try {
             const result = await verifyWebAuthnComplete(verificationContext);
             signatureValid = result.isValid;
             
             if (result.isValid) {
-              // Build detailed success message
-              const details: string[] = ['✅ Valid WebAuthn signature'];
-              
-              if (result.details.credentialBindingValid) {
-                details.push('• Public key binding verified');
-              }
-              if (result.details.rpIdHashValid) {
-                details.push('• Origin verification passed');
-              }
-              if (result.details.userPresent) {
-                details.push('• User presence confirmed');
-              }
-              if (result.details.userVerified) {
-                details.push('• Biometric/PIN authentication verified');
-              }
-              
-              signatureDetails = details.join('\n');
+              signatureDetails = `✅ ${t('results.signatureValid')}`;
             } else {
-              // Build detailed error message
-              const errors: string[] = ['❌ Invalid WebAuthn signature'];
-              
-              if (!result.details.signatureValid) {
-                errors.push('• Cryptographic signature verification failed');
-              }
-              if (!result.details.credentialBindingValid) {
-                errors.push('• Public key binding verification failed');
-              }
-              if (result.details.error) {
-                errors.push(`• Error: ${result.details.error}`);
-              }
-              
-              signatureDetails = errors.join('\n');
+              signatureDetails = `❌ ${t('results.signatureFailed')}`;
             }
-              
-            console.log('=== WebAuthn verification completed ===');
-            console.log('Final result:', {
-              isValid: result.isValid,
-              signatureValid: result.details.signatureValid,
-              credentialBindingValid: result.details.credentialBindingValid,
-              rpIdHashValid: result.details.rpIdHashValid,
-              userPresent: result.details.userPresent,
-              userVerified: result.details.userVerified,
-              error: result.details.error
-            });
-          } catch (verificationError) {
-            console.error('WebAuthn verification threw an error:', verificationError);
-            signatureValid = false;
-            signatureDetails = `❌ WebAuthn verification error: ${verificationError instanceof Error ? verificationError.message : 'Unknown error'}`;
+          } catch {
+            signatureDetails = `❌ ${t('results.signatureError')}`;
           }
-        } else {
-          console.warn('No public key available for WebAuthn verification');
-          signatureDetails = 'No public key found for WebAuthn verification';
         }
-      } else {
-        console.warn('Missing WebAuthn verification data:', {
-          hasSignature: !!extractedData.webauthnSignature,
-          hasSigTarget: !!extractedData.sigTarget,
-          hasPublicKey: !!(publicKeyFile || extractedData.publicKey)
-        });
       }
+      updateStepStatus('signature', signatureValid ? 'success' : 'error');
+      setCurrentStepIndex(4);
       
-      // Check student registration (JWK thumbprint based - optional)
-      // This check is optional and will be skipped if index.json is not available or empty
+      // Step 5: Check registration
+      await delay(300);
+      updateStepStatus('registration', 'running');
+      
       let registrationValid: boolean | undefined = undefined;
-      let registrationDetails = 'Public key registration check not available (using Salt registration instead)';
-      
-      if (extractedData.publicKey || (publicKeyFile && extractedData.webauthnSignature)) {
-        const pubKey = publicKeyFile ? JSON.parse(await publicKeyFile.text()) : extractedData.publicKey;
-        
-        if (pubKey) {
-          console.log('=== Starting Registration Check (Optional) ===');
-          try {
-            const registrationResult = await checkRegistration(pubKey);
-            
-            // Check if registry is available and has entries
-            const isRegistryEmpty = registrationResult.error?.includes('empty');
-            const isRegistryUnavailable = registrationResult.error === 'Failed to fetch student registry';
-            
-            if (isRegistryUnavailable) {
-              // Registry not available - skip this check
-              console.log('Public key registry not available, skipping this check');
-              registrationValid = undefined;
-              registrationDetails = 'ℹ️ Public key registration check skipped (registry not available)';
-            } else if (isRegistryEmpty) {
-              // Registry is empty - skip this check (no public keys registered yet)
-              console.log('Public key registry is empty, skipping this check');
-              registrationValid = undefined;
-              registrationDetails = 'ℹ️ Public key registration check skipped (no public keys registered yet)';
-            } else if (!registrationResult.error) {
-              // Registry is available and has entries - perform check
-              registrationValid = registrationResult.isRegistered;
-              
-              if (registrationResult.isRegistered) {
-                registrationDetails = '✅ Registered Student - This PDF was submitted by a verified student (public key verified)';
-              } else {
-                registrationDetails = '⚠️ Unregistered Public Key - This signature is valid but the public key is not in the registry';
-              }
-            } else {
-              // Other error - skip this check
-              console.warn('Public key registration check error:', registrationResult.error);
-              registrationValid = undefined;
-              registrationDetails = `ℹ️ Public key registration check skipped (${registrationResult.error})`;
-            }
-            
-            console.log('Registration check result:', {
-              isRegistered: registrationResult.isRegistered,
-              thumbprint: registrationResult.thumbprint,
-              error: registrationResult.error,
-              registrationValid,
-            });
-          } catch (registrationError) {
-            console.error('Registration check error:', registrationError);
-            // Don't fail verification if this optional check fails
-            registrationValid = undefined;
-            registrationDetails = 'ℹ️ Public key registration check skipped (error occurred)';
-          }
-        }
-      }
-
-      // Check salt-based registration (activation hash based - new)
+      let registrationDetails = '';
       let saltRegistrationValid = false;
       let saltRegistrationDetails = t('results.saltRegistration.notFound');
       
+      // Salt-based registration check
       if (extractedData.proof?.registration) {
-        console.log('=== Starting Salt Registration Check ===');
         try {
           const saltResult = await verifyProofRegistration(extractedData.proof.registration);
           saltRegistrationValid = saltResult.isValid;
           
           if (saltResult.isValid) {
             saltRegistrationDetails = t('results.saltRegistration.verified');
-            if (saltResult.registeredAt) {
-              saltRegistrationDetails += ` (${t('results.saltRegistration.registeredAt')}: ${new Date(saltResult.registeredAt).toLocaleDateString()})`;
-            }
-          } else if (saltResult.error) {
-            saltRegistrationDetails = `${t('results.saltRegistration.failed')}: ${saltResult.error}`;
           } else {
             saltRegistrationDetails = t('results.saltRegistration.invalid');
           }
-          
-          console.log('Salt registration check result:', {
-            isValid: saltResult.isValid,
-            activationHash: saltResult.activationHash,
-            studentIdHash: saltResult.studentIdHash,
-            error: saltResult.error,
-          });
-        } catch (saltError) {
-          console.error('Salt registration check error:', saltError);
-          saltRegistrationDetails = `${t('results.saltRegistration.error')}: ${saltError instanceof Error ? saltError.message : 'Unknown error'}`;
+        } catch {
+          saltRegistrationDetails = t('results.saltRegistration.error');
         }
       } else {
-        console.log('No salt registration info found in proof');
         saltRegistrationDetails = t('results.saltRegistration.notIncluded');
       }
       
-      // Verify PDF hash (re-use pre-calculated value)
-      const expectedHash = extractedData.proof?.public_signals?.pdf_sha3_512;
-      const hashValid = expectedHash === `hex:${calculatedHash}`;
+      // Public key registration check (optional)
+      if (extractedData.publicKey || publicKeyFile) {
+        const pubKey = publicKeyFile ? JSON.parse(await publicKeyFile.text()) : extractedData.publicKey;
+        if (pubKey) {
+          try {
+            const registrationResult = await checkRegistration(pubKey);
+            const isRegistryEmpty = registrationResult.error?.includes('empty');
+            const isRegistryUnavailable = registrationResult.error === 'Failed to fetch student registry';
+            
+            if (!isRegistryUnavailable && !isRegistryEmpty && !registrationResult.error) {
+              registrationValid = registrationResult.isRegistered;
+              registrationDetails = registrationValid 
+                ? t('results.registrationVerified')
+                : t('results.registrationNotFound');
+            }
+          } catch {
+            // Skip
+          }
+        }
+      }
       
-      console.log('PDF Hash Verification:', {
-        calculatedHash: calculatedHash.substring(0, 20) + '...',
-        expectedHash: expectedHash,
-        hashValid
-      });
+      updateStepStatus('registration', saltRegistrationValid ? 'success' : 'error');
       
-      // Verify VKey hash
-      const vkeyForHash = vkeyUsedForZkp 
-        || (vkeyFile ? JSON.parse(await vkeyFile.text()) : extractedData.vkey);
+      // VKey hash verification
+      const vkeyForHash = vkeyUsedForZkp || (vkeyFile ? JSON.parse(await vkeyFile.text()) : extractedData.vkey);
       const vkeyHashValid = vkeyForHash && extractedData.proof 
         ? await verifyVKeyHash(extractedData.proof, vkeyForHash) 
         : false;
+      
+      // Small delay before showing results
+      await delay(500);
       
       setVerificationResult({
         zkpValid,
@@ -487,8 +359,8 @@ export default function Home() {
         details: {
           zkp: zkpDetails,
           signature: signatureDetails,
-          hash: hashValid ? 'PDF hash matches' : 'PDF hash mismatch',
-          vkeyHash: vkeyHashValid ? 'VKey hash matches' : 'VKey hash mismatch',
+          hash: hashValid ? t('results.hashMatch') : t('results.hashMismatch'),
+          vkeyHash: vkeyHashValid ? t('results.vkeyHashMatch') : t('results.vkeyHashMismatch'),
           registration: registrationDetails,
           saltRegistration: saltRegistrationDetails,
         }
@@ -501,10 +373,10 @@ export default function Home() {
         hashValid: false,
         vkeyHashValid: false,
         details: {
-          zkp: 'Error during verification',
-          signature: 'Error during verification',
-          hash: 'Error during verification',
-          vkeyHash: 'Error during verification'
+          zkp: t('results.verificationError'),
+          signature: t('results.verificationError'),
+          hash: t('results.verificationError'),
+          vkeyHash: t('results.verificationError')
         }
       });
     } finally {
@@ -512,84 +384,164 @@ export default function Home() {
     }
   };
 
+  // Reset when file changes
+  useEffect(() => {
+    if (!pdfFile) {
+      setVerificationResult(null);
+      setVerificationSteps([]);
+      setCurrentStepIndex(-1);
+    }
+  }, [pdfFile]);
+
   return (
-    <div className="min-h-full">
-      {/* Hero */}
-      <header className="relative">
-        <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/10 via-teal-400/10 to-green-400/10 blur-3xl" />
-        <div className="relative px-6 pt-14 pb-12 sm:px-16 sm:pt-20 sm:pb-16">
-          <div className="mx-auto max-w-2xl text-center">
-            <div className="mx-auto mb-8 h-12 w-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 p-3 shadow-lg">
-              <svg className="h-full w-full text-white" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">
-              TriCert <span className="gradient-text">Verifier</span>
-            </h1>
-            <p className="mt-6 text-lg leading-8 text-gray-600">
-              {t('hero.subtitle.verifier')}
-            </p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50 to-teal-50">
+      {/* Language Switcher - Top Right */}
+      <div className="fixed top-4 right-4 z-50">
+        <div className="bg-white/80 backdrop-blur-sm rounded-xl px-4 py-2 shadow-lg border border-gray-200/50">
+          <HeaderLangSwitcher />
+        </div>
+      </div>
+
+      {/* Header - Simplified */}
+      <header className="relative pt-12 pb-8 sm:pt-16 sm:pb-10">
+        <div className="mx-auto max-w-xl text-center px-6">
+          {/* Logo */}
+          <div className="mx-auto mb-6 h-16 w-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 p-4 shadow-xl transform hover:scale-105 transition-transform">
+            <svg className="h-full w-full text-white" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+            </svg>
           </div>
+          
+          {/* Title - Large and Clear */}
+          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3">
+            {t('page.title')}
+          </h1>
+          
+          {/* Simple Subtitle */}
+          <p className="text-lg text-gray-600 leading-relaxed">
+            {t('hero.subtitle.verifier')}
+          </p>
         </div>
       </header>
 
-      {/* Main */}
-      <main className="relative px-6 pb-16 sm:px-16 sm:pb-20">
-        <div className="mx-auto max-w-4xl">
-          <div className="space-y-10">
-            <PdfUpload
-              onFileSelect={setPdfFile}
-              selectedFile={pdfFile}
-            />
-
-            {/* VK Selection */}
-            <div className="relative overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-gray-200">
-              <div className="p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">{t('vkSection.title')}</h3>
-                <div className="space-y-4">
-                  <p className="text-sm text-gray-600">{t('vkSection.desc')}</p>
-                  <div className="ml-1">
-                    <KeyUpload
-                      title={t('vkSection.key.title')}
-                      description={t('vkSection.key.desc')}
-                      onFileSelect={setVkeyFile}
-                      selectedFile={vkeyFile}
-                      accept=".json"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <KeyUpload
-                title={t('keyUpload.publicKey.title')}
-                description={t('keyUpload.publicKey.desc')}
-                onFileSelect={setPublicKeyFile}
-                selectedFile={publicKeyFile}
-                accept=".json"
+      {/* Main Content */}
+      <main className="relative px-6 pb-16">
+        <div className="mx-auto max-w-2xl space-y-6">
+          {/* PDF Upload - Primary Action */}
+          <div className="bg-white rounded-3xl shadow-xl border border-gray-200/50 overflow-hidden">
+            <div className="p-6 sm:p-8">
+              <PdfUpload
+                onFileSelect={setPdfFile}
+                selectedFile={pdfFile}
               />
             </div>
-            
+          </div>
+
+          {/* Advanced Options - Collapsible */}
+          <div className="bg-white rounded-2xl shadow-md border border-gray-200/50 overflow-hidden">
             <button
-              onClick={handleVerify}
-              disabled={!pdfFile || isVerifying}
-              className="group relative w-full flex items-center justify-center px-8 py-4 border border-transparent rounded-2xl text-base font-semibold text-white bg-gradient-to-r from-emerald-600 via-teal-600 to-green-600 hover:from-emerald-700 hover:via-teal-700 hover:to-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all duration-300 shadow-xl hover:shadow-2xl disabled:shadow-none"
+              type="button"
+              onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
+              className="w-full px-6 py-4 flex items-center justify-between text-gray-600 hover:bg-gray-50 transition-colors"
             >
-              {isVerifying ? t('action.verifying') : t('action.verify')}
+              <span className="text-sm font-medium">{t('advanced.title')}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-400">{t('advanced.optional')}</span>
+                <svg 
+                  className={`w-5 h-5 transition-transform duration-200 ${showAdvancedOptions ? 'rotate-180' : ''}`} 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
             </button>
             
-            {verificationResult && (
-              <div className="relative overflow-hidden rounded-3xl bg-white shadow-xl shadow-gray-900/5 ring-1 ring-gray-900/5">
-                <div className="p-8 sm:p-10">
-                  <VerificationResults result={verificationResult} />
-                </div>
+            {showAdvancedOptions && (
+              <div className="px-6 pb-6 pt-2 border-t border-gray-100 bg-gray-50/50 space-y-4">
+                <p className="text-xs text-gray-500 mb-4">{t('advanced.desc')}</p>
+                
+                <KeyUpload
+                  title={t('vkSection.key.title')}
+                  description={t('vkSection.key.desc')}
+                  onFileSelect={setVkeyFile}
+                  selectedFile={vkeyFile}
+                  accept=".json"
+                  compact
+                />
+                
+                <KeyUpload
+                  title={t('keyUpload.publicKey.title')}
+                  description={t('keyUpload.publicKey.desc')}
+                  onFileSelect={setPublicKeyFile}
+                  selectedFile={publicKeyFile}
+                  accept=".json"
+                  compact
+                />
               </div>
             )}
           </div>
+
+          {/* Verify Button */}
+          <button
+            onClick={handleVerify}
+            disabled={!pdfFile || isVerifying}
+            className="w-full py-5 px-6 rounded-2xl font-bold text-xl text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed transition-all transform hover:scale-[1.02] disabled:transform-none shadow-xl hover:shadow-2xl disabled:shadow-none"
+          >
+            {isVerifying ? (
+              <span className="flex items-center justify-center gap-3">
+                <svg className="animate-spin h-6 w-6" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                {t('action.verifying')}
+              </span>
+            ) : (
+              <span className="flex items-center justify-center gap-2">
+                🔍 {t('action.verify')}
+              </span>
+            )}
+          </button>
+
+          {/* Verification Animation */}
+          {isVerifying && verificationSteps.length > 0 && (
+            <div className="bg-white rounded-3xl shadow-xl border border-gray-200/50 overflow-hidden animate-fadeIn">
+              <div className="p-6 sm:p-8">
+                <VerificationAnimation 
+                  steps={verificationSteps} 
+                  currentStepIndex={currentStepIndex}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Results */}
+          {verificationResult && !isVerifying && (
+            <div className="animate-fadeIn">
+              <VerificationResults result={verificationResult} />
+            </div>
+          )}
         </div>
       </main>
+
+      {/* Footer */}
+      <footer className="py-8 text-center">
+        <p className="text-xs text-gray-400">
+          © {new Date().getFullYear()} Tri-CertFramework
+        </p>
+      </footer>
+
+      {/* Animation Styles */}
+      <style jsx>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.5s ease-out;
+        }
+      `}</style>
     </div>
   );
 }
@@ -600,7 +552,6 @@ async function extractPdfData(pdfBuffer: ArrayBuffer): Promise<ExtractedData> {
     const { PDFDocument } = await import('pdf-lib');
     const pdfDoc = await PDFDocument.load(pdfBuffer);
     
-    // Extract from PDF metadata (Phase 0 implementation)
     const subject = pdfDoc.getSubject();
     
     if (subject) {
@@ -629,50 +580,31 @@ async function extractPdfData(pdfBuffer: ArrayBuffer): Promise<ExtractedData> {
     }
     
     return {};
-  } catch (error) {
-    console.error('Error extracting PDF data:', error);
+  } catch {
     return {};
   }
 }
 
 async function calculatePdfHash(pdfBuffer: ArrayBuffer): Promise<string> {
-  // Remove attachments and calculate hash (Phase 0 spec compliant)
   try {
     const { PDFDocument } = await import('pdf-lib');
     const pdfDoc = await PDFDocument.load(pdfBuffer);
     
-    console.log('Original PDF metadata before clearing:', {
-      title: pdfDoc.getTitle(),
-      subject: pdfDoc.getSubject()?.substring(0, 50) + '...',
-      creator: pdfDoc.getCreator(),
-      producer: pdfDoc.getProducer()
-    });
-    
-    // Clear all metadata/attachments for consistent hashing (matches Prover exactly)
     pdfDoc.setSubject('');
     pdfDoc.setTitle('');
     pdfDoc.setCreator('');
     pdfDoc.setProducer('');
     
-    // Also clear dates to match exactly with Prover's normalized state
-    const now = new Date('1970-01-01T00:00:00Z'); // Reset to epoch for consistency
+    const now = new Date('1970-01-01T00:00:00Z');
     pdfDoc.setCreationDate(now);
     pdfDoc.setModificationDate(now);
     
     const pdfBytes = await pdfDoc.save();
     
-    console.log('Normalized PDF size for hashing:', pdfBytes.length);
-    
     const crypto = await import('crypto-js');
     const wordArray = crypto.lib.WordArray.create(pdfBytes);
-    const hash = crypto.SHA3(wordArray, { outputLength: 512 }).toString();
-    
-    console.log('Calculated hash:', hash.substring(0, 20) + '...');
-    
-    return hash;
-  } catch (error) {
-    console.error('PDF hash calculation error:', error);
-    // Fallback to direct hash
+    return crypto.SHA3(wordArray, { outputLength: 512 }).toString();
+  } catch {
     const crypto = await import('crypto-js');
     const wordArray = crypto.lib.WordArray.create(pdfBuffer);
     return crypto.SHA3(wordArray, { outputLength: 512 }).toString();
@@ -681,25 +613,19 @@ async function calculatePdfHash(pdfBuffer: ArrayBuffer): Promise<string> {
 
 async function verifyZKP(proof: ProofData, vkey: VKeyData, options?: { calculatedPdfHashHex?: string }): Promise<boolean> {
   try {
-    console.log('Verifying ZKP with proof:', proof);
-    console.log('Using vkey:', { ...vkey, IC: `IC length: ${vkey.IC?.length}` });
-
     // @ts-expect-error - snarkjs doesn't have proper TypeScript declarations
     const snarkjs = await import('snarkjs');
 
     const commitField = proof.public_signals.commit.replace('field:', '');
 
-    // Convert hex SHA3-512 to field element the same way Prover does
     const toFieldFromPdfHash = (hexWithPrefix?: string, fallbackHex?: string): string | null => {
       try {
         const hex = (hexWithPrefix?.startsWith('hex:') ? hexWithPrefix.slice(4) : hexWithPrefix) || fallbackHex;
         if (!hex) return null;
         const modulus = BigInt('21888242871839275222246405745257275088548364400416034343698204186575808495617');
         const slice = '0x' + hex.slice(0, 60);
-        const asField = (BigInt(slice) % modulus).toString();
-        return asField;
-      } catch (e) {
-        console.warn('Failed to convert PDF hash to field element', e);
+        return (BigInt(slice) % modulus).toString();
+      } catch {
         return null;
       }
     };
@@ -708,33 +634,23 @@ async function verifyZKP(proof: ProofData, vkey: VKeyData, options?: { calculate
     const year = proof.public_signals.graduation_year ? parseInt(proof.public_signals.graduation_year, 10) : null;
 
     const candidates: string[][] = [];
-    // Legacy: commit only
     if (vkey.nPublic === 1) {
       candidates.push([commitField]);
     }
-    // Two-public-signals variants
     if (vkey.nPublic === 2 && pdfField) {
-      // Common patterns: [commit, pdf] or [pdf, commit]
       candidates.push([commitField, pdfField]);
       candidates.push([pdfField, commitField]);
     }
-    // Three-public-signals variants (year-aware circuit)
     if (vkey.nPublic === 3 && pdfField && year !== null) {
-      // Most likely Circom order is outputs first: [commit, pdf, year]
       candidates.push([commitField, pdfField, String(year)]);
-      // Alternative plausible orders
       candidates.push([pdfField, String(year), commitField]);
       candidates.push([commitField, String(year), pdfField]);
     }
 
     if (candidates.length === 0) {
-      // Fallback to commit-only
       candidates.push([commitField]);
     }
 
-    console.log('Candidate public signals for verification:', candidates);
-
-    // Try candidates until one verifies
     for (const publicSignals of candidates) {
       try {
         const ok = await snarkjs.groth16.verify(
@@ -746,21 +662,17 @@ async function verifyZKP(proof: ProofData, vkey: VKeyData, options?: { calculate
             pi_c: proof.proof.pi_c
           }
         );
-        console.log('Tried publicSignals:', publicSignals, '=>', ok);
         if (ok) return true;
-      } catch (inner) {
-        console.warn('Verification attempt errored for candidate publicSignals:', inner);
+      } catch {
+        continue;
       }
     }
 
     return false;
-  } catch (error) {
-    console.error('ZKP verification error:', error);
+  } catch {
     return false;
   }
 }
-
-// Removed old JWS signature verification - now using WebAuthn verification
 
 async function verifyVKeyHash(proof: ProofData, vkey: VKeyData): Promise<boolean> {
   try {
@@ -768,14 +680,7 @@ async function verifyVKeyHash(proof: ProofData, vkey: VKeyData): Promise<boolean
     const canonicalJson = JSON.stringify(vkey, Object.keys(vkey).sort());
     const hash = crypto.SHA3(canonicalJson, { outputLength: 256 }).toString();
     return proof.vkey_hash === `sha3-256:${hash}`;
-  } catch (error) {
-    console.error('VKey hash verification error:', error);
+  } catch {
     return false;
   }
-}
-
-async function calculateVKeyHash(vkey: VKeyData): Promise<string> {
-  const crypto = await import('crypto-js');
-  const canonicalJson = JSON.stringify(vkey, Object.keys(vkey).sort());
-  return crypto.SHA3(canonicalJson, { outputLength: 256 }).toString();
 }

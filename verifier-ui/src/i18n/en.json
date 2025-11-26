@@ -6,77 +6,133 @@
     "en": "English",
     "ja": "日本語"
   },
+  "page": {
+    "title": "Certificate Verification"
+  },
   "hero": {
     "subtitle": {
-      "verifier": "Verify zero-knowledge proofs and digital signatures embedded in your PDF."
+      "verifier": "Verify if a protected PDF is authentic"
     }
   },
   "action": {
-    "verify": "Verify PDF",
+    "verify": "Verify",
     "verifying": "Verifying..."
   },
   "pdfUpload": {
-    "title": "PDF to Verify",
-    "upload": "Upload a PDF file to verify",
-    "orDrag": "or drag and drop",
-    "hint": "PDF files with attached proofs",
+    "title": "Select a PDF file",
+    "upload": "Choose a file",
+    "orDrag": "or drag and drop here",
+    "hint": "Protected PDF file",
     "selected": "Selected:",
-    "size": "Size:"
+    "size": "Size:",
+    "ready": "Ready to verify"
   },
   "keyUpload": {
     "publicKey": {
-      "title": "Public Key (webauthn_pub.jwk.json)",
-      "desc": "Optional: If not provided, will use key from PDF"
+      "title": "Public Key",
+      "desc": "Usually not needed (included in PDF)"
     }
   },
   "vkSection": {
     "title": "Verification Key Selection",
-    "desc": "Select a local VK file or use the VK embedded in the PDF.",
+    "desc": "Select the key to use for verification",
     "key": {
-      "title": "Verification Key (vkey.json)",
-      "desc": "Recommended: select a local VK file. If not selected, the embedded VK will be used."
+      "title": "Verification Key",
+      "desc": "Usually not needed (included in PDF)"
     }
+  },
+  "advanced": {
+    "title": "Advanced Settings",
+    "optional": "Optional",
+    "desc": "Usually not needed. The PDF contains all necessary information."
   },
   "alerts": {
     "selectPdf": "Please select a PDF file to verify"
   },
+  "verify": {
+    "step": {
+      "extract": "Extracting Data",
+      "extractDesc": "Reading proof data from PDF",
+      "hash": "Verifying Hash",
+      "hashDesc": "Checking file integrity",
+      "zkp": "Verifying Cryptographic Proof",
+      "zkpDesc": "Mathematically verifying zero-knowledge proof",
+      "signature": "Verifying Digital Signature",
+      "signatureDesc": "Checking if signature is valid",
+      "registration": "Checking Registration",
+      "registrationDesc": "Verifying issuer registration status"
+    }
+  },
+  "common": {
+    "clear": "Clear",
+    "select": "Select",
+    "change": "Change",
+    "uploadFile": "Upload {name}"
+  },
   "results": {
     "valid": "Valid",
     "invalid": "Invalid",
-    "successTitle": "Verification Successful",
+    "successTitle": "Verification Successful!",
     "failedTitle": "Verification Failed",
-    "successDesc": "All verification checks passed",
-    "failedDesc": "One or more verification checks failed",
-    "zkp": "Zero-Knowledge Proof",
+    "successDesc": "This PDF is a legitimate certificate",
+    "failedDesc": "There are issues with this PDF",
+    "checksPassedLabel": "Checks passed:",
+    "detailsTitle": "Verification Details",
+    "noProofFound": "No proof data found",
+    "noSignatureFound": "No signature found",
+    "usingLocalVK": "Using local verification key",
+    "usingEmbeddedVK": "Using verification key from PDF",
+    "usingAutoVK": "Using verification key for year {year}",
+    "signatureValid": "Signature is valid",
+    "signatureFailed": "Signature verification failed",
+    "signatureError": "Error during signature verification",
+    "hashMatch": "Hash matched",
+    "hashMismatch": "Hash mismatch (possible tampering)",
+    "vkeyHashMatch": "Verification key hash matched",
+    "vkeyHashMismatch": "Verification key mismatch",
+    "registrationVerified": "Registration verified",
+    "registrationNotFound": "Registration not found",
+    "verificationError": "Error during verification",
+    "zkp": "Cryptographic Proof (ZKP)",
     "signature": "Digital Signature",
-    "hash": "PDF Hash Integrity",
-    "vkeyHash": "Verification Key Hash",
-    "registration": "Student Registration (Public Key)",
+    "hash": "File Integrity",
+    "vkeyHash": "Verification Key Match",
+    "registration": "Issuer Registration (Public Key)",
+    "whatThisMeans": "What this means",
+    "meaning": {
+      "authentic": "Authentic",
+      "authenticDesc": "This certificate has not been tampered with",
+      "unchanged": "Unchanged Content",
+      "unchangedDesc": "The content has not been modified since issuance",
+      "verified": "Verified Issuer",
+      "verifiedDesc": "Created by a registered issuer",
+      "warning": "This PDF may not be trustworthy"
+    },
     "possibleIssues": "Possible Issues",
     "issue": {
-      "zkp": "The zero-knowledge proof could not be verified",
-      "signature": "The digital signature is invalid - cryptographic verification failed",
-      "hash": "The PDF content has been modified",
-      "vkeyHash": "The verification key does not match",
-      "registration": "Student is not registered in the system",
-      "saltRegistration": "Salt registration could not be verified"
+      "zkp": "Cryptographic proof verification failed",
+      "signature": "Digital signature is invalid",
+      "hash": "File content has been modified",
+      "vkeyHash": "Verification key does not match",
+      "registration": "Issuer is not registered",
+      "saltRegistration": "Registration could not be verified"
     },
     "signatureDetails": {
-      "valid": "Valid WebAuthn signature",
+      "valid": "Valid signature",
       "keyBinding": "Public key binding verified",
-      "originVerified": "Origin verification passed",
+      "originVerified": "Origin verified",
       "userPresent": "User presence confirmed",
-      "userVerified": "Biometric/PIN authentication verified",
-      "signatureFailed": "Cryptographic signature verification failed",
-      "bindingFailed": "Public key binding verification failed"
+      "userVerified": "Biometric verification confirmed",
+      "signatureFailed": "Signature verification failed",
+      "bindingFailed": "Public key binding failed"
     },
     "saltRegistration": {
-      "label": "Student Registration Verification",
-      "verified": "✅ Registered Student - This PDF was generated by a student registered via Registrar Console",
-      "notFound": "Salt registration info not found",
-      "notIncluded": "⚠️ This proof does not include salt registration info (may be an older version)",
-      "invalid": "❌ Salt registration could not be verified - Student may not be registered in Registrar Console",
-      "failed": "⚠️ Registration verification failed",
+      "label": "Issuer Registration Check",
+      "verified": "✅ Registered - Created by a registered issuer",
+      "notFound": "No registration info found",
+      "notIncluded": "⚠️ No registration info included (may be older version)",
+      "invalid": "❌ Registration could not be verified",
+      "failed": "⚠️ Registration check failed",
       "error": "Error",
       "registeredAt": "Registered on"
     }

@@ -6,174 +6,182 @@
     "en": "English",
     "ja": "日本語"
   },
+  "page": {
+    "title": "Certificate Protection",
+    "complete": {
+      "title": "Protection Complete!",
+      "subtitle": "Download your secured PDF below"
+    },
+    "activityLog": "Activity Log"
+  },
   "hero": {
     "subtitle": {
-      "prover": "Generate zero-knowledge proofs and digital signatures for your PDF documents."
+      "prover": "Add cryptographic proof and signature to your PDF to prevent tampering"
     },
     "status": {
       "online": "System Online"
     }
   },
   "steps": {
-    "upload": "Upload Document",
-    "hash": "Calculate Hash",
-    "proof": "Generate Proof",
-    "signature": "Digital Signature",
-    "export": "Export & Download"
+    "upload": "Select File",
+    "hash": "Hash",
+    "proof": "Proof",
+    "signature": "Sign",
+    "export": "Done"
   },
   "section": {
-    "generateTitle": "Generate Cryptographic Proof"
+    "generateTitle": "Generate Proof"
   },
   "fileUpload": {
-    "title": "Upload Your Document",
-    "choose": "Choose a PDF file",
-    "orDrop": "or drag and drop it anywhere in this area",
+    "title": "Select a PDF file",
+    "choose": "Choose a file",
+    "orDrop": "or drag and drop here",
     "pdfOnly": "PDF files only",
-    "documentReady": "Document Ready",
+    "documentReady": "File is ready",
     "validPdf": "Valid PDF",
-    "readyToProve": "Ready to prove",
-    "sizeReady": "MB • Ready for processing"
+    "readyToProve": "Ready to proceed",
+    "sizeReady": "MB"
   },
   "proofGen": {
+    "mainButton": "Generate Proof & Protect",
+    "mainButtonProcessing": "Processing...",
     "secret": {
-      "label": "Private Secret Key",
-      "placeholder": "Enter your private secret for proof generation...",
-      "help": "This secret remains private and is used to generate your zero-knowledge proof"
+      "label": "Secret String",
+      "placeholder": "Enter any text or numbers (e.g., mySecret123)",
+      "help": "This is not sent anywhere. You don't need to remember it"
     },
     "year": {
-      "label": "Graduation Year",
-      "or": "or",
-      "placeholder": "2024",
-      "help": "Select your graduation year (2000-2050, numeric only)"
+      "label": "Select Graduation Year",
+      "or": "or enter directly →",
+      "placeholder": "year",
+      "help": "Graduation year for the certificate"
     },
     "alert": {
-      "enterSecret": "Please enter your secret value",
-      "yearInvalid": "Please enter a valid graduation year (2000-2050)",
-      "setupWebAuthn": "Please setup your WebAuthn authenticator first"
+      "enterSecret": "Please enter a secret string",
+      "yearInvalid": "Please enter a valid year (2000-2050)",
+      "setupWebAuthn": "Authenticator setup is required"
     },
     "status": {
-      "processingPdf": "Processing PDF...",
-      "calcHash": "Calculating PDF hash...",
-      "generatingZkp": "Generating zero-knowledge proof...",
-      "signing": "Creating digital signature...",
-      "attaching": "Creating output PDF...",
+      "processingPdf": "Loading PDF...",
+      "calcHash": "Calculating hash...",
+      "generatingZkp": "Generating proof...",
+      "signing": "Creating signature...",
+      "attaching": "Embedding in PDF...",
       "complete": "Complete!"
     },
     "progress": {
       "selected": "📄 PDF selected",
-      "hash": "🔎 Calculating PDF hash",
-      "zkp": "🧮 Generating ZK proof (groth16)",
-      "sign": "✍️ Creating digital signature (WebAuthn ES256)",
-      "attach": "📎 Attaching proof/signature and exporting PDF",
-      "done": "✅ All steps completed"
+      "hash": "🔍 Calculating hash",
+      "zkp": "🔐 Generating cryptographic proof",
+      "sign": "✍️ Creating digital signature",
+      "attach": "📎 Embedding in PDF",
+      "done": "✅ All complete"
     },
     "vkey": {
-      "label": "Verification Key (vkey.json)",
-      "select": "Select vkey.json",
-      "changeFile": "Change file",
-      "help": "Optional fail-safe: Select VK exported from Executive Console. If not selected, the default public VK is used.",
+      "label": "Verification Key",
+      "select": "Select file",
+      "changeFile": "Change",
+      "help": "Usually no change needed",
       "hash": "hash"
     },
     "salt": {
-      "title": "Student Registration Verification",
-      "desc": "Enter the salt issued by Registrar Console to verify your registration.",
-      "label": "Salt",
+      "title": "Identity Verification",
+      "desc": "Enter your authentication code and personal information",
+      "label": "Authentication Code",
       "placeholder": "e.g., MTFSJGBMQX5SW23TJNC34APYLYPY2",
       "name": "Full Name",
       "namePlaceholder": "e.g., John Doe",
       "birthdate": "Date of Birth",
-      "verify": "Verify Salt",
+      "verify": "Verify",
       "verifying": "Verifying...",
-      "verified": "Registration Verified",
-      "invalid": "Registration not found",
-      "activationHash": "Activation Hash",
+      "verified": "Verified",
+      "invalid": "Not verified",
+      "activationHash": "Verification ID",
       "alert": {
-        "enterSalt": "Please enter your salt",
+        "enterSalt": "Please enter authentication code",
         "enterName": "Please enter your name",
         "enterBirthdate": "Please enter your date of birth",
-        "verifySaltFirst": "Please verify your salt before generating proof"
+        "verifySaltFirst": "Please complete identity verification first"
       }
+    },
+    "advanced": {
+      "title": "Advanced Settings",
+      "show": "Show Advanced",
+      "hide": "Hide Advanced"
     }
   },
   "common": {
     "clear": "Clear"
   },
   "download": {
-    "readyTitle": "Secured PDF is ready",
+    "readyTitle": "Ready for Download",
     "aria": "Download secured PDF",
-    "button": "Download Secured PDF",
-    "afterHint": "After downloading, you can verify this PDF in the Verifier app."
+    "button": "Download PDF",
+    "afterHint": "You can verify this PDF in the Verifier app"
   },
   "webauthn": {
-    "title": "WebAuthn Digital Signature",
+    "title": "Authenticator Setup",
     "notSupported": {
-      "title": "WebAuthn Not Supported",
-      "desc": "Your browser doesn't support WebAuthn. Please use a modern browser like Chrome, Firefox, or Safari."
+      "title": "Feature Not Available",
+      "desc": "Please try using a modern browser like Chrome, Safari, or Firefox"
     },
     "status": {
-      "api": "WebAuthn API",
-      "platform": "Platform Authenticator",
+      "api": "Authentication",
+      "platform": "Built-in Authenticator",
       "supported": "Supported",
       "notSupported": "Not Supported",
       "available": "Available",
       "notAvailable": "Not Available"
     },
     "registered": {
-      "title": "Authenticator Registered",
-      "desc": "Your biometric authenticator is ready for digital signatures.",
-      "credentialId": "Credential ID",
+      "title": "Authenticator Ready",
+      "desc": "You can sign with fingerprint or face recognition",
+      "credentialId": "Auth ID",
       "registeredAt": "Registered"
     },
     "setup": {
-      "title": "Authenticator Setup Required",
-      "desc": "Register your biometric authenticator (fingerprint, face, PIN) to create digital signatures.",
-      "pointPrivacy": "Your biometric data never leaves your device",
-      "pointUnique": "Each signature is cryptographically unique",
-      "pointNoPassword": "No passwords or secrets to remember",
-      "pointPlatformReady": "Touch ID/Face ID/Windows Hello ready",
+      "title": "Setup Authenticator",
+      "desc": "Verify your identity with fingerprint, face, or PIN",
+      "pointPrivacy": "Biometric data never leaves your device",
+      "pointUnique": "Signatures are cryptographically protected",
+      "pointNoPassword": "No password to remember",
+      "pointPlatformReady": "Touch ID / Face ID supported",
       "pointExternalRequired": "External authenticator required"
     },
     "guide": {
-      "title": "💡 Setup Guide:",
-      "text": "Click \"Setup Authenticator\" → Follow browser prompts → Use",
-      "biometric": "biometric",
-      "pinOrKey": "PIN/security key"
+      "title": "💡 How to setup",
+      "text": "Click \"Setup\" → Follow prompts → Use:",
+      "biometric": "Fingerprint / Face",
+      "pinOrKey": "PIN / Security Key"
     },
     "button": {
-      "settingUp": "Setting up Authenticator...",
+      "settingUp": "Setting up...",
       "setup": "Setup Authenticator"
     },
     "error": {
-      "title": "Registration Failed",
-      "setupFailed": "Authentication setup failed",
-      "notSupported": "WebAuthn is not supported in this browser",
-      "invalidResponse": "Invalid credential response type",
-      "keyExtractionFailed": "Public key extraction failed",
-      "unknown": "Unknown error",
-      "deviceNoBio": "Your device does not support biometric authentication",
-      "securityHttps": "Security error: Please ensure you are using HTTPS",
-      "cancelled": "Authentication was cancelled or not permitted",
-      "alreadyRegistered": "An authenticator is already registered for this account",
-      "compatibility": "Device compatibility issue: Try using a different authenticator"
+      "title": "Setup Failed",
+      "setupFailed": "Authenticator setup failed",
+      "notSupported": "This browser is not supported",
+      "invalidResponse": "Authentication problem",
+      "keyExtractionFailed": "Key extraction failed",
+      "unknown": "An error occurred",
+      "deviceNoBio": "This device is not supported",
+      "securityHttps": "Secure connection (HTTPS) required",
+      "cancelled": "Cancelled",
+      "alreadyRegistered": "Already registered",
+      "compatibility": "Compatibility issue"
     }
   },
   "output": {
-    "successTitle": "🎉 Proof Generated Successfully!",
-    "successSubtitle": "Download your cryptographically secured files",
+    "successTitle": "🎉 Secured PDF Ready!",
+    "successSubtitle": "Please download",
     "securedPdf": "Secured PDF",
-    "securedPdfCaption": "with ZKP & Signature",
-    "zkProof": "ZK Proof",
+    "securedPdfCaption": "With proof & signature",
+    "zkProof": "Proof Data",
     "vkey": "Verify Key",
     "publicKey": "Public Key",
     "signature": "Signature",
-    "sigTarget": "Sig Target",
-    "previewTitle": "Zero-Knowledge Proof Data Preview"
-  },
-  "page": {
-    "complete": {
-      "title": "Process Complete!",
-      "subtitle": "Your secured PDF and verification files are ready for download."
-    },
-    "activityLog": "Activity Log"
+    "sigTarget": "Signed Data",
+    "previewTitle": "Proof Details (Technical)"
   }
 }

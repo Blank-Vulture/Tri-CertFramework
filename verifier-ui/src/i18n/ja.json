@@ -6,76 +6,132 @@
     "en": "English",
     "ja": "日本語"
   },
+  "page": {
+    "title": "証明書の検証"
+  },
   "hero": {
     "subtitle": {
-      "verifier": "PDFに埋め込まれたゼロ知識証明と電子署名を検証します。"
+      "verifier": "保護されたPDFが本物かどうかを確認できます"
     }
   },
   "action": {
-    "verify": "PDFを検証",
+    "verify": "検証する",
     "verifying": "検証中..."
   },
   "pdfUpload": {
-    "title": "検証するPDF",
-    "upload": "検証するPDFファイルをアップロード",
-    "orDrag": "またはドラッグ＆ドロップ",
-    "hint": "証明が添付されたPDF",
+    "title": "PDFファイルを選んでください",
+    "upload": "ファイルを選択",
+    "orDrag": "または、ここにドラッグ＆ドロップ",
+    "hint": "保護されたPDFファイル",
     "selected": "選択済み:",
-    "size": "サイズ:"
+    "size": "サイズ:",
+    "ready": "検証準備完了"
   },
   "keyUpload": {
     "publicKey": {
-      "title": "公開鍵（webauthn_pub.jwk.json）",
-      "desc": "任意：未指定の場合はPDF内の鍵を使用します"
+      "title": "公開鍵",
+      "desc": "通常は不要（PDFに含まれています）"
     }
   },
   "vkSection": {
-    "title": "検証鍵選択方法",
-    "desc": "ローカルのVKファイルを選択するか、PDFに埋め込まれたVKを使用します。",
+    "title": "検証鍵の選択",
+    "desc": "検証に使用する鍵を選択します",
     "key": {
-      "title": "検証キー（vkey.json）",
-      "desc": "推奨：ローカルのVKファイルを選択。未選択の場合はPDF内のVKを使用します。"
+      "title": "検証キー",
+      "desc": "通常は不要（PDFに含まれています）"
     }
+  },
+  "advanced": {
+    "title": "詳細設定",
+    "optional": "任意",
+    "desc": "通常は設定不要です。PDFに必要な情報が含まれています。"
   },
   "alerts": {
     "selectPdf": "検証するPDFファイルを選択してください"
   },
+  "verify": {
+    "step": {
+      "extract": "データの抽出",
+      "extractDesc": "PDFから証明データを読み込んでいます",
+      "hash": "ハッシュの検証",
+      "hashDesc": "ファイルの完全性をチェックしています",
+      "zkp": "暗号証明の検証",
+      "zkpDesc": "ゼロ知識証明を数学的に検証しています",
+      "signature": "電子署名の検証",
+      "signatureDesc": "署名が正しいか確認しています",
+      "registration": "登録情報の確認",
+      "registrationDesc": "発行者の登録状況を確認しています"
+    }
+  },
+  "common": {
+    "clear": "クリア",
+    "select": "選択",
+    "change": "変更",
+    "uploadFile": "{name}をアップロード"
+  },
   "results": {
     "valid": "有効",
     "invalid": "無効",
-    "successTitle": "検証に成功",
-    "failedTitle": "検証に失敗",
-    "successDesc": "すべての検証チェックに合格しました",
-    "failedDesc": "1つ以上の検証チェックに失敗しました",
-    "zkp": "ゼロ知識証明",
+    "successTitle": "検証成功！",
+    "failedTitle": "検証失敗",
+    "successDesc": "このPDFは正当な証明書です",
+    "failedDesc": "このPDFには問題があります",
+    "checksPassedLabel": "チェック通過:",
+    "detailsTitle": "検証結果の詳細",
+    "noProofFound": "証明データが見つかりません",
+    "noSignatureFound": "署名が見つかりません",
+    "usingLocalVK": "ローカルの検証キーを使用",
+    "usingEmbeddedVK": "PDFに含まれる検証キーを使用",
+    "usingAutoVK": "{year}年用の検証キーを使用",
+    "signatureValid": "署名が有効です",
+    "signatureFailed": "署名の検証に失敗しました",
+    "signatureError": "署名の検証中にエラーが発生しました",
+    "hashMatch": "ハッシュが一致しました",
+    "hashMismatch": "ハッシュが一致しません（改ざんの可能性）",
+    "vkeyHashMatch": "検証キーのハッシュが一致しました",
+    "vkeyHashMismatch": "検証キーが一致しません",
+    "registrationVerified": "登録が確認されました",
+    "registrationNotFound": "登録が見つかりません",
+    "verificationError": "検証中にエラーが発生しました",
+    "zkp": "暗号証明（ZKP）",
     "signature": "電子署名",
-    "hash": "PDFハッシュ整合性",
-    "vkeyHash": "検証キーのハッシュ",
-    "registration": "学生登録（公開鍵）",
+    "hash": "ファイルの完全性",
+    "vkeyHash": "検証キーの一致",
+    "registration": "発行者の登録（公開鍵）",
+    "whatThisMeans": "この結果の意味",
+    "meaning": {
+      "authentic": "正真正銘",
+      "authenticDesc": "この証明書は改ざんされていません",
+      "unchanged": "内容が変更されていない",
+      "unchangedDesc": "発行時から内容は一切変更されていません",
+      "verified": "発行者が確認済み",
+      "verifiedDesc": "正規に登録された発行者により作成されました",
+      "warning": "このPDFは信頼できない可能性があります"
+    },
     "possibleIssues": "想定される問題",
     "issue": {
-      "zkp": "ゼロ知識証明の検証に失敗しました",
-      "signature": "電子署名が無効です - 署名の暗号学的検証に失敗しました",
-      "hash": "PDFの内容が変更されています",
+      "zkp": "暗号証明の検証に失敗しました",
+      "signature": "電子署名が無効です",
+      "hash": "ファイルの内容が変更されています",
       "vkeyHash": "検証キーが一致しません",
-      "registration": "学生が登録されていません",
-      "saltRegistration": "Salt登録が確認できません"
+      "registration": "発行者が登録されていません",
+      "saltRegistration": "登録情報が確認できません"
     },
     "signatureDetails": {
-      "valid": "有効なWebAuthn署名",
-      "keyBinding": "公開鍵バインディング検証済み",
-      "originVerified": "Origin検証合格",
-      "userPresent": "ユーザー存在確認済み",
-      "userVerified": "生体認証/PIN認証検証済み",
-      "signatureFailed": "暗号署名検証失敗",
-      "bindingFailed": "公開鍵バインディング検証失敗"
+      "valid": "有効な署名",
+      "keyBinding": "公開鍵の紐付け確認済み",
+      "originVerified": "発行元確認済み",
+      "userPresent": "本人確認済み",
+      "userVerified": "生体認証確認済み",
+      "signatureFailed": "署名の検証に失敗",
+      "bindingFailed": "公開鍵の紐付けに失敗"
     },
     "saltRegistration": {
-      "label": "学生登録確認",
-      "verified": "✅ 登録済み学生 - このPDFはRegistrar Consoleで登録された学生により生成されました",
-      "notFound": "Salt登録情報がありません",
-      "notIncluded": "⚠️ この証明にはSalt登録情報が含まれていません（旧バージョンの可能性）",
-      "invalid": "❌ Salt登録が確認できません - Registrar Consoleで登録されていない可能性があります",
+      "label": "発行者の登録確認",
+      "verified": "✅ 登録済み - 正規に登録された発行者により作成されました",
+      "notFound": "登録情報がありません",
+      "notIncluded": "⚠️ 登録情報が含まれていません（古いバージョンの可能性）",
+      "invalid": "❌ 登録が確認できません",
       "failed": "⚠️ 登録確認に失敗しました",
       "error": "エラー",
       "registeredAt": "登録日"

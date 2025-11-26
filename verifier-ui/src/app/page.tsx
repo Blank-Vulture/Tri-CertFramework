@@ -7,7 +7,7 @@ import KeyUpload from './components/KeyUpload';
 import VerificationResults from './components/VerificationResults';
 import { verifyWebAuthnComplete } from '../utils/webauthn-verifier';
 import type { SignatureVerificationContext } from '../types/webauthn';
-import { checkRegistration, verifyProofRegistration, type ActivationHashCheckResult } from '../utils/registration-checker';
+import { checkRegistration, verifyProofRegistration } from '../utils/registration-checker';
 
 // Type definitions
 interface ProofData {

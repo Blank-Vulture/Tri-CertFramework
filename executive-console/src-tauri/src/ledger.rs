@@ -97,11 +97,11 @@ pub fn list_ledger_devices() -> Result<Vec<LedgerDeviceInfo>, LedgerError> {
 fn open_ledger_device(api: &HidApi) -> Result<HidDevice, LedgerError> {
     eprintln!("[Ledger] Searching for Ledger devices (Vendor ID: 0x{:04x})...", LEDGER_VENDOR_ID);
     
-    let mut found_devices = 0;
+    let mut found_count = 0;
     for device_info in api.device_list() {
         if device_info.vendor_id() == LEDGER_VENDOR_ID {
-            found_devices += 1;
-            eprintln!("[Ledger] Found Ledger device:");
+            found_count += 1;
+            eprintln!("[Ledger] Found Ledger device #{}:", found_count);
             eprintln!("  Product: {}", device_info.product_string().unwrap_or("Unknown"));
             eprintln!("  Manufacturer: {}", device_info.manufacturer_string().unwrap_or("Unknown"));
             eprintln!("  Product ID: 0x{:04x}", device_info.product_id());
@@ -121,10 +121,7 @@ fn open_ledger_device(api: &HidApi) -> Result<HidDevice, LedgerError> {
         }
     }
     
-    if found_devices == 0 {
-        eprintln!("[Ledger] No Ledger devices found");
-    }
-    
+    eprintln!("[Ledger] No Ledger devices found (scanned {} total devices)", found_count);
     Err(LedgerError::DeviceNotFound)
 }
 

@@ -2,6 +2,38 @@ import { NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
 import path from 'path';
 
+export const dynamic = 'force-static';
+
+export async function generateStaticParams() {
+  try {
+    const vknftPath = path.join(process.cwd(), '..', 'VKNFT');
+    const yearEntries = await fs.readdir(vknftPath, { withFileTypes: true });
+    const params = [];
+    
+    for (const yearEntry of yearEntries) {
+      if (yearEntry.isDirectory() && !isNaN(parseInt(yearEntry.name, 10))) {
+        const year = yearEntry.name;
+        const filesPath = path.join(vknftPath, year, 'files');
+        try {
+          const files = await fs.readdir(filesPath);
+          for (const file of files) {
+            const ext = path.extname(file);
+            if (['.wasm', '.zkey', '.json'].includes(ext)) {
+              params.push({ year, filename: file });
+            }
+          }
+        } catch {
+          // ignore if files directory doesn't exist or other error
+        }
+      }
+    }
+    return params;
+  } catch (error) {
+    console.warn('Error generating static params for VKNFT files:', error);
+    return [];
+  }
+}
+
 /**
  * API Route: GET /api/vknft/[year]/files/[filename]
  * 
@@ -9,9 +41,10 @@ import path from 'path';
  */
 export async function GET(
   request: Request,
-  { params }: { params: { year: string; filename: string } }
+  context: { params: Promise<{ year: string; filename: string }> }
 ) {
   try {
+    const params = await context.params;
     const year = parseInt(params.year, 10);
     
     if (isNaN(year) || year < 2000 || year > 2050) {
@@ -80,4 +113,3 @@ export async function GET(
     }, { status: 500 });
   }
 }
-

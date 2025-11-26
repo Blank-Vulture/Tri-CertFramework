@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { useI18n } from './LanguageProvider';
 import WebAuthnSetup from './WebAuthnSetup';
 import {
@@ -103,7 +103,6 @@ export default function ProofGenerator({
   const [secretInput, setSecretInput] = useState('');
   const [graduationYear, setGraduationYear] = useState<number>(new Date().getFullYear());
   const [availableYears, setAvailableYears] = useState<number[]>([]);
-  const [yearsLoading, setYearsLoading] = useState(true);
   const [webauthnCredential, setWebauthnCredential] = useState<WebAuthnCredentialInfo | null>(null);
   const [vkeyFile, setVkeyFile] = useState<File | null>(null);
   const [vkeyHashPreview, setVkeyHashPreview] = useState<string | null>(null);
@@ -118,17 +117,9 @@ export default function ProofGenerator({
   const [saltVerification, setSaltVerification] = useState<SaltVerificationResult | null>(null);
   const [isVerifyingSalt, setIsVerifyingSalt] = useState(false);
 
-  // Check if selected year is available
-  const isYearAvailable = useMemo(() => {
-    if (availableYears.length === 0) return true; // Allow all if no years detected
-    return availableYears.includes(graduationYear);
-  }, [availableYears, graduationYear]);
-
   // Detect available years from VKNFT directory via API
   useEffect(() => {
     const detectAvailableYears = async () => {
-      setYearsLoading(true);
-      
       try {
         console.log('[Prover] Fetching available years from VKNFT...');
         const response = await fetch('/api/vknft/years');
@@ -136,11 +127,13 @@ export default function ProofGenerator({
         
         if (data.success && Array.isArray(data.years)) {
           console.log('[Prover] Available years from VKNFT:', data.years);
-          setAvailableYears(data.years.sort((a, b) => a - b));
+          const years = (data.years as number[]).sort((a: number, b: number) => a - b);
+          setAvailableYears(years);
           
           // Set default year to most recent available year
-          if (data.years.length > 0 && !data.years.includes(graduationYear)) {
-            setGraduationYear(data.years[data.years.length - 1]);
+          const currentGradYear = graduationYear;
+          if (years.length > 0 && !years.includes(currentGradYear)) {
+            setGraduationYear(years[years.length - 1]);
           }
         } else {
           console.warn('[Prover] No years found in VKNFT directory');
@@ -149,13 +142,12 @@ export default function ProofGenerator({
       } catch (error) {
         console.error('[Prover] Failed to fetch available years:', error);
         setAvailableYears([]);
-      } finally {
-        setYearsLoading(false);
       }
     };
     
     detectAvailableYears();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run on mount
 
   useEffect(() => {
     return () => {
@@ -505,7 +497,10 @@ export default function ProofGenerator({
             <div className="flex items-center space-x-4">
               {/* Quick Select Buttons */}
               <div className="flex space-x-2">
-                {[new Date().getFullYear() - 1, new Date().getFullYear(), new Date().getFullYear() + 1].map((year) => (
+                {(availableYears.length > 0 
+                  ? availableYears 
+                  : [new Date().getFullYear() - 1, new Date().getFullYear(), new Date().getFullYear() + 1]
+                ).map((year) => (
                   <button
                     key={year}
                     type="button"
@@ -832,10 +827,10 @@ async function generateZKProof(secret: string, pdfHash: string, graduationYear: 
   
   try {
     // Try to load from VKNFT directory first
-    let vkey: VKeyData;
-    let vkeyHash: string;
-    let wasmPath: string;
-    let zkeyPath: string;
+    let vkey = {} as VKeyData;
+    let vkeyHash = '';
+    let wasmPath = '';
+    let zkeyPath = '';
     let useVknftAssets = false;
     
     // Attempt to fetch manifest from VKNFT API

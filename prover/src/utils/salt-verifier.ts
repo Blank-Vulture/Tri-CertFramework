@@ -223,6 +223,7 @@ export async function verifySalt(
  * Note: URL is configured via NEXT_PUBLIC_ALLOWLIST_URL environment variable
  * This function is kept for API compatibility but does not change runtime URL
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function setAllowlistURL(_url: string): void {
   // URL configuration is done via environment variable NEXT_PUBLIC_ALLOWLIST_URL
   // This function is kept for API compatibility only

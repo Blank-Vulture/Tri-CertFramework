@@ -4,68 +4,12 @@ import { useMemo, useState } from 'react';
 import { useI18n, HeaderLangSwitcher } from './components/LanguageProvider';
 import FileUpload from './components/FileUpload';
 import ProofGenerator from './components/ProofGenerator';
-import OutputDisplay from './components/OutputDisplay';
 
-// Type definitions
-interface ProofData {
-  schema: string;
-  circuit_id: string;
-  vkey_hash: string;
-  public_signals: {
-    pdf_sha3_512: string;
-    commit: string;
-  };
-  proof: {
-    pi_a: string[];
-    pi_b: string[][];
-    pi_c: string[];
-  };
-}
-
-interface VKeyData {
-  protocol: string;
-  curve: string;
-  nPublic: number;
-  vk_alpha_1: string[];
-  vk_beta_2: string[][];
-  vk_gamma_2: string[][];
-  vk_delta_2: string[][];
-  vk_alphabeta_12: string[][][];
-  IC: string[][];
-}
-
-interface SignatureData {
-  webauthn: {
-    credentialId: string;
-    authenticatorData: string;
-    clientDataJSON: string;
-    signature: string;
-  };
-  sig_target: {
-    schema: string;
-    circuit_id: string;
-    vkey_hash: string;
-    pdf_sha3_512: string;
-    commit: string;
-    issued_at: string;
-  };
-  webauthn_pub: {
-    kty: string;
-    crv: string;
-    x: string;
-    y: string;
-    alg: string;
-    kid: string;
-  };
-}
+// Type definitions deleted
 
 export default function Home() {
   const { t } = useI18n();
   const [pdfFile, setPdfFile] = useState<File | null>(null);
-  const [outputPdf, setOutputPdf] = useState<Blob | null>(null);
-  const [proofData, setProofData] = useState<ProofData | null>(null);
-  const [vkeyData, setVkeyData] = useState<VKeyData | null>(null);
-  const [signatureData, setSignatureData] = useState<SignatureData | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [step, setStep] = useState<number>(0);
 
@@ -166,11 +110,7 @@ export default function Home() {
               <div className="p-6 sm:p-8">
                 <ProofGenerator
                   pdfFile={pdfFile}
-                  onProofGenerated={(output: Blob, proof: ProofData, vkey: VKeyData, signature: SignatureData) => {
-                    setOutputPdf(output);
-                    setProofData(proof);
-                    setVkeyData(vkey);
-                    setSignatureData(signature);
+                  onProofGenerated={() => {
                     setStep(5);
                   }}
                   isProcessing={isProcessing}
@@ -178,27 +118,6 @@ export default function Home() {
                   onProgress={(evt: { step: number; message: string }) => {
                     setStep(evt.step + 1);
                   }}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Step 5: Output - Show when complete */}
-          {outputPdf && proofData && vkeyData && signatureData && (
-            <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-3xl shadow-xl border border-green-200/50 overflow-hidden animate-fadeIn">
-              <div className="p-6 sm:p-8">
-                <div className="mb-6 text-center">
-                  <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-green-100 flex items-center justify-center">
-                    <span className="text-4xl">🎉</span>
-                  </div>
-                  <h3 className="text-xl font-bold text-gray-900">{t('page.complete.title')}</h3>
-                  <p className="text-gray-600 mt-1">{t('page.complete.subtitle')}</p>
-                </div>
-                <OutputDisplay
-                  outputPdf={outputPdf}
-                  proofData={proofData}
-                  vkeyData={vkeyData}
-                  signatureData={signatureData}
                 />
               </div>
             </div>

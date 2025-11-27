@@ -5,7 +5,6 @@
 node_modules/
 **/node_modules/
 .gocache/
-.cursor/
 
 # Build outputs
 dist/
@@ -26,6 +25,7 @@ target/
 *.swp
 *.swo
 *~
+.cursor/
 
 # Logs
 logs/

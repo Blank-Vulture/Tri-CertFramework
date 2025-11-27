@@ -4,15 +4,7 @@
 
 <div align="center">
   <img src="https://capsule-render.vercel.app/api?type=waving&color=0:303030,100:1a1a1a&height=250&section=header&text=Tri-Cert%20Framework&fontSize=70&fontColor=ffffff&animation=fadeIn&fontAlignY=40" alt="Tri-Cert Banner" width="100%">
-  <br><br>
-  <a href="#overview">概要</a> •
-  <a href="#features">特徴</a> •
-  <a href="#architecture">仕組み</a> •
-  <a href="#components">コンポーネント</a> •
-  <a href="#tech-stack">技術スタック</a>
 </div>
-
----
 
 ## 🔰 Overview（概要）
 
@@ -26,7 +18,7 @@
 |:---|:---|:---|
 | **経営者・管理者** | 組織全体の証明書発行ルールを統制。不正防止とコスト削減を実現。 | 🏛️ **Executive Console** |
 | **発行担当者** | 窓口業務の負担を軽減。数クリックで公的なデジタル証明書を発行。 | ✍️ **Registrar Console** |
-| **証明書を持つ人** | スマホで証明書を持ち歩き。就職や手続きでQRコードを見せるだけ。 | 📱 **Prover** |
+| **証明書を持つ人** | あなただけ、その時だけの証明ファイルを証書に添付。 | 📱 **Prover** |
 | **確認する人** | 目の前の証明書が本物かどうか、瞬時に自動判定。目視確認は不要。 | 🔍 **Verifier UI** |
 
 ---
@@ -94,14 +86,14 @@ graph LR
 
 - **Path**: `/prover`
 - **Tech**: Next.js, TypeScript
-- **Role**: 証明書の保管、検証者への提示（QR表示など）
+- **Role**: 証明書の保管、検証者への提出
 
 </details>
 
 <details>
 <summary><h3>🔍 Verifier UI (検証ポータル)</h3></summary>
 企業や機関が、提示された証明書が本物かを確認するWebサイトです。<br>
-<b>特徴:</b> ログイン不要で誰でも即座に検証可能（設定による）。
+<b>特徴:</b> ログイン不要で誰でも即座に検証可能
 
 - **Path**: `/verifier-ui`
 - **Tech**: Next.js, TypeScript

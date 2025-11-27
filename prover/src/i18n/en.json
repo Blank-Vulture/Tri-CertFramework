@@ -89,7 +89,7 @@
       "title": "Identity Verification",
       "desc": "Enter your authentication code and personal information",
       "label": "Authentication Code",
-      "placeholder": "e.g., MTFSJGBMQX5SW23TJNC34APYLYPY2",
+      "placeholder": "e.g., A1B2C3D4E5F6G7H8I9J0K",
       "name": "Full Name",
       "namePlaceholder": "e.g., John Doe",
       "birthdate": "Date of Birth",

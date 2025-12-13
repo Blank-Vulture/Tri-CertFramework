@@ -543,6 +543,7 @@ func (s *Service) ensureAllowlistExists() error {
 	if file.Issuer.ID != s.issuer.ID || file.Issuer.Name != s.issuer.Name {
 		file.Issuer = s.issuer
 		file.Schema = defaultSchemaAllowlist // Upgrade schema version
+		file.UpdatedAt = s.now().Format(time.RFC3339)
 		return s.saveAllowlist(file)
 	}
 	return nil
@@ -686,6 +687,7 @@ func (s *Service) SetIssuer(id, name string) error {
 	}
 	file.Issuer = s.issuer
 	file.Schema = defaultSchemaAllowlist
+	file.UpdatedAt = s.now().Format(time.RFC3339)
 	return s.saveAllowlist(file)
 }
 

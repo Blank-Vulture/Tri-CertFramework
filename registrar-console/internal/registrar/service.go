@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	defaultSchemaAllowlist = "tri-cert/commit-allowlist@1"
+	defaultSchemaAllowlist = "tri-cert/commit-allowlist@2"
 	defaultSchemaStudent   = "tri-cert/student-activation@1"
 	defaultSchemaIssuance  = "tri-cert/issuance-log@1"
 )
@@ -55,6 +55,7 @@ type Service struct {
 	studentsDir   string
 	issuancePath  string
 	exportDir     string
+	issuer        issuerInfo
 	now           func() time.Time
 }
 
@@ -82,9 +83,16 @@ type RegistrationResult struct {
 	IssuedAt             string `json:"issuedAt"`
 }
 
+// IssuerInfo represents the issuer (institution) that owns this allowlist.
+type IssuerInfo struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
 // AllowlistView is a read-only representation of the allowlist file.
 type AllowlistView struct {
 	Schema    string              `json:"schema"`
+	Issuer    IssuerInfo          `json:"issuer"`
 	UpdatedAt string              `json:"updatedAt"`
 	Entries   []AllowlistEntryRow `json:"entries"`
 }
@@ -97,8 +105,14 @@ type AllowlistEntryRow struct {
 	UpdatedAt      string `json:"updatedAt"`
 }
 
+type issuerInfo struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
 type allowlistFile struct {
 	Schema    string           `json:"schema"`
+	Issuer    issuerInfo       `json:"issuer"`
 	UpdatedAt string           `json:"updated_at"`
 	Entries   []allowlistEntry `json:"entries"`
 }
@@ -147,8 +161,23 @@ type IssuanceEntry struct {
 	AllowlistVersion int    `json:"allowlist_version"`
 }
 
+// IssuerConfig holds the configuration for the issuer (institution).
+type IssuerConfig struct {
+	ID   string
+	Name string
+}
+
 // NewService constructs a Service bound to the provided base directory.
+// Uses default issuer info which should be updated via SetIssuer or issuer.json.
 func NewService(baseDir string) (*Service, error) {
+	return NewServiceWithIssuer(baseDir, IssuerConfig{
+		ID:   "default-issuer",
+		Name: "Default Issuer",
+	})
+}
+
+// NewServiceWithIssuer constructs a Service with explicit issuer configuration.
+func NewServiceWithIssuer(baseDir string, issuerCfg IssuerConfig) (*Service, error) {
 	cleanBase := filepath.Clean(baseDir)
 	if cleanBase == "" || cleanBase == "." {
 		return nil, errors.New("registrar: base directory must not be empty")
@@ -164,12 +193,26 @@ func NewService(baseDir string) (*Service, error) {
 		return nil, fmt.Errorf("registrar: ensure exports directory: %w", err)
 	}
 
+	// Try to load issuer config from issuer.json if exists
+	issuerPath := filepath.Join(cleanBase, "issuer.json")
+	if data, err := os.ReadFile(issuerPath); err == nil {
+		var fileCfg struct {
+			ID   string `json:"id"`
+			Name string `json:"name"`
+		}
+		if err := json.Unmarshal(data, &fileCfg); err == nil && fileCfg.ID != "" {
+			issuerCfg.ID = fileCfg.ID
+			issuerCfg.Name = fileCfg.Name
+		}
+	}
+
 	svc := &Service{
 		baseDir:       cleanBase,
 		allowlistPath: filepath.Join(cleanBase, "commit-allowlist.json"),
 		studentsDir:   studentsDir,
 		issuancePath:  filepath.Join(cleanBase, "issuance-log.json"),
 		exportDir:     exportDir,
+		issuer:        issuerInfo{ID: issuerCfg.ID, Name: issuerCfg.Name},
 		now:           func() time.Time { return time.Now().UTC() },
 	}
 
@@ -397,6 +440,7 @@ func (s *Service) GetAllowlist() (*AllowlistView, error) {
 
 	view := &AllowlistView{
 		Schema:    file.Schema,
+		Issuer:    IssuerInfo{ID: file.Issuer.ID, Name: file.Issuer.Name},
 		UpdatedAt: file.UpdatedAt,
 		Entries:   make([]AllowlistEntryRow, len(file.Entries)),
 	}
@@ -483,12 +527,23 @@ func (s *Service) ensureAllowlistExists() error {
 	if _, err := os.Stat(s.allowlistPath); errors.Is(err, fs.ErrNotExist) {
 		file := allowlistFile{
 			Schema:    defaultSchemaAllowlist,
+			Issuer:    s.issuer,
 			UpdatedAt: s.now().Format(time.RFC3339),
 			Entries:   []allowlistEntry{},
 		}
 		return s.saveAllowlist(&file)
 	} else if err != nil {
 		return fmt.Errorf("registrar: stat allowlist: %w", err)
+	}
+	// Update issuer info in existing allowlist if it differs
+	file, err := s.loadAllowlist()
+	if err != nil {
+		return err
+	}
+	if file.Issuer.ID != s.issuer.ID || file.Issuer.Name != s.issuer.Name {
+		file.Issuer = s.issuer
+		file.Schema = defaultSchemaAllowlist // Upgrade schema version
+		return s.saveAllowlist(file)
 	}
 	return nil
 }
@@ -589,6 +644,49 @@ func (s *Service) appendIssuances(entries []IssuanceEntry) error {
 	file.DataRoot = s.baseDir
 
 	return s.saveIssuanceLog(file)
+}
+
+// GetIssuer returns the current issuer configuration.
+func (s *Service) GetIssuer() IssuerInfo {
+	return IssuerInfo{ID: s.issuer.ID, Name: s.issuer.Name}
+}
+
+// SetIssuer updates the issuer configuration and persists it to issuer.json.
+func (s *Service) SetIssuer(id, name string) error {
+	if strings.TrimSpace(id) == "" {
+		return errors.New("issuer id is required")
+	}
+	if strings.TrimSpace(name) == "" {
+		return errors.New("issuer name is required")
+	}
+
+	s.issuer = issuerInfo{ID: strings.TrimSpace(id), Name: strings.TrimSpace(name)}
+
+	// Save to issuer.json
+	issuerPath := filepath.Join(s.baseDir, "issuer.json")
+	data := struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	}{
+		ID:   s.issuer.ID,
+		Name: s.issuer.Name,
+	}
+	payload, err := marshalJSON(data)
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(issuerPath, payload, 0o644); err != nil {
+		return fmt.Errorf("registrar: write issuer.json: %w", err)
+	}
+
+	// Update allowlist with new issuer info
+	file, err := s.loadAllowlist()
+	if err != nil {
+		return err
+	}
+	file.Issuer = s.issuer
+	file.Schema = defaultSchemaAllowlist
+	return s.saveAllowlist(file)
 }
 
 // DeleteStudent removes all persisted data for the provided student ID.

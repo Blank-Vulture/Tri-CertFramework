@@ -34,6 +34,9 @@ interface ProofData {
   registration?: {
     activation_hash: string;
     student_id_hash: string;
+    issuer_id?: string;
+    issuer_name?: string;
+    allowlist_url?: string;
     verified_at: string;
   };
 }
@@ -57,6 +60,8 @@ interface VerificationResult {
   vkeyHashValid: boolean;
   registrationValid?: boolean;
   saltRegistrationValid?: boolean;
+  issuerName?: string;
+  issuerId?: string;
   details: {
     zkp?: string;
     signature?: string;
@@ -318,15 +323,20 @@ export default function Home() {
       let registrationDetails = '';
       let saltRegistrationValid = false;
       let saltRegistrationDetails = t('results.saltRegistration.notFound');
-      
+      let issuerName: string | undefined;
+      let issuerId: string | undefined;
+
       // Salt-based registration check
       if (extractedData.proof?.registration) {
         try {
           const saltResult = await verifyProofRegistration(extractedData.proof.registration);
           saltRegistrationValid = saltResult.isValid;
-          
+
           if (saltResult.isValid) {
             saltRegistrationDetails = t('results.saltRegistration.verified');
+            // Capture issuer info from the verification result
+            issuerName = saltResult.issuerName;
+            issuerId = saltResult.issuerId;
           } else {
             saltRegistrationDetails = t('results.saltRegistration.invalid');
           }
@@ -376,6 +386,8 @@ export default function Home() {
         vkeyHashValid,
         registrationValid,
         saltRegistrationValid,
+        issuerName,
+        issuerId,
         details: {
           zkp: zkpDetails,
           signature: signatureDetails,

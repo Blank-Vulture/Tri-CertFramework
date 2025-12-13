@@ -144,6 +144,23 @@ func (a *App) ParseCSV(content string) ([]registrar.StudentInput, error) {
 	return a.service.ParseCSV(content)
 }
 
+// GetIssuer returns the current issuer configuration.
+func (a *App) GetIssuer() (*registrar.IssuerInfo, error) {
+	if a.service == nil {
+		return nil, fmt.Errorf("registrar service not initialised")
+	}
+	issuer := a.service.GetIssuer()
+	return &issuer, nil
+}
+
+// SetIssuer updates the issuer configuration.
+func (a *App) SetIssuer(id, name string) error {
+	if a.service == nil {
+		return fmt.Errorf("registrar service not initialised")
+	}
+	return a.service.SetIssuer(id, name)
+}
+
 // SetDataRoot switches the active data root directory and persists the setting.
 func (a *App) SetDataRoot(path string) (string, error) {
 	raw := strings.TrimSpace(path)

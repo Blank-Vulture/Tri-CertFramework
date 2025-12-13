@@ -4,7 +4,8 @@ import solidPlugin from 'vite-plugin-solid';
 export default defineConfig({
   plugins: [solidPlugin()],
   server: {
-    port: 5173,
+    // Avoid collision with executive-console's Vite dev server (5173)
+    port: 5174,
     strictPort: true,
   },
   build: {

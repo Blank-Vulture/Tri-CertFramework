@@ -37,6 +37,9 @@ interface ProofData {
   registration?: {
     activation_hash: string;
     student_id_hash: string;
+    issuer_id: string;
+    issuer_name: string;
+    allowlist_url: string;
     verified_at: string;
   };
 }
@@ -261,6 +264,9 @@ export default function ProofGenerator({
         proof.registration = {
           activation_hash: saltVerification.activationHash,
           student_id_hash: saltVerification.studentIdHash,
+          issuer_id: saltVerification.issuerId || 'unknown',
+          issuer_name: saltVerification.issuerName || 'Unknown Issuer',
+          allowlist_url: saltVerification.allowlistUrl || '',
           verified_at: new Date().toISOString(),
         };
       }

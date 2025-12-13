@@ -18,6 +18,8 @@ export function ExportIssuancesTo(arg1:string):Promise<string>;
 
 export function GetAllowlist():Promise<registrar.AllowlistView>;
 
+export function GetIssuer():Promise<registrar.IssuerInfo>;
+
 export function ListIssuances():Promise<Array<registrar.IssuanceEntry>>;
 
 export function ParseCSV(arg1:string):Promise<Array<registrar.StudentInput>>;
@@ -25,3 +27,5 @@ export function ParseCSV(arg1:string):Promise<Array<registrar.StudentInput>>;
 export function SelectExportDirectory():Promise<string>;
 
 export function SetDataRoot(arg1:string):Promise<string>;
+
+export function SetIssuer(arg1:string,arg2:string):Promise<void>;

@@ -1,7 +1,23 @@
 {
-  "schema": "tri-cert/commit-allowlist@1",
-  "updated_at": "2025-11-27T05:37:44Z",
+  "schema": "tri-cert/commit-allowlist@2",
+  "issuer": {
+    "id": "default-issuer",
+    "name": "Default Issuer"
+  },
+  "updated_at": "2025-12-13T06:48:51Z",
   "entries": [
+    {
+      "activation_hash": "sha512:43d7e8e335fbdcfa0b69f89cecc6c96dc0be13e2c69a30def7c4da5cd5cec33ac56a2767fca9d7b80ae147b326311c590005a417553b4441f973ab8c9bd8e4a5",
+      "student_id_hash": "sha512:41bb36108310e77f29cb319ccda33ee74afc419c161eac9fd2006368199c0326de710929dc9c381daac608e897bd30dde3cc89b25f2b785ecdbbb06ff5facac7",
+      "created_at": "2025-12-13T06:48:15Z",
+      "updated_at": "2025-12-13T06:48:15Z"
+    },
+    {
+      "activation_hash": "sha512:c722ece9118d7ce0e1235ea964efcde6197fef71168d27e1c44a2ea4152719281be0416416702308c0b90674eba9aba4701675e147a973cfd747bf28c7e74cef",
+      "student_id_hash": "sha512:c75ad89f0e73990c7eaf9a38d9525ecbd033dd57a7800f73229ecd6942d37cda64d4e57b01cea25b0948d7c817813d6deae584a62404bb2f19a99bfafadcad34",
+      "created_at": "2025-12-13T06:48:51Z",
+      "updated_at": "2025-12-13T06:48:51Z"
+    },
     {
       "activation_hash": "sha512:c0f81b3fbd581e20ee7f681b72952256e44b67db4423a8848b0bb7c5dde686814fa18667a7d2e056aeaf2d5eade62406a5188eb14e7b07a5a6c4f56df2308abf",
       "student_id_hash": "sha512:db9510df3af0919feac2cd1faba7be6493247ea2f6eca63a454f2e6ed7d0edaffed80d3a00d5b4fe1d44fb531c1680a3fe9fdf82a043ff8edb5b7091bf0df437",

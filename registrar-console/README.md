@@ -28,6 +28,7 @@ npm install
 cd registrar-console
 GOCACHE=$(pwd)/../.gocache wails dev
 ```
+- 開発フロントエンドはポート `5174` で起動するよう設定済みです（`executive-console` の Vite 開発サーバーとの衝突回避のため）。
 
 ---
 

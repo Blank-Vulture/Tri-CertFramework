@@ -2,6 +2,11 @@
  * Salt Verifier - Verifies student registration via salt and activation hash
  */
 
+export interface IssuerInfo {
+  id: string;
+  name: string;
+}
+
 export interface AllowlistEntry {
   activation_hash: string;
   student_id_hash: string;
@@ -11,6 +16,7 @@ export interface AllowlistEntry {
 
 export interface AllowlistFile {
   schema: string;
+  issuer?: IssuerInfo;
   updated_at: string;
   entries: AllowlistEntry[];
 }
@@ -19,6 +25,9 @@ export interface SaltVerificationResult {
   isValid: boolean;
   activationHash?: string;
   studentIdHash?: string;
+  issuerId?: string;
+  issuerName?: string;
+  allowlistUrl?: string;
   error?: string;
 }
 
@@ -172,6 +181,13 @@ export async function fetchAllowlist(): Promise<AllowlistFile | null> {
 }
 
 /**
+ * Get the allowlist URL being used
+ */
+export function getAllowlistUrl(): string {
+  return ALLOWLIST_URL;
+}
+
+/**
  * Verify salt against the allowlist
  */
 export async function verifySalt(
@@ -202,6 +218,9 @@ export async function verifySalt(
         isValid: true,
         activationHash,
         studentIdHash: entry.student_id_hash,
+        issuerId: allowlist.issuer?.id,
+        issuerName: allowlist.issuer?.name,
+        allowlistUrl: ALLOWLIST_URL,
       };
     }
 

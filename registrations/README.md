@@ -8,6 +8,7 @@
 registrations/
 ├── commit-allowlist.json      # Salt登録用公開allowlist（GitHubにコミット）
 ├── index.json                 # 公開鍵レジストリ（GitHubにコミット）
+├── issuer.json               # 発行機関情報（GitHubにコミット）
 ├── issuance-log.json         # 発行履歴（個人情報含む、.gitignoreで除外）
 ├── students/                  # 個人学生データ（.gitignoreで除外）
 │   └── sha512:{hash}.json    # 学生IDハッシュごとのファイル
@@ -18,8 +19,9 @@ registrations/
 
 ### GitHubにコミットされるファイル（公開情報のみ）
 
-- ✅ `commit-allowlist.json` - activation_hashとstudent_id_hashのみ（個人情報なし）
+- ✅ `commit-allowlist.json` - activation_hashとstudent_id_hash、issuer情報（個人情報なし）
 - ✅ `index.json` - JWK thumbprintのみ（個人情報なし）
+- ✅ `issuer.json` - 発行機関のID・名前（個人情報なし）
 
 ### ローカルのみ（個人情報含む、.gitignoreで除外）
 
@@ -35,7 +37,11 @@ Salt登録用の公開allowlist。Proverでの検証とVerifier-UIでの確認�
 
 ```json
 {
-  "schema": "tri-cert/commit-allowlist@1",
+  "schema": "tri-cert/commit-allowlist@2",
+  "issuer": {
+    "id": "university-a",
+    "name": "A大学"
+  },
   "updated_at": "2025-11-26T00:00:00Z",
   "entries": [
     {
@@ -48,7 +54,23 @@ Salt登録用の公開allowlist。Proverでの検証とVerifier-UIでの確認�
 }
 ```
 
-**含まれる情報**: ハッシュ値のみ（個人情報なし）
+**含まれる情報**: ハッシュ値とissuer情報（個人情報なし）
+
+### issuer.json
+
+発行機関（大学等）の識別情報。Registrar Consoleで設定。
+
+```json
+{
+  "id": "university-a",
+  "name": "A大学"
+}
+```
+
+**含まれる情報**: 機関ID・名前（個人情報なし）
+
+- `id`: 機関を一意に識別するID（英数字とハイフン推奨）
+- `name`: 人間が読める機関名（Verifier UIで表示される）
 
 ### index.json
 

@@ -9,6 +9,8 @@ interface VerificationResult {
   vkeyHashValid: boolean;
   registrationValid?: boolean;
   saltRegistrationValid?: boolean;
+  issuerName?: string;
+  issuerId?: string;
   details: {
     zkp?: string;
     signature?: string;
@@ -74,6 +76,27 @@ export default function VerificationResults({ result }: VerificationResultsProps
           <span className="text-white font-bold">{validCount}/{totalCount}</span>
         </div>
       </div>
+
+      {/* Issuer Information - Important for cross-domain verification */}
+      {result.issuerName && (
+        <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-2xl p-6 border-2 border-purple-200 shadow-lg">
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0 w-14 h-14 bg-purple-500 rounded-xl flex items-center justify-center shadow-lg">
+              <span className="text-2xl">🏛️</span>
+            </div>
+            <div className="flex-1">
+              <h3 className="font-bold text-gray-900 text-lg mb-1">{t('results.issuer.title')}</h3>
+              <p className="text-2xl font-bold text-purple-700">{result.issuerName}</p>
+              {result.issuerId && (
+                <p className="text-sm text-gray-500 mt-1">ID: {result.issuerId}</p>
+              )}
+              <p className="text-sm text-purple-600 mt-3 bg-purple-100 px-3 py-2 rounded-lg">
+                ⚠️ {t('results.issuer.note')}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Detailed Results */}
       <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">

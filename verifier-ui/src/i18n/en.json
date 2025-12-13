@@ -135,6 +135,10 @@
       "failed": "⚠️ Registration check failed",
       "error": "Error",
       "registeredAt": "Registered on"
+    },
+    "issuer": {
+      "title": "Issuing Institution",
+      "note": "This certificate was authenticated by the institution above. Please verify it matches the PDF's issuer."
     }
   }
 }

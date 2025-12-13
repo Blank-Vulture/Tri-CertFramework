@@ -18,8 +18,23 @@ export namespace registrar {
 	        this.updatedAt = source["updatedAt"];
 	    }
 	}
+	export class IssuerInfo {
+	    id: string;
+	    name: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new IssuerInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	    }
+	}
 	export class AllowlistView {
 	    schema: string;
+	    issuer: IssuerInfo;
 	    updatedAt: string;
 	    entries: AllowlistEntryRow[];
 	
@@ -30,6 +45,7 @@ export namespace registrar {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.schema = source["schema"];
+	        this.issuer = this.convertValues(source["issuer"], IssuerInfo);
 	        this.updatedAt = source["updatedAt"];
 	        this.entries = this.convertValues(source["entries"], AllowlistEntryRow);
 	    }
@@ -82,6 +98,7 @@ export namespace registrar {
 	        this.allowlist_version = source["allowlist_version"];
 	    }
 	}
+	
 	export class RegistrationResult {
 	    studentId: string;
 	    studentIdHash: string;

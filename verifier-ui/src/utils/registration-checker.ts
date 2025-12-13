@@ -11,6 +11,11 @@ export interface StudentRegistry {
   version: string;
 }
 
+export interface IssuerInfo {
+  id: string;
+  name: string;
+}
+
 export interface AllowlistEntry {
   activation_hash: string;
   student_id_hash: string;
@@ -20,6 +25,7 @@ export interface AllowlistEntry {
 
 export interface AllowlistFile {
   schema: string;
+  issuer?: IssuerInfo;
   updated_at: string;
   entries: AllowlistEntry[];
 }
@@ -34,6 +40,9 @@ export interface ActivationHashCheckResult {
   isValid: boolean;
   activationHash?: string;
   studentIdHash?: string;
+  issuerId?: string;
+  issuerName?: string;
+  allowlistUrl?: string;
   registeredAt?: string;
   error?: string;
 }
@@ -302,32 +311,111 @@ export async function checkActivationHash(
 }
 
 /**
+ * Fetch allowlist from a specific URL
+ */
+export async function fetchAllowlistFromUrl(url: string): Promise<AllowlistFile | null> {
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      },
+      cache: 'no-cache',
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data: unknown = await response.json();
+    
+    // Integrity validation
+    if (!validateAllowlistIntegrity(data)) {
+      return null;
+    }
+    
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Verify registration info from proof against allowlist
+ * Supports both legacy (no issuer) and new (with issuer) formats
  */
 export async function verifyProofRegistration(
   registration: {
     activation_hash: string;
     student_id_hash: string;
+    issuer_id?: string;
+    issuer_name?: string;
+    allowlist_url?: string;
     verified_at: string;
   }
 ): Promise<ActivationHashCheckResult> {
   try {
-    // Check activation hash against allowlist
-    const result = await checkActivationHash(registration.activation_hash);
+    // Determine which allowlist to fetch
+    const allowlistUrl = registration.allowlist_url || ALLOWLIST_URL;
+    
+    // Fetch allowlist (from proof's URL if provided, otherwise default)
+    const allowlist = registration.allowlist_url 
+      ? await fetchAllowlistFromUrl(registration.allowlist_url)
+      : await fetchAllowlist();
 
-    if (result.isValid && result.studentIdHash) {
-      // Verify that student_id_hash matches
-      if (result.studentIdHash !== registration.student_id_hash) {
+    if (!allowlist) {
+      return {
+        isValid: false,
+        activationHash: registration.activation_hash,
+        error: 'Failed to fetch allowlist',
+      };
+    }
+
+    // Check if activation hash exists in allowlist
+    const entry = allowlist.entries.find(e => e.activation_hash === registration.activation_hash);
+
+    if (!entry) {
+      return {
+        isValid: false,
+        activationHash: registration.activation_hash,
+        error: 'Activation hash not found in allowlist',
+      };
+    }
+
+    // Verify that student_id_hash matches
+    if (entry.student_id_hash !== registration.student_id_hash) {
+      return {
+        isValid: false,
+        activationHash: registration.activation_hash,
+        studentIdHash: registration.student_id_hash,
+        error: 'Student ID hash mismatch',
+      };
+    }
+
+    // If proof has issuer info, verify it matches the allowlist
+    if (registration.issuer_id && allowlist.issuer) {
+      if (registration.issuer_id !== allowlist.issuer.id) {
         return {
           isValid: false,
           activationHash: registration.activation_hash,
           studentIdHash: registration.student_id_hash,
-          error: 'Student ID hash mismatch',
+          issuerId: registration.issuer_id,
+          issuerName: registration.issuer_name,
+          error: 'Issuer ID mismatch between proof and allowlist',
         };
       }
     }
 
-    return result;
+    // Return success with issuer info
+    return {
+      isValid: true,
+      activationHash: registration.activation_hash,
+      studentIdHash: entry.student_id_hash,
+      issuerId: allowlist.issuer?.id || registration.issuer_id,
+      issuerName: allowlist.issuer?.name || registration.issuer_name,
+      allowlistUrl,
+      registeredAt: entry.created_at,
+    };
   } catch {
     return {
       isValid: false,

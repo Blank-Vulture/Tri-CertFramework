@@ -34,6 +34,10 @@ export function GetAllowlist() {
   return window['go']['main']['App']['GetAllowlist']();
 }
 
+export function GetIssuer() {
+  return window['go']['main']['App']['GetIssuer']();
+}
+
 export function ListIssuances() {
   return window['go']['main']['App']['ListIssuances']();
 }
@@ -48,4 +52,8 @@ export function SelectExportDirectory() {
 
 export function SetDataRoot(arg1) {
   return window['go']['main']['App']['SetDataRoot'](arg1);
+}
+
+export function SetIssuer(arg1, arg2) {
+  return window['go']['main']['App']['SetIssuer'](arg1, arg2);
 }

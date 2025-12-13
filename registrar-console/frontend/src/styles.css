@@ -60,7 +60,9 @@ body {
 
 .header-meta {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
 }
 
 .root-label {
@@ -399,4 +401,52 @@ th {
 
 .modal-actions button {
   min-width: 120px;
+}
+
+/* Issuer settings */
+.issuer-label {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  font-size: 0.9rem;
+  color: rgba(230, 237, 243, 0.85);
+  flex-wrap: wrap;
+}
+
+.issuer-name {
+  font-weight: 600;
+  color: #60d4ff;
+}
+
+.issuer-id {
+  font-size: 0.8rem;
+  color: rgba(230, 237, 243, 0.6);
+}
+
+.issuer-edit-btn {
+  padding: 0.35rem 0.7rem;
+  font-size: 0.8rem;
+  margin-left: 0.5rem;
+}
+
+.issuer-modal {
+  max-width: 520px;
+}
+
+.issuer-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.issuer-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.field-hint {
+  font-size: 0.8rem;
+  color: rgba(230, 237, 243, 0.55);
+  font-weight: 400;
 }

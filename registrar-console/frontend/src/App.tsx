@@ -10,6 +10,8 @@ import {
   ParseCSV,
   ExportIssuancesTo,
   SelectExportDirectory,
+  GetIssuer,
+  SetIssuer,
 } from '../wailsjs/go/main/App';
 import type { registrar } from '../wailsjs/go/models';
 import './styles.css';
@@ -17,6 +19,7 @@ import './styles.css';
 type RegistrationOutcome = registrar.RegistrationResult;
 type StudentInput = registrar.StudentInput;
 type IssuanceEntry = registrar.IssuanceEntry;
+type IssuerInfo = registrar.IssuerInfo;
 
 const toDisplayIssuances = (entries: IssuanceEntry[] | undefined) => {
   if (!entries) return [];
@@ -45,6 +48,8 @@ const App: Component = () => {
 
   const [dataRoot, { refetch: refetchDataRoot }] = createResource(DataRoot);
   const [issuances, { refetch: refetchIssuances }] = createResource(ListIssuances);
+  const [issuer, { refetch: refetchIssuer }] = createResource(GetIssuer);
+  const [showIssuerSettings, setShowIssuerSettings] = createSignal(false);
 
   const mappedIssuances = createMemo(() => toDisplayIssuances(issuances()));
 
@@ -175,6 +180,24 @@ const App: Component = () => {
           </div>
         </div>
         <div class="header-meta">
+          <span class="issuer-label">
+            <span>認証機関:</span>{' '}
+            <Show when={issuer()} fallback={<span class="mono">読み込み中...</span>}>
+              {(info) => (
+                <>
+                  <span class="issuer-name">{info().name}</span>
+                  <span class="mono issuer-id">({info().id})</span>
+                </>
+              )}
+            </Show>
+            <button
+              type="button"
+              class="secondary issuer-edit-btn"
+              onClick={() => setShowIssuerSettings(true)}
+            >
+              編集
+            </button>
+          </span>
           <span class="root-label">
             <span>データ出力先:</span>{' '}
             <Show when={dataRoot()} fallback={<span class="mono">読み込み中...</span>}>
@@ -267,6 +290,19 @@ const App: Component = () => {
             </div>
           </div>
         )}
+      </Show>
+
+      <Show when={showIssuerSettings()}>
+        <IssuerSettingsModal
+          currentIssuer={issuer()}
+          onClose={() => setShowIssuerSettings(false)}
+          onSaved={async () => {
+            await refetchIssuer();
+            setShowIssuerSettings(false);
+            clearAlerts();
+            setStatusMessage('認証機関の設定を更新しました。');
+          }}
+        />
       </Show>
     </div>
   );
@@ -367,6 +403,95 @@ const ManualRegistrationPanel: Component<{ onRegistered: () => Promise<void> }> 
         )}
       </Show>
     </section>
+  );
+};
+
+const IssuerSettingsModal: Component<{
+  currentIssuer: IssuerInfo | undefined;
+  onClose: () => void;
+  onSaved: () => Promise<void>;
+}> = (props) => {
+  const [issuerId, setIssuerId] = createSignal(props.currentIssuer?.id || '');
+  const [issuerName, setIssuerName] = createSignal(props.currentIssuer?.name || '');
+  const [isSubmitting, setIsSubmitting] = createSignal(false);
+  const [error, setError] = createSignal<string | null>(null);
+
+  const handleSubmit = async (event: Event) => {
+    event.preventDefault();
+    setError(null);
+
+    const id = issuerId().trim();
+    const name = issuerName().trim();
+
+    if (!id) {
+      setError('認証機関IDは必須です。');
+      return;
+    }
+    if (!name) {
+      setError('認証機関名は必須です。');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await SetIssuer(id, name);
+      await props.onSaved();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '設定の保存に失敗しました');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div class="modal-overlay" onClick={props.onClose}>
+      <div class="modal-content issuer-modal" onClick={(e) => e.stopPropagation()}>
+        <h3>認証機関の設定</h3>
+        <p class="hint">
+          認証機関のIDと名前を設定します。この情報はallowlistに埋め込まれ、証明書の検証時に使用されます。
+        </p>
+        <form class="issuer-form" onSubmit={handleSubmit}>
+          <label>
+            認証機関ID
+            <input
+              type="text"
+              placeholder="例: univ-tokyo-cs"
+              value={issuerId()}
+              onInput={(e) => setIssuerId(e.currentTarget.value)}
+              disabled={isSubmitting()}
+            />
+            <span class="field-hint">英数字とハイフンを推奨（URLセーフな識別子）</span>
+          </label>
+          <label>
+            認証機関名
+            <input
+              type="text"
+              placeholder="例: 東京大学 情報理工学系研究科"
+              value={issuerName()}
+              onInput={(e) => setIssuerName(e.currentTarget.value)}
+              disabled={isSubmitting()}
+            />
+            <span class="field-hint">証明書に表示される正式名称</span>
+          </label>
+          <Show when={error()}>
+            {(message) => <p class="error">{message()}</p>}
+          </Show>
+          <div class="modal-actions">
+            <button
+              type="button"
+              class="secondary"
+              onClick={props.onClose}
+              disabled={isSubmitting()}
+            >
+              キャンセル
+            </button>
+            <button type="submit" disabled={isSubmitting()}>
+              {isSubmitting() ? '保存中...' : '保存'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 };
 

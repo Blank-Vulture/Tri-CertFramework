@@ -1,10 +1,10 @@
 {
   "schema": "tri-cert/commit-allowlist@2",
   "issuer": {
-    "id": "default-issuer",
-    "name": "Default Issuer"
+    "id": "tricert-framework-demo",
+    "name": "KIC TriCert Framework Demo"
   },
-  "updated_at": "2025-12-13T06:48:51Z",
+  "updated_at": "2025-12-13T07:44:05Z",
   "entries": [
     {
       "activation_hash": "sha512:43d7e8e335fbdcfa0b69f89cecc6c96dc0be13e2c69a30def7c4da5cd5cec33ac56a2767fca9d7b80ae147b326311c590005a417553b4441f973ab8c9bd8e4a5",

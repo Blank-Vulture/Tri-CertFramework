@@ -415,18 +415,28 @@ const IssuerSettingsModal: Component<{
   const [issuerName, setIssuerName] = createSignal('');
   const [isSubmitting, setIsSubmitting] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
-  const [initialized, setInitialized] = createSignal(false);
+  const [userEdited, setUserEdited] = createSignal(false);
 
-  // Sync signals with props when currentIssuer loads or changes
-  // Only update if user hasn't started editing yet
+  // Sync signals with props when currentIssuer loads
+  // Skip if user has already started editing to preserve their input
   createEffect(() => {
     const issuer = props.currentIssuer;
-    if (issuer && !initialized()) {
+    if (issuer && !userEdited()) {
       setIssuerId(issuer.id || '');
       setIssuerName(issuer.name || '');
-      setInitialized(true);
     }
   });
+
+  // Track user editing activity
+  const handleIdInput = (e: InputEvent & { currentTarget: HTMLInputElement }) => {
+    setUserEdited(true);
+    setIssuerId(e.currentTarget.value);
+  };
+
+  const handleNameInput = (e: InputEvent & { currentTarget: HTMLInputElement }) => {
+    setUserEdited(true);
+    setIssuerName(e.currentTarget.value);
+  };
 
   const handleSubmit = async (event: Event) => {
     event.preventDefault();
@@ -469,7 +479,7 @@ const IssuerSettingsModal: Component<{
               type="text"
               placeholder="例: univ-tokyo-cs"
               value={issuerId()}
-              onInput={(e) => setIssuerId(e.currentTarget.value)}
+              onInput={handleIdInput}
               disabled={isSubmitting()}
             />
             <span class="field-hint">英数字とハイフンを推奨（URLセーフな識別子）</span>
@@ -480,7 +490,7 @@ const IssuerSettingsModal: Component<{
               type="text"
               placeholder="例: 東京大学 情報理工学系研究科"
               value={issuerName()}
-              onInput={(e) => setIssuerName(e.currentTarget.value)}
+              onInput={handleNameInput}
               disabled={isSubmitting()}
             />
             <span class="field-hint">証明書に表示される正式名称</span>

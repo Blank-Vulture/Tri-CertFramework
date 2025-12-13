@@ -1,4 +1,4 @@
-import { createMemo, createResource, createSignal, For, Show } from 'solid-js';
+import { createEffect, createMemo, createResource, createSignal, For, Show } from 'solid-js';
 import type { Component } from 'solid-js';
 import {
   DataRoot,
@@ -411,10 +411,22 @@ const IssuerSettingsModal: Component<{
   onClose: () => void;
   onSaved: () => Promise<void>;
 }> = (props) => {
-  const [issuerId, setIssuerId] = createSignal(props.currentIssuer?.id || '');
-  const [issuerName, setIssuerName] = createSignal(props.currentIssuer?.name || '');
+  const [issuerId, setIssuerId] = createSignal('');
+  const [issuerName, setIssuerName] = createSignal('');
   const [isSubmitting, setIsSubmitting] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
+  const [initialized, setInitialized] = createSignal(false);
+
+  // Sync signals with props when currentIssuer loads or changes
+  // Only update if user hasn't started editing yet
+  createEffect(() => {
+    const issuer = props.currentIssuer;
+    if (issuer && !initialized()) {
+      setIssuerId(issuer.id || '');
+      setIssuerName(issuer.name || '');
+      setInitialized(true);
+    }
+  });
 
   const handleSubmit = async (event: Event) => {
     event.preventDefault();

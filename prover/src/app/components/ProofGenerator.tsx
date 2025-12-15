@@ -350,12 +350,12 @@ export default function ProofGenerator({
       </div>
 
       {/* Step 1: Identity Verification - Most Important */}
-      <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-5 border-2 border-amber-200">
+      <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-5 border-2 border-amber-200 overflow-hidden">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center text-white font-bold">1</div>
+          <div className="w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center text-white font-bold shrink-0">1</div>
           <h4 className="text-lg font-bold text-gray-900">{t('proofGen.salt.title')}</h4>
           {saltVerification?.isValid && (
-            <span className="ml-auto bg-green-500 text-white px-3 py-1 rounded-full text-sm font-medium">
+            <span className="ml-auto bg-green-500 text-white px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap">
               ✓ {t('proofGen.salt.verified')}
             </span>
           )}
@@ -363,7 +363,7 @@ export default function ProofGenerator({
         
         <p className="text-sm text-gray-600 mb-4">{t('proofGen.salt.desc')}</p>
 
-        <div className="space-y-4">
+        <div className="space-y-4 overflow-hidden">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               {t('proofGen.salt.label')}
@@ -378,8 +378,8 @@ export default function ProofGenerator({
             />
           </div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="min-w-0">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 overflow-hidden">
+            <div className="min-w-0 overflow-hidden">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 {t('proofGen.salt.name')}
               </label>
@@ -387,12 +387,12 @@ export default function ProofGenerator({
                 type="text"
                 value={studentName}
                 onChange={(e) => { setStudentName(e.target.value); setSaltVerification(null); }}
-                className="w-full min-w-0 px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-amber-500 focus:ring-0"
+                className="w-full min-w-0 max-w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-amber-500 focus:ring-0"
                 placeholder={t('proofGen.salt.namePlaceholder')}
                 disabled={isProcessing || isVerifyingSalt}
               />
             </div>
-            <div className="min-w-0">
+            <div className="min-w-0 overflow-hidden">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 {t('proofGen.salt.birthdate')}
               </label>
@@ -400,7 +400,7 @@ export default function ProofGenerator({
                 type="date"
                 value={studentBirthdate}
                 onChange={(e) => { setStudentBirthdate(e.target.value); setSaltVerification(null); }}
-                className="w-full min-w-0 box-border px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-amber-500 focus:ring-0"
+                className="w-full min-w-0 max-w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-amber-500 focus:ring-0"
                 disabled={isProcessing || isVerifyingSalt}
               />
             </div>

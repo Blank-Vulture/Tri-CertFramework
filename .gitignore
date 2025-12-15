@@ -3,6 +3,7 @@
 
 # macOS
 .DS_Store
+.obsidian/
 
 # Dependencies
 node_modules/

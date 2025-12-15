@@ -4,21 +4,23 @@ Thesis revision management tool for Tri-CertFramework docs.
 
 Usage:
     ./thesis.py init             Initialize thesis source directory structure
+    ./thesis.py split            Split existing thesis into source structure
     ./thesis.py build            Build thesis from source and create new revision
     ./thesis.py major            Increment major version (1.x → 2.0)
+    ./thesis.py fetch            Sync config with research directory versions
     ./thesis.py list             List all revisions
     ./thesis.py tree             Show source directory structure
     ./thesis.py show <version>   Show details of a specific revision
     ./thesis.py remove <version> Remove a revision
-    ./thesis.py split            Split existing thesis into source structure
 
 Requirements:
     Python 3.8+ (standard library only, no external dependencies)
 
 Examples:
     ./thesis.py init             # Create initial directory structure
-    ./thesis.py build            # Build v1.3 from source
-    ./thesis.py major            # Create v2.0
+    ./thesis.py split            # Split existing thesis into source
+    ./thesis.py build            # Build new version from source
+    ./thesis.py fetch            # Sync config with research dir
     ./thesis.py tree             # Show thesis source structure
 """
 
@@ -209,14 +211,14 @@ def collect_source_files(source_dir: Path) -> list[SourceFile]:
                 content=content,
             ))
         elif path.is_dir():
-            # Process directory itself (for chapter headers)
+            # Process directory itself (for chapter/section headers)
             dir_number, dir_title = parse_dir_or_file_name(path.name)
-            
+
             # Check for _chapter.md or _section.md
             header_file = path / "_section.md"
             if not header_file.exists():
                 header_file = path / "_chapter.md"
-            
+
             if header_file.exists():
                 content = header_file.read_text(encoding="utf-8")
                 files.append(SourceFile(
@@ -226,7 +228,17 @@ def collect_source_files(source_dir: Path) -> list[SourceFile]:
                     level=level,
                     content=content,
                 ))
-            
+            elif dir_number and dir_title:
+                # No header file, but directory has number and title
+                # Create a placeholder entry for TOC generation
+                files.append(SourceFile(
+                    path=path,
+                    number=dir_number,
+                    title=dir_title,
+                    level=level,
+                    content="",  # No content, just for TOC
+                ))
+
             # Process children
             children = sorted(path.iterdir(), key=lambda p: (
                 0 if p.name.startswith("_") else 1,
@@ -243,7 +255,16 @@ def collect_source_files(source_dir: Path) -> list[SourceFile]:
     for item in sorted(source_dir.iterdir()):
         if item.name.startswith("."):
             continue
-        process_path(item, 0 if item.is_file() else 1)
+        # Frontmatter files (starting with _) are level 0
+        # Other top-level files (謝辞, 参考文献, etc.) are level 1 (chapter level)
+        # Directories start at level 1
+        if item.is_file():
+            if item.name.startswith("_"):
+                process_path(item, 0)  # Frontmatter
+            else:
+                process_path(item, 1)  # Special chapter-level files
+        else:
+            process_path(item, 1)
     
     # Sort by section number
     files.sort(key=lambda f: f.sort_key)
@@ -251,36 +272,122 @@ def collect_source_files(source_dir: Path) -> list[SourceFile]:
     return files
 
 
+def generate_toc(files: list[SourceFile]) -> str:
+    """Generate table of contents from source files."""
+    toc_lines = ["# 目次\n"]
+    
+    for f in files:
+        # Skip frontmatter and files without titles
+        if f.level == 0 or f.path.name.startswith("_") or not f.title:
+            continue
+        
+        # Generate anchor from title
+        if f.level == 1 and f.number:
+            # Chapter: 第1章 序論
+            title = f"第{f.number}章 {f.title}"
+            anchor = f"第{f.number}章-{f.title.lower().replace(' ', '-')}"
+            toc_lines.append(f"- [{title}](#{anchor})")
+        elif f.level == 2 and f.number:
+            # Section: 1.1 研究の背景
+            title = f"{f.number} {f.title}"
+            anchor = f"{f.number.replace('.', '')}-{f.title.lower().replace(' ', '-')}"
+            toc_lines.append(f"  - [{title}](#{anchor})")
+        elif f.level == 3 and f.number:
+            # Subsection: 1.1.1 概要
+            title = f"{f.number} {f.title}"
+            anchor = f"{f.number.replace('.', '')}-{f.title.lower().replace(' ', '-')}"
+            toc_lines.append(f"    - [{title}](#{anchor})")
+        elif not f.number:
+            # Special sections like 謝辞, 参考文献
+            if any(kw in f.title for kw in ["謝辞", "参考文献", "付録"]):
+                anchor = f.title.lower().replace(' ', '-')
+                toc_lines.append(f"- [{f.title}](#{anchor})")
+    
+    return "\n".join(toc_lines)
+
+
 def build_thesis_content(files: list[SourceFile], config: configparser.ConfigParser) -> str:
     """Build complete thesis content from source files."""
-    parts = []
+    frontmatter_parts = []
+    body_parts = []
+    current_chapter = None
     
     for f in files:
         content = f.content.strip()
         
-        # Skip empty files
-        if not content:
+        # Separate frontmatter from body
+        # Frontmatter: level 0 or filename starts with "_"
+        if f.level == 0 or f.path.name.startswith("_"):
+            if content:
+                frontmatter_parts.append(content)
             continue
         
-        # Add appropriate heading if not already present
-        if f.number and not content.startswith("#"):
+        # Generate heading based on level
+        heading = None
+        if f.number:
             if f.level == 1:
-                # Chapter
+                # Chapter: # 第1章 序論
                 heading = f"# 第{f.number}章 {f.title}"
+                current_chapter = f.number
             elif f.level == 2:
-                # Section
+                # Section: ## 1.1 研究の背景
                 heading = f"## {f.number} {f.title}"
             elif f.level == 3:
-                # Subsection
+                # Subsection: ### 1.1.1 概要
                 heading = f"### {f.number} {f.title}"
             else:
                 heading = f"#### {f.number} {f.title}"
-            
-            content = f"{heading}\n\n{content}"
+        elif f.title:
+            # Special sections (謝辞, 参考文献, 付録)
+            heading = f"# {f.title}"
         
-        parts.append(content)
+        # Build the output for this file
+        if heading:
+            if content:
+                # Has both heading and content
+                if not content.startswith("#"):
+                    body_parts.append(f"{heading}\n\n{content}")
+                else:
+                    # Content already has heading, use as-is
+                    body_parts.append(content)
+            else:
+                # Only heading (directory entry)
+                body_parts.append(heading)
+        elif content:
+            # Only content
+            body_parts.append(content)
     
-    return "\n\n---\n\n".join(parts)
+    # Build: frontmatter + TOC + body
+    result_parts = []
+    
+    # Add frontmatter (title, author info)
+    if frontmatter_parts:
+        result_parts.append("\n\n".join(frontmatter_parts))
+        result_parts.append("---")
+    
+    # Generate and add table of contents
+    toc = generate_toc(files)
+    result_parts.append(toc)
+    result_parts.append("---")
+    
+    # Add body content with --- only before chapters (# headings)
+    # Skip first --- since TOC already ends with ---
+    body_output = []
+    first_chapter = True
+    for part in body_parts:
+        # Remove trailing --- from content (will be added explicitly between chapters)
+        part = re.sub(r'\n---\s*$', '', part)
+        
+        # Add --- before chapter headings (# 第X章 or special sections like # 謝辞)
+        if part.startswith("# "):
+            if not first_chapter:
+                body_output.append("---")
+            first_chapter = False
+        body_output.append(part)
+    
+    result_parts.append("\n\n".join(body_output))
+    
+    return "\n\n".join(result_parts)
 
 
 # =============================================================================
@@ -397,8 +504,18 @@ def split_existing_thesis(config: configparser.ConfigParser) -> None:
     section_pattern = re.compile(r"^## (\d+\.\d+)\s+(.+)$", re.MULTILINE)
     subsection_pattern = re.compile(r"^### (\d+\.\d+\.\d+)\s+(.+)$", re.MULTILINE)
     
+    # Keywords to skip (not real chapters)
+    skip_keywords = ["修士論文", "目次", "論文", "Thesis", "Table of Contents"]
+    
     # Find all chapters
-    chapters = list(chapter_pattern.finditer(content))
+    all_chapters = list(chapter_pattern.finditer(content))
+    
+    # Filter out non-chapter headings
+    chapters = []
+    for ch in all_chapters:
+        title = ch.group(1)
+        if not any(kw in title for kw in skip_keywords):
+            chapters.append(ch)
     
     for i, chapter_match in enumerate(chapters):
         chapter_title = chapter_match.group(1)
@@ -440,8 +557,9 @@ def split_existing_thesis(config: configparser.ConfigParser) -> None:
                 subsections = list(subsection_pattern.finditer(section_content))
                 
                 if subsections:
-                    # Create section directory
-                    section_dir = chapter_dir / f"{section_num} {section_title}"
+                    # Create section directory (sanitize for filesystem)
+                    section_dir_name = sanitize_filename(f"{section_num} {section_title}")
+                    section_dir = chapter_dir / section_dir_name
                     section_dir.mkdir(exist_ok=True)
                     
                     for k, subsec_match in enumerate(subsections):
@@ -451,12 +569,15 @@ def split_existing_thesis(config: configparser.ConfigParser) -> None:
                         subsec_end = subsections[k + 1].start() if k + 1 < len(subsections) else len(section_content)
                         subsec_content = section_content[subsec_start:subsec_end].strip()
                         
-                        file_path = section_dir / f"{subsec_num} {subsec_title}.md"
+                        # Sanitize filename
+                        subsec_filename = sanitize_filename(f"{subsec_num} {subsec_title}.md")
+                        file_path = section_dir / subsec_filename
                         file_path.write_text(subsec_content + "\n", encoding="utf-8")
                         print(f"  ✓ Created {file_path.relative_to(source_dir)}")
                 else:
-                    # No subsections, create section file
-                    file_path = chapter_dir / f"{section_num} {section_title}.md"
+                    # No subsections, create section file (sanitize for filesystem)
+                    section_filename = sanitize_filename(f"{section_num} {section_title}.md")
+                    file_path = chapter_dir / section_filename
                     file_path.write_text(section_content + "\n", encoding="utf-8")
                     print(f"  ✓ Created {file_path.relative_to(source_dir)}")
         else:
@@ -465,17 +586,38 @@ def split_existing_thesis(config: configparser.ConfigParser) -> None:
             file_path.write_text(chapter_content + "\n", encoding="utf-8")
             print(f"  ✓ Created {file_path.relative_to(source_dir)}")
     
-    # Extract frontmatter
+    # Extract frontmatter (content before first real chapter)
     original_content = current.file_path.read_text(encoding="utf-8")
-    first_chapter = chapter_pattern.search(original_content)
-    if first_chapter:
-        frontmatter_content = original_content[:first_chapter.start()].strip()
+    
+    # Find first real chapter (# 第X章) by searching for the pattern
+    first_real_chapter = re.search(r"^# 第\d+章\s+", original_content, re.MULTILINE)
+    
+    if first_real_chapter:
+        frontmatter_content = original_content[:first_real_chapter.start()].strip()
+        
         # Remove YAML frontmatter
         if frontmatter_content.startswith("---"):
             end_match = re.search(r"\n---\n", frontmatter_content[3:])
             if end_match:
                 frontmatter_content = frontmatter_content[end_match.end() + 3:].strip()
         
+        # Remove :::caution blocks (past version notices)
+        frontmatter_content = re.sub(
+            r":::caution\[.*?\].*?:::",
+            "",
+            frontmatter_content,
+            flags=re.DOTALL
+        ).strip()
+        
+        # Remove table of contents section (will be auto-generated)
+        # TOC is between "# 目次" and the next "---" or end
+        toc_match = re.search(r"# 目次\s*\n.*?(?=\n---\s*$|\Z)", frontmatter_content, re.MULTILINE | re.DOTALL)
+        if toc_match:
+            frontmatter_content = frontmatter_content[:toc_match.start()].strip()
+        
+        # Clean up any trailing ---
+        frontmatter_content = re.sub(r"\n---\s*$", "", frontmatter_content).strip()
+
         if frontmatter_content:
             fm_file = source_dir / "_frontmatter.md"
             fm_file.write_text(frontmatter_content + "\n", encoding="utf-8")
@@ -584,6 +726,47 @@ def increment_major_version(config: configparser.ConfigParser) -> None:
     set_version(config, new_major, 0)
     print(f"\n✅ Set version to {new_major}.0")
     print("   Run './thesis.py build' to create the new revision.")
+
+
+# =============================================================================
+# Fetch Command
+# =============================================================================
+
+def fetch_version(config: configparser.ConfigParser) -> None:
+    """Sync thesis.config version with the latest revision in research directory."""
+    revisions = get_revisions()
+    
+    if not revisions:
+        print("No thesis revisions found in research directory.")
+        print("Config version unchanged.")
+        return
+    
+    # Find the current (latest) revision
+    current = next((r for r in revisions if r.is_current), None)
+    if not current:
+        # If no current, use the highest version
+        current = max(revisions, key=lambda r: (r.major, r.minor))
+    
+    config_major, config_minor = get_current_version(config)
+    
+    print(f"Research directory:")
+    print(f"  Latest revision: v{current.major}.{current.minor}")
+    print(f"  Total revisions: {len(revisions)}")
+    print(f"\nConfig file:")
+    print(f"  Current version: v{config_major}.{config_minor}")
+    
+    if current.major == config_major and current.minor == config_minor:
+        print("\n✅ Config is already in sync.")
+        return
+    
+    print(f"\nSync config to v{current.major}.{current.minor}? [y/N]: ", end="")
+    response = input()
+    if response.lower() != "y":
+        print("Cancelled.")
+        return
+    
+    set_version(config, current.major, current.minor)
+    print(f"\n✅ Config synced to v{current.major}.{current.minor}")
 
 
 # =============================================================================
@@ -713,21 +896,30 @@ def update_index_md_for_new_version(new_rev: Revision) -> None:
     """Update index.md with new version."""
     if not INDEX_FILE.exists():
         return
-    
+
     content = INDEX_FILE.read_text(encoding="utf-8")
-    
-    # Update existing "最新" row to past version
-    content = re.sub(
-        r"\| \*\*v([\d.]+)\*\* \| 最新 \| 📗 現行版 \| \[論文を読む →\]\(\./thesis-v(\d+)-(\d+)/\) \|",
-        r"| v\1 | - | 📕 過去版 | [論文を読む →](./thesis-v\2-\3/) |",
-        content,
-    )
-    
-    # Add new row
-    new_row = f"| **v{new_rev.version}** | 最新 | 📗 現行版 | [論文を読む →](./{new_rev.slug}/) |"
-    table_header = "|-----------|--------|------|--------|"
-    content = content.replace(table_header, table_header + "\n" + new_row)
-    
+
+    # Check if this version already exists
+    if f"thesis-v{new_rev.major}-{new_rev.minor}" in content:
+        # Already exists, just update status
+        content = re.sub(
+            rf"\| v{new_rev.version} \| [^|]+ \| [^|]+ \| \[論文を読む →\]\(\./thesis-v{new_rev.major}-{new_rev.minor}/\) \|",
+            f"| **v{new_rev.version}** | 最新 | 📗 現行版 | [論文を読む →](./{new_rev.slug}/) |",
+            content,
+        )
+    else:
+        # Update existing "最新" row to past version
+        content = re.sub(
+            r"\| \*\*v([\d.]+)\*\* \| 最新 \| 📗 現行版 \| \[論文を読む →\]\(\./thesis-v(\d+)-(\d+)/\) \|",
+            r"| v\1 | - | 📕 過去版 | [論文を読む →](./thesis-v\2-\3/) |",
+            content,
+        )
+
+        # Add new row
+        new_row = f"| **v{new_rev.version}** | 最新 | 📗 現行版 | [論文を読む →](./{new_rev.slug}/) |"
+        table_header = "|-----------|--------|------|--------|"
+        content = content.replace(table_header, table_header + "\n" + new_row)
+
     INDEX_FILE.write_text(content, encoding="utf-8")
 
 
@@ -735,15 +927,20 @@ def update_astro_config_for_new_version(new_rev: Revision) -> None:
     """Update astro.config.mjs with new version."""
     if not ASTRO_CONFIG.exists():
         return
-    
+
     content = ASTRO_CONFIG.read_text(encoding="utf-8")
-    
+
+    # Check if this version already exists
+    if f"research/{new_rev.slug}" in content:
+        # Already exists, skip
+        return
+
     # Add new item after '論文一覧'
     new_item = f"            {{ label: '修士論文 v{new_rev.version}', slug: 'research/{new_rev.slug}', translations: {{ en: 'Thesis v{new_rev.version}' }} }},"
-    
+
     pattern = r"(\{ label: '論文一覧'.*?\},)"
     match = re.search(pattern, content)
-    
+
     if match:
         insert_pos = match.end()
         content = content[:insert_pos] + "\n" + new_item + content[insert_pos:]
@@ -812,6 +1009,25 @@ def show_revision(version_str: str) -> None:
     print(f"Sections:   {h2_count}")
     print(f"Mermaid:    {mermaid_count} diagram(s)")
     print()
+
+
+def sanitize_filename(name: str) -> str:
+    """Sanitize a string for use as a filename."""
+    # Replace characters that are problematic in filenames
+    replacements = {
+        "/": "・",
+        "\\": "・",
+        ":": "：",
+        "*": "＊",
+        "?": "？",
+        '"': "'",
+        "<": "＜",
+        ">": "＞",
+        "|": "｜",
+    }
+    for old, new in replacements.items():
+        name = name.replace(old, new)
+    return name
 
 
 def parse_version_string(version_str: str) -> tuple[int, int]:
@@ -896,6 +1112,7 @@ Examples:
   %(prog)s split             Split existing thesis into source structure
   %(prog)s build             Build thesis from source (creates new revision)
   %(prog)s major             Increment major version (1.x → 2.0)
+  %(prog)s fetch             Sync config with research directory
   %(prog)s tree              Show source directory structure
   %(prog)s list              List all revisions
   %(prog)s show 1.2          Show details of v1.2
@@ -909,6 +1126,7 @@ Examples:
     subparsers.add_parser("split", help="Split existing thesis into source structure")
     subparsers.add_parser("build", help="Build thesis from source")
     subparsers.add_parser("major", help="Increment major version")
+    subparsers.add_parser("fetch", help="Sync config with research directory")
     subparsers.add_parser("tree", help="Show source directory structure")
     subparsers.add_parser("list", help="List all revisions")
     
@@ -938,6 +1156,8 @@ Examples:
         build_thesis(config)
     elif args.command == "major":
         increment_major_version(config)
+    elif args.command == "fetch":
+        fetch_version(config)
     elif args.command == "tree":
         show_source_tree(config)
     elif args.command == "list":

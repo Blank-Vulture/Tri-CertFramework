@@ -10,7 +10,6 @@ sidebar:
     variant: "caution"
 ---
 
-
 :::caution[過去バージョン]
 これは過去バージョン（v1.1）です。最新版は [v1.2](./thesis-v1-2/) をご覧ください。
 :::

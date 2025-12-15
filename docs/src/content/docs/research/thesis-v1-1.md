@@ -1,3 +1,20 @@
+---
+title: "修士論文 v1.1"
+description: "文書の真正性検証フレームワークの設計と実装 - ゼロ知識証明を用いた分散型証明システム Tri-CertFramework（v1.1）"
+tableOfContents:
+  minHeadingLevel: 2
+  maxHeadingLevel: 3
+sidebar:
+  badge:
+    text: "過去版"
+    variant: "caution"
+---
+
+
+:::caution[過去バージョン]
+これは過去バージョン（v1.1）です。最新版は [v1.2](./thesis-v1-2/) をご覧ください。
+:::
+
 # 修士論文
 
 ## 文書の真正性検証フレームワークの設計と実装
@@ -6,10 +23,10 @@
 神戸情報大学院大学
 情報技術研究科 情報システム専攻
 
-学籍番号：XXXXX
-氏名：XXXXX
+学籍番号：24024
+氏名：白石鷹也
 
-提出日：20XX年X月X日
+提出日：2026年2月6日
 
 ---
 
@@ -71,7 +88,7 @@
 2. **内容の完全性**: その文書が発行後に改竄されていないか
 3. **所有者の本人性**: その文書を提示している人物が、正当な所有者本人であるか
 
-```mermaid
+<pre class="mermaid">
 flowchart TD
     subgraph Validation ["真正性検証の3要素"]
         direction TB
@@ -85,7 +102,7 @@ flowchart TD
     A --> D
     B --> D
     C --> D
-```
+</pre>
 
 **図1.1: 真正性検証の3要素**
 
@@ -275,7 +292,7 @@ Tri-CertFrameworkは、第1章で述べた3つの課題を解決するため、�
 
 Tri-CertFrameworkは、4つの主要コンポーネントで構成される（図3.1）：
 
-```mermaid
+<pre class="mermaid">
 flowchart TD
     subgraph System ["Tri-CertFramework Architecture"]
         %% Top Layer
@@ -312,7 +329,7 @@ flowchart TD
         style Consoles fill:transparent,stroke:none
         style WebApps fill:transparent,stroke:none
     end
-```
+</pre>
 
 **図3.1: Tri-CertFrameworkのシステムアーキテクチャ**
 
@@ -346,7 +363,7 @@ flowchart TD
 
 本システムの「3層認証」は、以下の3つの独立した認証メカニズムで構成される：
 
-```mermaid
+<pre class="mermaid">
 flowchart TD
     subgraph ThreeLayers ["3層認証構造"]
         L1["**第1層: 発行機関による登録**<br><br>• Saltの発行とactivation_hashの計算<br>• Allowlistへの登録<br>→ 発行機関が正当に登録したことを証明"]
@@ -356,7 +373,7 @@ flowchart TD
         L1 --> L2
         L2 --> L3
     end
-```
+</pre>
 
 **図3.2: 3層認証の構造**
 
@@ -1047,11 +1064,9 @@ Executive Consoleで生成されるVKはLedgerハードウェアウォレット�
 
 本研究は、神戸情報大学院大学情報技術研究科情報システム専攻において実施しました。
 
-指導教員のXXXX教授には、研究の方向性から実装の詳細に至るまで、多大なご指導をいただきました。深く感謝申し上げます。
+指導教員の土田教授には、研究の方向性から実装の詳細に至るまで、多大なご指導をいただきました。深く感謝申し上げます。
 
-また、副査のXXXX教授、研究室の皆様には、ゼミナールでの議論を通じて貴重なご意見をいただきました。
-
-本システムの検証にご協力いただいた医療事務従事者の方、同期の研究員の方々に心より感謝申し上げます。実務の視点からのフィードバックは、システムの改善に大きく貢献しました。
+また、同期の長須さんには、ゼミナールでの議論を通じて貴重なご意見をいただきました。
 
 本システムの実装にあたり、オープンソースコミュニティで公開されているSnarkJS、Circom、Wails、Tauriなどの優れたライブラリを活用させていただきました。これらのプロジェクトの開発者の皆様に感謝いたします。
 

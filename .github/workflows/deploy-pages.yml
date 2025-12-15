@@ -33,11 +33,16 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: |
+            docs/package-lock.json
             prover/package-lock.json
             verifier-ui/package-lock.json
+
+      - name: Install dependencies (Docs)
+        working-directory: ./docs
+        run: npm ci
 
       - name: Install dependencies (Prover)
         working-directory: ./prover
@@ -65,11 +70,19 @@ jobs:
           ASSET_PREFIX: "/Tri-CertFramework/verifier-ui"
           NEXT_PUBLIC_BASE_PATH: "/Tri-CertFramework/verifier-ui"
 
+      - name: Build Docs (Astro)
+        working-directory: ./docs
+        run: npm run build
+
       - name: Create deployment directory
         run: |
           mkdir -p deploy/dist
           mkdir -p deploy/dist/prover
           mkdir -p deploy/dist/verifier-ui
+
+      - name: Copy Docs build output (root)
+        run: |
+          cp -r docs/dist/* deploy/dist/
 
       - name: Copy Prover build output
         run: |
@@ -78,68 +91,6 @@ jobs:
       - name: Copy Verifier UI build output
         run: |
           cp -r verifier-ui/out/* deploy/dist/verifier-ui/
-
-      - name: Create index.html redirect
-        run: |
-          cat > deploy/dist/index.html << 'EOF'
-          <!DOCTYPE html>
-          <html lang="en">
-          <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Tri-CertFramework</title>
-            <style>
-              body {
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                min-height: 100vh;
-                margin: 0;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-              }
-              .container {
-                text-align: center;
-                background: white;
-                padding: 2rem;
-                border-radius: 12px;
-                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-              }
-              h1 {
-                margin: 0 0 1rem 0;
-                color: #333;
-              }
-              .links {
-                display: flex;
-                gap: 1rem;
-                justify-content: center;
-                flex-wrap: wrap;
-              }
-              a {
-                display: inline-block;
-                padding: 0.75rem 1.5rem;
-                background: #667eea;
-                color: white;
-                text-decoration: none;
-                border-radius: 6px;
-                transition: background 0.3s;
-              }
-              a:hover {
-                background: #5568d3;
-              }
-            </style>
-          </head>
-          <body>
-            <div class="container">
-              <h1>Tri-CertFramework</h1>
-              <div class="links">
-                <a href="/Tri-CertFramework/prover/">Prover</a>
-                <a href="/Tri-CertFramework/verifier-ui/">Verifier UI</a>
-              </div>
-            </div>
-          </body>
-          </html>
-          EOF
 
       - name: Upload pages artifact
         uses: actions/upload-pages-artifact@v3

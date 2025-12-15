@@ -1,0 +1,60 @@
+---
+title: Tri-CertFramework
+description: ZK証明ベースのデジタル証明書検証システム
+template: splash
+hero:
+  tagline: 次世代の「信頼」を、もっと身近に、もっと確実に。
+  image:
+    file: ../../assets/logo-light.svg
+  actions:
+    - text: テストガイド
+      link: /Tri-CertFramework/getting-started/test-guide/
+      icon: right-arrow
+      variant: primary
+    - text: 概要を見る →
+      link: /Tri-CertFramework/getting-started/overview/
+      variant: secondary
+---
+
+import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+## アプリケーション
+
+<CardGrid>
+  <LinkCard
+    title="📄 Prover"
+    description="証明書にZK証明を添付するWebアプリケーション"
+    href="/Tri-CertFramework/prover/"
+  />
+  <LinkCard
+    title="✅ Verifier"
+    description="証明書の真正性を検証するWebアプリケーション"
+    href="/Tri-CertFramework/verifier-ui/"
+  />
+</CardGrid>
+
+## 4つの主要コンポーネント
+
+<CardGrid>
+  <Card title="🏛️ Executive Console" icon="setting">
+    組織のトップレベル管理者が使用するダッシュボード。Ledgerハードウェアウォレットによる高セキュリティ署名に対応。
+  </Card>
+  <Card title="✍️ Registrar Console" icon="pencil">
+    大学の教務課や企業の総務部など、現場担当者が使用するデスクトップアプリ。
+  </Card>
+  <Card title="📱 Prover" icon="document">
+    一般ユーザーが証明書を受け取り、ZK証明を添付するためのWebアプリケーション。
+  </Card>
+  <Card title="🔍 Verifier UI" icon="approve-check">
+    提示された証明書が本物かを確認するWebサイト。ログイン不要で誰でも即座に検証可能。
+  </Card>
+</CardGrid>
+
+## 技術スタック
+
+| Component | Framework | Language | Key Features |
+|-----------|-----------|----------|--------------|
+| **Executive** | [Tauri](https://tauri.app/) | Rust, TS | Ledger連携、ネイティブパフォーマンス |
+| **Registrar** | [Wails](https://wails.io/) | Go, JS | 軽量バイナリ、クロスプラットフォーム |
+| **Prover** | [Next.js](https://nextjs.org/) | TypeScript | ZK証明生成、WebAuthn署名 |
+| **Verifier** | [Next.js](https://nextjs.org/) | TypeScript | 静的エクスポート、高可用性 |

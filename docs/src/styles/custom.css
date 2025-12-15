@@ -1,0 +1,341 @@
+/* Tri-CertFramework Custom Styles for Starlight */
+
+/* Color Variables - Professional & Modern */
+:root {
+  /* Primary colors */
+  --sl-color-accent-low: #e0e7ff;
+  --sl-color-accent: #667eea;
+  --sl-color-accent-high: #4f46e5;
+  
+  /* Background */
+  --sl-color-bg: #ffffff;
+  --sl-color-bg-nav: #fafbfc;
+  --sl-color-bg-sidebar: #f8fafc;
+  
+  /* Text */
+  --sl-color-text: #1e293b;
+  --sl-color-text-accent: #4f46e5;
+  
+  /* Border */
+  --sl-color-hairline-light: #e2e8f0;
+  --sl-color-hairline: #cbd5e1;
+  
+  /* Typography - Professional sans-serif */
+  --sl-font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  
+  /* Border radius - subtle professional look */
+  --sl-border-radius: 8px;
+}
+
+/* Dark mode */
+:root[data-theme='dark'] {
+  --sl-color-accent-low: #3730a3;
+  --sl-color-accent: #818cf8;
+  --sl-color-accent-high: #a5b4fc;
+  
+  --sl-color-bg: #0f172a;
+  --sl-color-bg-nav: #1e293b;
+  --sl-color-bg-sidebar: #1e293b;
+  
+  --sl-color-text: #e2e8f0;
+  
+  --sl-color-hairline-light: #334155;
+  --sl-color-hairline: #475569;
+}
+
+/* Header - More professional */
+header.header {
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--sl-color-hairline-light);
+}
+
+/* Sidebar refinements */
+.sidebar-content {
+  font-size: 0.9375rem;
+}
+
+/* Link styling */
+a {
+  transition: color 0.2s ease;
+}
+
+/* Cards - Professional styling */
+.card {
+  border: 1px solid var(--sl-color-hairline-light);
+  border-radius: var(--sl-border-radius);
+  background: var(--sl-color-bg);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+/* Callouts/Asides - More subtle */
+.starlight-aside {
+  border-radius: var(--sl-border-radius);
+  border-left-width: 4px;
+}
+
+/* Code blocks - Professional look */
+pre {
+  border-radius: var(--sl-border-radius);
+  border: 1px solid var(--sl-color-hairline-light);
+}
+
+/* Tables - Clean professional styling */
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+th {
+  background: var(--sl-color-bg-sidebar);
+  font-weight: 600;
+  text-align: left;
+  padding: 0.75rem 1rem;
+  border-bottom: 2px solid var(--sl-color-accent);
+}
+
+td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--sl-color-hairline-light);
+}
+
+tr:hover td {
+  background: var(--sl-color-bg-sidebar);
+}
+
+/* Headings - Professional hierarchy */
+h1 {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+h2 {
+  font-weight: 600;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--sl-color-hairline-light);
+  margin-top: 2rem;
+}
+
+h3 {
+  font-weight: 600;
+  color: var(--sl-color-text-accent);
+}
+
+/* Badge styling */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.badge-primary {
+  background: var(--sl-color-accent-low);
+  color: var(--sl-color-accent-high);
+}
+
+.badge-success {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+:root[data-theme='dark'] .badge-primary {
+  background: rgba(129, 140, 248, 0.2);
+  color: #a5b4fc;
+}
+
+:root[data-theme='dark'] .badge-success {
+  background: rgba(16, 185, 129, 0.2);
+  color: #6ee7b7;
+}
+
+/* App Launch Card - For test guide */
+.app-launch-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+  margin: 1.5rem 0;
+  border-radius: 12px;
+  border: 2px solid var(--sl-color-hairline-light);
+  background: var(--sl-color-bg-sidebar);
+  transition: all 0.2s ease;
+}
+
+.app-launch-card:hover {
+  border-color: var(--sl-color-accent);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+}
+
+.app-launch-card.prover {
+  border-left: 4px solid #3b82f6;
+}
+
+.app-launch-card.verifier {
+  border-left: 4px solid #10b981;
+}
+
+.app-launch-icon {
+  font-size: 2.5rem;
+  flex-shrink: 0;
+}
+
+.app-launch-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.app-launch-content h4 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--sl-color-text);
+}
+
+.app-launch-content p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--sl-color-gray-3);
+}
+
+.app-launch-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  text-decoration: none !important;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.prover .app-launch-button {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: white !important;
+}
+
+.prover .app-launch-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+.verifier .app-launch-button {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white !important;
+}
+
+.verifier .app-launch-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+@media (max-width: 640px) {
+  .app-launch-card {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .app-launch-button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Academic Paper Styles */
+/* Research/Thesis pages */
+[data-slug^="research/thesis"] .sl-markdown-content {
+  max-width: 72ch;
+  font-size: 1.05rem;
+  line-height: 1.8;
+}
+
+[data-slug^="research/thesis"] .sl-markdown-content h1 {
+  font-size: 1.75rem;
+  text-align: center;
+  margin-top: 3rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid var(--sl-color-accent);
+}
+
+[data-slug^="research/thesis"] .sl-markdown-content h2 {
+  font-size: 1.4rem;
+  margin-top: 2.5rem;
+  padding-left: 0.5rem;
+  border-left: 4px solid var(--sl-color-accent);
+  border-bottom: none;
+}
+
+[data-slug^="research/thesis"] .sl-markdown-content h3 {
+  font-size: 1.2rem;
+  margin-top: 2rem;
+}
+
+[data-slug^="research/thesis"] .sl-markdown-content h4 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-top: 1.5rem;
+}
+
+/* Blockquote styling for interviews */
+[data-slug^="research/thesis"] .sl-markdown-content blockquote {
+  background: var(--sl-color-bg-sidebar);
+  border-left: 4px solid var(--sl-color-accent);
+  padding: 1rem 1.5rem;
+  margin: 1.5rem 0;
+  border-radius: 0 8px 8px 0;
+  font-style: italic;
+}
+
+/* Figure captions */
+[data-slug^="research/thesis"] .sl-markdown-content p strong:first-child:last-child {
+  display: block;
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--sl-color-gray-3);
+  margin-top: 0.5rem;
+}
+
+/* Code blocks in thesis - more compact */
+[data-slug^="research/thesis"] .sl-markdown-content pre {
+  font-size: 0.85rem;
+}
+
+/* Mermaid diagrams centering */
+pre.mermaid {
+  display: flex;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  padding: 1rem 0;
+  margin: 1.5rem 0;
+}
+
+pre.mermaid svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Print styles for formal documents */
+@media print {
+  .header,
+  .sidebar,
+  .right-sidebar {
+    display: none;
+  }
+  
+  main {
+    max-width: 100%;
+    padding: 0;
+  }
+  
+  h1, h2, h3 {
+    page-break-after: avoid;
+  }
+}

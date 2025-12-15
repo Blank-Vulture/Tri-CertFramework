@@ -1,0 +1,60 @@
+---
+title: Tri-CertFramework
+description: ZK Proof-based Digital Certificate Verification System
+template: splash
+hero:
+  tagline: Making trust more accessible, more reliable.
+  image:
+    file: ../../../assets/logo-light.svg
+  actions:
+    - text: Test Guide
+      link: /Tri-CertFramework/en/getting-started/test-guide/
+      icon: right-arrow
+      variant: primary
+    - text: Overview →
+      link: /Tri-CertFramework/en/getting-started/overview/
+      variant: secondary
+---
+
+import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+## Applications
+
+<CardGrid>
+  <LinkCard
+    title="📄 Prover"
+    description="Web application to attach ZK proofs to certificates"
+    href="/Tri-CertFramework/prover/"
+  />
+  <LinkCard
+    title="✅ Verifier"
+    description="Web application to verify certificate authenticity"
+    href="/Tri-CertFramework/verifier-ui/"
+  />
+</CardGrid>
+
+## Four Main Components
+
+<CardGrid>
+  <Card title="🏛️ Executive Console" icon="setting">
+    Dashboard for top-level administrators. Supports high-security signing with Ledger hardware wallets.
+  </Card>
+  <Card title="✍️ Registrar Console" icon="pencil">
+    Desktop app for staff at university registrars or corporate HR departments.
+  </Card>
+  <Card title="📱 Prover" icon="document">
+    Web application for users to receive certificates and attach ZK proofs.
+  </Card>
+  <Card title="🔍 Verifier UI" icon="approve-check">
+    Website to verify if presented certificates are authentic. No login required.
+  </Card>
+</CardGrid>
+
+## Tech Stack
+
+| Component | Framework | Language | Key Features |
+|-----------|-----------|----------|--------------|
+| **Executive** | [Tauri](https://tauri.app/) | Rust, TS | Ledger integration, Native performance |
+| **Registrar** | [Wails](https://wails.io/) | Go, JS | Lightweight binary, Cross-platform |
+| **Prover** | [Next.js](https://nextjs.org/) | TypeScript | ZK proof generation, WebAuthn signing |
+| **Verifier** | [Next.js](https://nextjs.org/) | TypeScript | Static export, High availability |

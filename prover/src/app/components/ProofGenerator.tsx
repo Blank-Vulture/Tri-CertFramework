@@ -378,8 +378,8 @@ export default function ProofGenerator({
             />
           </div>
           
-          <div className="grid grid-cols-2 gap-4">
-            <div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="min-w-0">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 {t('proofGen.salt.name')}
               </label>
@@ -387,12 +387,12 @@ export default function ProofGenerator({
                 type="text"
                 value={studentName}
                 onChange={(e) => { setStudentName(e.target.value); setSaltVerification(null); }}
-                className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-amber-500 focus:ring-0"
+                className="w-full min-w-0 px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-amber-500 focus:ring-0"
                 placeholder={t('proofGen.salt.namePlaceholder')}
                 disabled={isProcessing || isVerifyingSalt}
               />
             </div>
-            <div>
+            <div className="min-w-0">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 {t('proofGen.salt.birthdate')}
               </label>
@@ -400,7 +400,7 @@ export default function ProofGenerator({
                 type="date"
                 value={studentBirthdate}
                 onChange={(e) => { setStudentBirthdate(e.target.value); setSaltVerification(null); }}
-                className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-amber-500 focus:ring-0"
+                className="w-full min-w-0 box-border px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-amber-500 focus:ring-0"
                 disabled={isProcessing || isVerifyingSalt}
               />
             </div>

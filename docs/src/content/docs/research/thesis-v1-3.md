@@ -1,23 +1,14 @@
 ---
-title: "修士論文 v1.2"
+title: "修士論文 v1.3"
 description: "文書の真正性検証フレームワークの設計と実装 - ゼロ知識証明を用いた分散型証明システム Tri-CertFramework"
 tableOfContents:
   minHeadingLevel: 2
   maxHeadingLevel: 3
-sidebar:
-  badge:
-    text: "過去版"
-    variant: "caution"
 ---
-
-:::caution[過去バージョン]
-これは過去バージョン（v1.2）です。最新版は [v1.3](./thesis-v1-3/) をご覧ください。
-:::
 
 # 修士論文
 
-## 文書の真正性検証フレームワークの設計と実装
-### ゼロ知識証明を用いた分散型証明システム Tri-CertFramework
+## 文書の真正性検証
 
 神戸情報大学院大学
 情報技術研究科 情報システム専攻

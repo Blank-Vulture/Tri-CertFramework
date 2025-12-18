@@ -55,6 +55,13 @@ interface VKeyData {
   vk_delta_2: string[][];
   vk_alphabeta_12: string[][][];
   IC: string[][];
+  metadata?: {
+    graduation_year?: number;
+    circuit_id?: string;
+    generated_at?: string;
+    circuit_wasm?: string;
+    circuit_zkey?: string;
+  };
 }
 
 interface CertificateInfo {
@@ -207,19 +214,28 @@ export default function Home() {
     }
   };
 
-  // Detect graduation year from proof
-  const detectGraduationYear = (proof: ProofData): number | null => {
+  // Detect graduation year from proof and/or vkey metadata
+  const detectGraduationYear = (proof: ProofData, vkey?: VKeyData | null): number | null => {
     try {
+      // Priority 1: Check proof.public_signals.graduation_year
       if (proof.public_signals?.graduation_year) {
         const year = parseInt(proof.public_signals.graduation_year, 10);
         if (year >= 2000 && year <= 2050) return year;
       }
 
+      // Priority 2: Check circuit_id for year pattern
       const circuitIdMatch = proof.circuit_id?.match(/(\d{4})/);
       if (circuitIdMatch) {
         const year = parseInt(circuitIdMatch[1], 10);
         if (year >= 2000 && year <= 2050) return year;
       }
+
+      // Priority 3: Check VKey metadata.graduation_year
+      if (vkey?.metadata?.graduation_year) {
+        const year = vkey.metadata.graduation_year;
+        if (year >= 2000 && year <= 2050) return year;
+      }
+
       return null;
     } catch {
       return null;
@@ -280,7 +296,7 @@ export default function Home() {
 
       // Store extracted data info for preview
       const detectedYearForPreview = extractedData.proof
-        ? detectGraduationYear(extractedData.proof)
+        ? detectGraduationYear(extractedData.proof, extractedData.vkey)
         : null;
       setExtractedDataInfo({
         hasProof: !!extractedData.proof,
@@ -417,9 +433,9 @@ export default function Home() {
       let issuerId: string | undefined;
 
       // Salt-based registration check
-      // Detect graduation year for year matching
+      // Detect graduation year for year matching (use vkeyUsedForZkp for metadata fallback)
       const proofGraduationYear = extractedData.proof
-        ? detectGraduationYear(extractedData.proof)
+        ? detectGraduationYear(extractedData.proof, vkeyUsedForZkp)
         : null;
 
       if (extractedData.proof?.registration) {
@@ -504,7 +520,7 @@ export default function Home() {
 
       // Build certificate info
       const detectedYear = extractedData.proof
-        ? detectGraduationYear(extractedData.proof)
+        ? detectGraduationYear(extractedData.proof, vkeyUsedForZkp)
         : null;
       const certificateInfo: CertificateInfo | undefined = extractedData.proof
         ? {

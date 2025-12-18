@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	defaultSchemaAllowlist = "tri-cert/commit-allowlist@2"
+	defaultSchemaAllowlist = "tri-cert/commit-allowlist@3"
 	defaultSchemaStudent   = "tri-cert/student-activation@1"
 	defaultSchemaIssuance  = "tri-cert/issuance-log@1"
 )
@@ -64,6 +64,7 @@ type StudentInput struct {
 	StudentID      string `json:"studentId"`
 	Name           string `json:"name"`
 	Birthdate      string `json:"birthdate"`
+	GraduationYear int    `json:"graduationYear,omitempty"`
 	Salt           string `json:"salt,omitempty"`
 	ActivationHash string `json:"activationHash,omitempty"`
 	IssuedAt       string `json:"issuedAt,omitempty"`
@@ -78,6 +79,7 @@ type RegistrationResult struct {
 	DisplayName          string `json:"displayName"`
 	NormalizedName       string `json:"normalizedName"`
 	NormalizedBirthdate  string `json:"normalizedBirthdate"`
+	GraduationYear       int    `json:"graduationYear,omitempty"`
 	AllowlistEntryIndex  int    `json:"allowlistEntryIndex"`
 	AllowlistTotalLength int    `json:"allowlistTotalLength"`
 	IssuedAt             string `json:"issuedAt"`
@@ -101,6 +103,7 @@ type AllowlistView struct {
 type AllowlistEntryRow struct {
 	ActivationHash string `json:"activationHash"`
 	StudentIDHash  string `json:"studentIdHash"`
+	GraduationYear int    `json:"graduationYear,omitempty"`
 	CreatedAt      string `json:"createdAt"`
 	UpdatedAt      string `json:"updatedAt"`
 }
@@ -120,6 +123,7 @@ type allowlistFile struct {
 type allowlistEntry struct {
 	ActivationHash string `json:"activation_hash"`
 	StudentIDHash  string `json:"student_id_hash"`
+	GraduationYear int    `json:"graduation_year,omitempty"`
 	CreatedAt      string `json:"created_at"`
 	UpdatedAt      string `json:"updated_at"`
 }
@@ -154,6 +158,7 @@ type IssuanceEntry struct {
 	Name             string `json:"name"`
 	NormalizedName   string `json:"normalized_name"`
 	Birthdate        string `json:"birthdate"`
+	GraduationYear   int    `json:"graduation_year,omitempty"`
 	Salt             string `json:"salt"`
 	ActivationHash   string `json:"activation_hash"`
 	CreatedAt        string `json:"created_at"`
@@ -271,6 +276,7 @@ func (s *Service) AddStudent(input StudentInput) (*RegistrationResult, error) {
 	entry := allowlistEntry{
 		ActivationHash: activationHash,
 		StudentIDHash:  studentIDHash,
+		GraduationYear: input.GraduationYear,
 	}
 
 	updated := false
@@ -323,6 +329,7 @@ func (s *Service) AddStudent(input StudentInput) (*RegistrationResult, error) {
 		DisplayName:          strings.TrimSpace(input.Name),
 		NormalizedName:       normalizedName,
 		NormalizedBirthdate:  normalizedBirthdate,
+		GraduationYear:       input.GraduationYear,
 		AllowlistEntryIndex:  index,
 		AllowlistTotalLength: len(allowlist.Entries),
 		IssuedAt:             issuedAt,
@@ -334,6 +341,7 @@ func (s *Service) AddStudent(input StudentInput) (*RegistrationResult, error) {
 		Name:             result.DisplayName,
 		NormalizedName:   result.NormalizedName,
 		Birthdate:        result.NormalizedBirthdate,
+		GraduationYear:   input.GraduationYear,
 		Salt:             result.Salt,
 		ActivationHash:   result.ActivationHash,
 		CreatedAt:        issuedAt,
@@ -412,10 +420,19 @@ func (s *Service) ParseCSV(content string) ([]StudentInput, error) {
 			return ""
 		}
 
+		// Parse graduation year if present
+		var graduationYear int
+		if yearStr := strings.TrimSpace(get("graduationYear")); yearStr != "" {
+			if parsed, err := parseGraduationYear(yearStr); err == nil {
+				graduationYear = parsed
+			}
+		}
+
 		input := StudentInput{
 			StudentID:      strings.TrimSpace(get("studentId")),
 			Name:           strings.TrimSpace(get("name")),
 			Birthdate:      strings.TrimSpace(get("birthdate")),
+			GraduationYear: graduationYear,
 			Salt:           strings.TrimSpace(get("salt")),
 			ActivationHash: strings.TrimSpace(get("activationHash")),
 			IssuedAt:       strings.TrimSpace(get("issuedAt")),
@@ -449,6 +466,7 @@ func (s *Service) GetAllowlist() (*AllowlistView, error) {
 		view.Entries[i] = AllowlistEntryRow{
 			ActivationHash: entry.ActivationHash,
 			StudentIDHash:  entry.StudentIDHash,
+			GraduationYear: entry.GraduationYear,
 			CreatedAt:      entry.CreatedAt,
 			UpdatedAt:      entry.UpdatedAt,
 		}
@@ -829,6 +847,25 @@ func normalizeBirthdate(value string) (string, error) {
 	return "", fmt.Errorf("invalid birthdate format: %q", value)
 }
 
+// parseGraduationYear parses a graduation year string (e.g., "2025", "2025年") to int
+func parseGraduationYear(value string) (int, error) {
+	clean := strings.TrimSpace(value)
+	clean = strings.ReplaceAll(clean, "年", "")
+	clean = strings.ReplaceAll(clean, "度", "")
+
+	var year int
+	if _, err := fmt.Sscanf(clean, "%d", &year); err != nil {
+		return 0, fmt.Errorf("invalid graduation year format: %q", value)
+	}
+
+	// Validate reasonable year range
+	if year < 2000 || year > 2100 {
+		return 0, fmt.Errorf("graduation year out of range: %d", year)
+	}
+
+	return year, nil
+}
+
 func generateSalt() (string, error) {
 	const saltBytes = 18 // ~90 bits when base32 encoded without padding (~29 chars)
 	buf := make([]byte, saltBytes)
@@ -869,6 +906,7 @@ func detectHeader(record []string) map[string]int {
 		"studentId":      -1,
 		"name":           -1,
 		"birthdate":      -1,
+		"graduationYear": -1,
 		"salt":           -1,
 		"activationHash": -1,
 		"issuedAt":       -1,
@@ -882,6 +920,8 @@ func detectHeader(record []string) map[string]int {
 			mapping["name"] = idx
 		case "birthdate", "birth date", "dob", "date_of_birth", "生年月日":
 			mapping["birthdate"] = idx
+		case "graduation_year", "graduationyear", "graduation-year", "卒業年度", "year":
+			mapping["graduationYear"] = idx
 		case "salt":
 			mapping["salt"] = idx
 		case "activation_hash", "activationhash", "activation-hash":
@@ -893,8 +933,10 @@ func detectHeader(record []string) map[string]int {
 		}
 	}
 
-	for _, idx := range mapping {
-		if idx < 0 {
+	// Check required fields only (studentId, name, birthdate)
+	requiredFields := []string{"studentId", "name", "birthdate"}
+	for _, field := range requiredFields {
+		if mapping[field] < 0 {
 			return nil
 		}
 	}

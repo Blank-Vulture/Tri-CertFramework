@@ -3,6 +3,7 @@ export namespace registrar {
 	export class AllowlistEntryRow {
 	    activationHash: string;
 	    studentIdHash: string;
+	    graduationYear?: number;
 	    createdAt: string;
 	    updatedAt: string;
 	
@@ -14,6 +15,7 @@ export namespace registrar {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.activationHash = source["activationHash"];
 	        this.studentIdHash = source["studentIdHash"];
+	        this.graduationYear = source["graduationYear"];
 	        this.createdAt = source["createdAt"];
 	        this.updatedAt = source["updatedAt"];
 	    }
@@ -74,6 +76,7 @@ export namespace registrar {
 	    name: string;
 	    normalized_name: string;
 	    birthdate: string;
+	    graduation_year?: number;
 	    salt: string;
 	    activation_hash: string;
 	    created_at: string;
@@ -91,6 +94,7 @@ export namespace registrar {
 	        this.name = source["name"];
 	        this.normalized_name = source["normalized_name"];
 	        this.birthdate = source["birthdate"];
+	        this.graduation_year = source["graduation_year"];
 	        this.salt = source["salt"];
 	        this.activation_hash = source["activation_hash"];
 	        this.created_at = source["created_at"];
@@ -107,6 +111,7 @@ export namespace registrar {
 	    displayName: string;
 	    normalizedName: string;
 	    normalizedBirthdate: string;
+	    graduationYear?: number;
 	    allowlistEntryIndex: number;
 	    allowlistTotalLength: number;
 	    issuedAt: string;
@@ -124,6 +129,7 @@ export namespace registrar {
 	        this.displayName = source["displayName"];
 	        this.normalizedName = source["normalizedName"];
 	        this.normalizedBirthdate = source["normalizedBirthdate"];
+	        this.graduationYear = source["graduationYear"];
 	        this.allowlistEntryIndex = source["allowlistEntryIndex"];
 	        this.allowlistTotalLength = source["allowlistTotalLength"];
 	        this.issuedAt = source["issuedAt"];
@@ -133,6 +139,7 @@ export namespace registrar {
 	    studentId: string;
 	    name: string;
 	    birthdate: string;
+	    graduationYear?: number;
 	    salt?: string;
 	    activationHash?: string;
 	    issuedAt?: string;
@@ -146,6 +153,7 @@ export namespace registrar {
 	        this.studentId = source["studentId"];
 	        this.name = source["name"];
 	        this.birthdate = source["birthdate"];
+	        this.graduationYear = source["graduationYear"];
 	        this.salt = source["salt"];
 	        this.activationHash = source["activationHash"];
 	        this.issuedAt = source["issuedAt"];

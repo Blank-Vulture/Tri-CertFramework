@@ -4,31 +4,14 @@
     "id": "tricert-framework-demo",
     "name": "KIC TriCert Framework Demo"
   },
-  "updated_at": "2025-12-18T05:15:32Z",
+  "updated_at": "2025-12-18T05:43:49Z",
   "entries": [
     {
-      "activation_hash": "sha512:a438c3842270258de05736a4c84e1b5dea9f27074e3261ce2f19f48a3f4d947f397a6cc0e3e99be8a356d588ceb9770181e84b3d4d39889e8bbc9e9be28745cc",
-      "student_id_hash": "sha512:41bb36108310e77f29cb319ccda33ee74afc419c161eac9fd2006368199c0326de710929dc9c381daac608e897bd30dde3cc89b25f2b785ecdbbb06ff5facac7",
-      "created_at": "2025-12-18T05:15:09Z",
-      "updated_at": "2025-12-18T05:15:09Z"
-    },
-    {
-      "activation_hash": "sha512:28c251cd2d6a8a79b870d9aa1e55d72427a169dd8e312e4a64fe59d5cd2ab692393d6cc1f0f0dd2e11ccb97527469e4479d37b32361a2b551071c598c1060b9d",
-      "student_id_hash": "sha512:c75ad89f0e73990c7eaf9a38d9525ecbd033dd57a7800f73229ecd6942d37cda64d4e57b01cea25b0948d7c817813d6deae584a62404bb2f19a99bfafadcad34",
-      "created_at": "2025-12-18T05:15:32Z",
-      "updated_at": "2025-12-18T05:15:32Z"
-    },
-    {
-      "activation_hash": "sha512:fb9a3c3075fe45630e8f2bb429ebeb7c1fe38de8bbbf737106174afbedd2cca39cf4ec113fc97821e8479c82e671c78d5a0ebf08d18fe805aa27ef50ba4990dd",
-      "student_id_hash": "sha512:db9510df3af0919feac2cd1faba7be6493247ea2f6eca63a454f2e6ed7d0edaffed80d3a00d5b4fe1d44fb531c1680a3fe9fdf82a043ff8edb5b7091bf0df437",
-      "created_at": "2025-12-18T05:14:15Z",
-      "updated_at": "2025-12-18T05:14:15Z"
-    },
-    {
-      "activation_hash": "sha512:32ded84fce0498ad60f08923d544fbabd9f98aa8ee3618b2124735df9d3002c177fb66e727fc8d200860875d9bc53361b77df6687506b2efc88ae09cadad8e8b",
+      "activation_hash": "sha512:49a572b0928312969e5b4bc837a562471d5511aad4e27dfa1fbf07a38b3046ef7720d7babf75799729487317a9c5d7fb718546d11c50e40848bcb6de4c4a1b6d",
       "student_id_hash": "sha512:fce735acc45b30563ed958f345924064afe11a76afde17886db2fdd81804d2ad155386dcc8f463b7c82572ca414a1726677fc0225584e835f242d188e9e759af",
-      "created_at": "2025-12-18T05:13:46Z",
-      "updated_at": "2025-12-18T05:13:46Z"
+      "graduation_year": 2026,
+      "created_at": "2025-12-18T05:43:49Z",
+      "updated_at": "2025-12-18T05:43:49Z"
     }
   ]
 }

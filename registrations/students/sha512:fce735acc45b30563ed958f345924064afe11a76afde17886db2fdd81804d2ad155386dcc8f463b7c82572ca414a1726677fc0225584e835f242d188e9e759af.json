@@ -1,9 +1,9 @@
 {
   "schema": "tri-cert/student-activation@1",
   "student_id_hash": "sha512:fce735acc45b30563ed958f345924064afe11a76afde17886db2fdd81804d2ad155386dcc8f463b7c82572ca414a1726677fc0225584e835f242d188e9e759af",
-  "activation_hash": "sha512:32ded84fce0498ad60f08923d544fbabd9f98aa8ee3618b2124735df9d3002c177fb66e727fc8d200860875d9bc53361b77df6687506b2efc88ae09cadad8e8b",
-  "salt_hash": "sha256:048619203348472ff6c42588827c2c9725320ca89db9c3628ed156b8f0cd42dc",
-  "created_at": "2025-12-18T05:13:46Z",
-  "updated_at": "2025-12-18T05:13:46Z",
+  "activation_hash": "sha512:49a572b0928312969e5b4bc837a562471d5511aad4e27dfa1fbf07a38b3046ef7720d7babf75799729487317a9c5d7fb718546d11c50e40848bcb6de4c4a1b6d",
+  "salt_hash": "sha256:2b193a6778ab1f91a1b9679536cf35c7f851c29b601abd2c0fb8245907b897b7",
+  "created_at": "2025-12-18T05:43:49Z",
+  "updated_at": "2025-12-18T05:43:49Z",
   "metadata": {}
 }

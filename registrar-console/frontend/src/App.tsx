@@ -1,5 +1,12 @@
-import { createEffect, createMemo, createResource, createSignal, For, Show } from 'solid-js';
-import type { Component } from 'solid-js';
+import {
+  createEffect,
+  createMemo,
+  createResource,
+  createSignal,
+  For,
+  Show,
+} from "solid-js";
+import type { Component } from "solid-js";
 import {
   DataRoot,
   ChooseDataRoot,
@@ -12,9 +19,9 @@ import {
   SelectExportDirectory,
   GetIssuer,
   SetIssuer,
-} from '../wailsjs/go/main/App';
-import type { registrar } from '../wailsjs/go/models';
-import './styles.css';
+} from "../wailsjs/go/main/App";
+import type { registrar } from "../wailsjs/go/models";
+import "./styles.css";
 
 type RegistrationOutcome = registrar.RegistrationResult;
 type StudentInput = registrar.StudentInput;
@@ -26,8 +33,9 @@ const toDisplayIssuances = (entries: IssuanceEntry[] | undefined) => {
   return entries.map((entry) => ({
     studentId: entry.student_id,
     studentIdHash: entry.student_id_hash,
-    name: entry.name ?? '',
+    name: entry.name ?? "",
     birthdate: entry.birthdate,
+    graduationYear: entry.graduation_year,
     salt: entry.salt,
     activationHash: entry.activation_hash,
     createdAt: entry.created_at,
@@ -39,7 +47,7 @@ const App: Component = () => {
 
   const [statusMessage, setStatusMessage] = createSignal<string | null>(null);
   const [statusError, setStatusError] = createSignal<string | null>(null);
-  const [searchTerm, setSearchTerm] = createSignal('');
+  const [searchTerm, setSearchTerm] = createSignal("");
   const [pendingRemovalIds, setPendingRemovalIds] = createSignal<string[]>([]);
   const [confirmDelete, setConfirmDelete] = createSignal<{
     studentId: string;
@@ -47,7 +55,8 @@ const App: Component = () => {
   } | null>(null);
 
   const [dataRoot, { refetch: refetchDataRoot }] = createResource(DataRoot);
-  const [issuances, { refetch: refetchIssuances }] = createResource(ListIssuances);
+  const [issuances, { refetch: refetchIssuances }] =
+    createResource(ListIssuances);
   const [issuer, { refetch: refetchIssuer }] = createResource(GetIssuer);
   const [showIssuerSettings, setShowIssuerSettings] = createSignal(false);
 
@@ -75,7 +84,9 @@ const App: Component = () => {
     if (!term) return entries;
     return entries.filter((entry) => {
       const name = entry.name.toLowerCase();
-      return entry.studentId.toLowerCase().includes(term) || name.includes(term);
+      return (
+        entry.studentId.toLowerCase().includes(term) || name.includes(term)
+      );
     });
   });
 
@@ -93,7 +104,9 @@ const App: Component = () => {
       await refetchDataRoot();
       await refetchIssuances();
     } catch (err) {
-      setStatusError(err instanceof Error ? err.message : 'データ出力先の変更に失敗しました');
+      setStatusError(
+        err instanceof Error ? err.message : "データ出力先の変更に失敗しました",
+      );
     }
   };
 
@@ -107,14 +120,16 @@ const App: Component = () => {
       const savedPath = await ExportIssuancesTo(targetDir);
       setStatusMessage(`発行履歴を "${savedPath}" にCSVとして保存しました。`);
     } catch (err) {
-      setStatusError(err instanceof Error ? err.message : 'CSVエクスポートに失敗しました');
+      setStatusError(
+        err instanceof Error ? err.message : "CSVエクスポートに失敗しました",
+      );
     }
   };
 
   const handleImportCSV = () => {
     clearAlerts();
     if (importInputRef) {
-      importInputRef.value = '';
+      importInputRef.value = "";
       importInputRef.click();
     }
   };
@@ -129,12 +144,14 @@ const App: Component = () => {
       const content = await file.text();
       const parsed = await ParseCSV(content);
       if (parsed.length === 0) {
-        setStatusError('CSVに有効な行がありません。');
+        setStatusError("CSVに有効な行がありません。");
         return;
       }
       const resolved: StudentInput[] = [];
       for (const row of parsed) {
-        const existingIndex = resolved.findIndex((r) => r.studentId === row.studentId);
+        const existingIndex = resolved.findIndex(
+          (r) => r.studentId === row.studentId,
+        );
         if (existingIndex === -1) {
           resolved.push(row);
           continue;
@@ -142,9 +159,9 @@ const App: Component = () => {
         const current = resolved[existingIndex];
         const keepNew = window.confirm(
           `学籍番号 ${row.studentId} が複数存在します。\n\n` +
-            `現在の行: ${current.name} / ${current.birthdate} / ${current.activationHash || 'hashなし'}\n` +
-            `新しい行: ${row.name} / ${row.birthdate} / ${row.activationHash || 'hashなし'}\n\n` +
-            'OK: 新しい行を採用する / Cancel: 既存の行を維持する'
+            `現在の行: ${current.name} / ${current.birthdate} / ${current.activationHash || "hashなし"}\n` +
+            `新しい行: ${row.name} / ${row.birthdate} / ${row.activationHash || "hashなし"}\n\n` +
+            "OK: 新しい行を採用する / Cancel: 既存の行を維持する",
         );
         if (keepNew) {
           resolved[existingIndex] = row;
@@ -155,7 +172,9 @@ const App: Component = () => {
       setStatusMessage(`CSVから ${results.length} 件登録しました。`);
       await refetchIssuances();
     } catch (err) {
-      setStatusError(err instanceof Error ? err.message : 'CSVインポートに失敗しました');
+      setStatusError(
+        err instanceof Error ? err.message : "CSVインポートに失敗しました",
+      );
     }
   };
 
@@ -165,7 +184,9 @@ const App: Component = () => {
         <div class="header-top">
           <div class="title-block">
             <h1>Registrar Console</h1>
-            <p>Salt付きアクティベーションハッシュを生成・管理するワークステーションです。</p>
+            <p>
+              Salt付きアクティベーションハッシュを生成・管理するワークステーションです。
+            </p>
           </div>
           <div class="header-actions">
             <button type="button" class="secondary" onClick={handleImportCSV}>
@@ -181,8 +202,11 @@ const App: Component = () => {
         </div>
         <div class="header-meta">
           <span class="issuer-label">
-            <span>認証機関:</span>{' '}
-            <Show when={issuer()} fallback={<span class="mono">読み込み中...</span>}>
+            <span>認証機関:</span>{" "}
+            <Show
+              when={issuer()}
+              fallback={<span class="mono">読み込み中...</span>}
+            >
               {(info) => (
                 <>
                   <span class="issuer-name">{info().name}</span>
@@ -199,8 +223,11 @@ const App: Component = () => {
             </button>
           </span>
           <span class="root-label">
-            <span>データ出力先:</span>{' '}
-            <Show when={dataRoot()} fallback={<span class="mono">読み込み中...</span>}>
+            <span>データ出力先:</span>{" "}
+            <Show
+              when={dataRoot()}
+              fallback={<span class="mono">読み込み中...</span>}
+            >
               {(root) => <span class="mono">{root()}</span>}
             </Show>
           </span>
@@ -227,7 +254,7 @@ const App: Component = () => {
           onRegistered={async () => {
             await refetchIssuances();
             clearAlerts();
-            setStatusMessage('手動登録が完了しました。');
+            setStatusMessage("手動登録が完了しました。");
           }}
         />
 
@@ -245,17 +272,23 @@ const App: Component = () => {
               studentId,
               onConfirm: async () => {
                 setPendingRemovalIds((ids) =>
-                  ids.includes(studentId) ? ids : [...ids, studentId]
+                  ids.includes(studentId) ? ids : [...ids, studentId],
                 );
-                
+
                 try {
                   await DeleteStudent(studentId);
-                  setStatusMessage(`学籍番号 ${studentId} のデータを削除しました。`);
+                  setStatusMessage(
+                    `学籍番号 ${studentId} のデータを削除しました。`,
+                  );
                   await refetchIssuances();
                 } catch (err) {
-                  setStatusError(err instanceof Error ? err.message : '削除に失敗しました');
+                  setStatusError(
+                    err instanceof Error ? err.message : "削除に失敗しました",
+                  );
                 } finally {
-                  setPendingRemovalIds((ids) => ids.filter((id) => id !== studentId));
+                  setPendingRemovalIds((ids) =>
+                    ids.filter((id) => id !== studentId),
+                  );
                   setConfirmDelete(null);
                 }
               },
@@ -263,13 +296,16 @@ const App: Component = () => {
           }}
         />
       </main>
-      
+
       <Show when={confirmDelete()}>
         {(dialog) => (
           <div class="modal-overlay" onClick={() => setConfirmDelete(null)}>
             <div class="modal-content" onClick={(e) => e.stopPropagation()}>
               <h3>削除の確認</h3>
-              <p>学籍番号 <strong>{dialog().studentId}</strong> のデータを削除しますか？</p>
+              <p>
+                学籍番号 <strong>{dialog().studentId}</strong>{" "}
+                のデータを削除しますか？
+              </p>
               <p class="warning">この操作は取り消せません。</p>
               <div class="modal-actions">
                 <button
@@ -300,7 +336,7 @@ const App: Component = () => {
             await refetchIssuer();
             setShowIssuerSettings(false);
             clearAlerts();
-            setStatusMessage('認証機関の設定を更新しました。');
+            setStatusMessage("認証機関の設定を更新しました。");
           }}
         />
       </Show>
@@ -308,18 +344,26 @@ const App: Component = () => {
   );
 };
 
-const ManualRegistrationPanel: Component<{ onRegistered: () => Promise<void> }> = (props) => {
-  const [studentId, setStudentId] = createSignal('');
-  const [name, setName] = createSignal('');
-  const [birthdate, setBirthdate] = createSignal('');
+const ManualRegistrationPanel: Component<{
+  onRegistered: () => Promise<void>;
+}> = (props) => {
+  const [studentId, setStudentId] = createSignal("");
+  const [name, setName] = createSignal("");
+  const [birthdate, setBirthdate] = createSignal("");
+  const [graduationYear, setGraduationYear] = createSignal<number>(
+    new Date().getFullYear(),
+  );
   const [isSubmitting, setIsSubmitting] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
-  const [lastResult, setLastResult] = createSignal<RegistrationOutcome | null>(null);
+  const [lastResult, setLastResult] = createSignal<RegistrationOutcome | null>(
+    null,
+  );
 
   const resetForm = () => {
-    setStudentId('');
-    setName('');
-    setBirthdate('');
+    setStudentId("");
+    setName("");
+    setBirthdate("");
+    setGraduationYear(new Date().getFullYear());
   };
 
   const handleSubmit = async (event: Event) => {
@@ -333,13 +377,16 @@ const ManualRegistrationPanel: Component<{ onRegistered: () => Promise<void> }> 
         studentId: studentId(),
         name: name(),
         birthdate: birthdate(),
+        graduationYear: graduationYear(),
       };
       const result = await AddStudent(payload);
       setLastResult(result);
       await props.onRegistered();
       resetForm();
     } catch (err) {
-      setError(err instanceof Error ? err.message : '登録中にエラーが発生しました');
+      setError(
+        err instanceof Error ? err.message : "登録中にエラーが発生しました",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -348,7 +395,9 @@ const ManualRegistrationPanel: Component<{ onRegistered: () => Promise<void> }> 
   return (
     <section class="panel manual-panel">
       <h2>手動登録</h2>
-      <p class="hint">学籍番号・氏名・生年月日を入力してsaltとアクティベーションハッシュを生成します。</p>
+      <p class="hint">
+        学籍番号・氏名・生年月日を入力してsaltとアクティベーションハッシュを生成します。
+      </p>
       <form class="form-grid compact" onSubmit={handleSubmit}>
         <label>
           学籍番号
@@ -379,9 +428,25 @@ const ManualRegistrationPanel: Component<{ onRegistered: () => Promise<void> }> 
             onInput={(event) => setBirthdate(event.currentTarget.value)}
           />
         </label>
+        <label>
+          卒業年度
+          <input
+            type="number"
+            required
+            min="2000"
+            max="2100"
+            value={graduationYear()}
+            onInput={(event) =>
+              setGraduationYear(
+                parseInt(event.currentTarget.value, 10) ||
+                  new Date().getFullYear(),
+              )
+            }
+          />
+        </label>
         <div class="action-cell">
           <button type="submit" disabled={isSubmitting()}>
-            {isSubmitting() ? '生成中...' : 'saltとハッシュを生成'}
+            {isSubmitting() ? "生成中..." : "saltとハッシュを生成"}
           </button>
         </div>
       </form>
@@ -393,6 +458,14 @@ const ManualRegistrationPanel: Component<{ onRegistered: () => Promise<void> }> 
           <div class="success-box">
             <p>
               <strong>学籍番号:</strong> {result().studentId}
+              <Show when={result().graduationYear}>
+                {(year) => (
+                  <>
+                    {" "}
+                    / <strong>卒業年度:</strong> {year()}年度
+                  </>
+                )}
+              </Show>
             </p>
             <p class="mono">
               salt: {result().salt}
@@ -411,8 +484,8 @@ const IssuerSettingsModal: Component<{
   onClose: () => void;
   onSaved: () => Promise<void>;
 }> = (props) => {
-  const [issuerId, setIssuerId] = createSignal('');
-  const [issuerName, setIssuerName] = createSignal('');
+  const [issuerId, setIssuerId] = createSignal("");
+  const [issuerName, setIssuerName] = createSignal("");
   const [isSubmitting, setIsSubmitting] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
   const [userEdited, setUserEdited] = createSignal(false);
@@ -422,18 +495,22 @@ const IssuerSettingsModal: Component<{
   createEffect(() => {
     const issuer = props.currentIssuer;
     if (issuer && !userEdited()) {
-      setIssuerId(issuer.id || '');
-      setIssuerName(issuer.name || '');
+      setIssuerId(issuer.id || "");
+      setIssuerName(issuer.name || "");
     }
   });
 
   // Track user editing activity
-  const handleIdInput = (e: InputEvent & { currentTarget: HTMLInputElement }) => {
+  const handleIdInput = (
+    e: InputEvent & { currentTarget: HTMLInputElement },
+  ) => {
     setUserEdited(true);
     setIssuerId(e.currentTarget.value);
   };
 
-  const handleNameInput = (e: InputEvent & { currentTarget: HTMLInputElement }) => {
+  const handleNameInput = (
+    e: InputEvent & { currentTarget: HTMLInputElement },
+  ) => {
     setUserEdited(true);
     setIssuerName(e.currentTarget.value);
   };
@@ -446,11 +523,11 @@ const IssuerSettingsModal: Component<{
     const name = issuerName().trim();
 
     if (!id) {
-      setError('認証機関IDは必須です。');
+      setError("認証機関IDは必須です。");
       return;
     }
     if (!name) {
-      setError('認証機関名は必須です。');
+      setError("認証機関名は必須です。");
       return;
     }
 
@@ -459,7 +536,7 @@ const IssuerSettingsModal: Component<{
       await SetIssuer(id, name);
       await props.onSaved();
     } catch (err) {
-      setError(err instanceof Error ? err.message : '設定の保存に失敗しました');
+      setError(err instanceof Error ? err.message : "設定の保存に失敗しました");
     } finally {
       setIsSubmitting(false);
     }
@@ -467,7 +544,10 @@ const IssuerSettingsModal: Component<{
 
   return (
     <div class="modal-overlay" onClick={props.onClose}>
-      <div class="modal-content issuer-modal" onClick={(e) => e.stopPropagation()}>
+      <div
+        class="modal-content issuer-modal"
+        onClick={(e) => e.stopPropagation()}
+      >
         <h3>認証機関の設定</h3>
         <p class="hint">
           認証機関のIDと名前を設定します。この情報はallowlistに埋め込まれ、証明書の検証時に使用されます。
@@ -482,7 +562,9 @@ const IssuerSettingsModal: Component<{
               onInput={handleIdInput}
               disabled={isSubmitting()}
             />
-            <span class="field-hint">英数字とハイフンを推奨（URLセーフな識別子）</span>
+            <span class="field-hint">
+              英数字とハイフンを推奨（URLセーフな識別子）
+            </span>
           </label>
           <label>
             認証機関名
@@ -508,7 +590,7 @@ const IssuerSettingsModal: Component<{
               キャンセル
             </button>
             <button type="submit" disabled={isSubmitting()}>
-              {isSubmitting() ? '保存中...' : '保存'}
+              {isSubmitting() ? "保存中..." : "保存"}
             </button>
           </div>
         </form>
@@ -542,7 +624,7 @@ const IssuanceTable: Component<{
       <button
         type="button"
         class="secondary"
-        onClick={() => props.onSearchInput('')}
+        onClick={() => props.onSearchInput("")}
         disabled={!props.searchTerm}
       >
         クリア
@@ -555,7 +637,10 @@ const IssuanceTable: Component<{
       <p>発行履歴を読み込み中です...</p>
     </Show>
     <Show when={!props.loading}>
-      <Show when={props.entries.length > 0} fallback={<p>該当する発行はありません。</p>}>
+      <Show
+        when={props.entries.length > 0}
+        fallback={<p>該当する発行はありません。</p>}
+      >
         <div class="issuance-table">
           <table>
             <thead>
@@ -564,6 +649,7 @@ const IssuanceTable: Component<{
                 <th>学籍番号</th>
                 <th>氏名</th>
                 <th>生年月日</th>
+                <th>卒業年度</th>
                 <th>salt</th>
                 <th>Activation Hash</th>
                 <th>操作</th>
@@ -575,18 +661,27 @@ const IssuanceTable: Component<{
                   <tr>
                     <td>{new Date(entry.createdAt).toLocaleString()}</td>
                     <td class="mono">{entry.studentId}</td>
-                    <td>{entry.name || '-'}</td>
+                    <td>{entry.name || "-"}</td>
                     <td>{entry.birthdate}</td>
+                    <td>
+                      {entry.graduationYear
+                        ? `${entry.graduationYear}年度`
+                        : "-"}
+                    </td>
                     <td class="mono">{entry.salt}</td>
                     <td class="mono">{entry.activationHash.slice(0, 56)}…</td>
                     <td>
                       <button
                         type="button"
                         class="danger"
-                        disabled={props.pendingRemovalIds.includes(entry.studentId)}
+                        disabled={props.pendingRemovalIds.includes(
+                          entry.studentId,
+                        )}
                         onClick={() => props.onDelete(entry.studentId)}
                       >
-                        {props.pendingRemovalIds.includes(entry.studentId) ? '削除中...' : '削除'}
+                        {props.pendingRemovalIds.includes(entry.studentId)
+                          ? "削除中..."
+                          : "削除"}
                       </button>
                     </td>
                   </tr>

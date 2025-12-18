@@ -913,11 +913,15 @@ async function generateZKProof(secret: string, pdfHash: string, graduationYear: 
 
     const proofData: ProofData = {
       schema: "tri-cert/proof@0",
-      circuit_id: (acceptsYear ? `commitment_poseidon_${graduationYear}_v1` : `commitment_poseidon_v1`),
+      // Always include graduation year in circuit_id for identification
+      // (ZKP verification uses nPublic to determine which signals to verify)
+      circuit_id: `commitment_poseidon_${graduationYear}_v1`,
       vkey_hash: `sha3-256:${vkeyHash}`,
       public_signals: {
         pdf_sha3_512: `hex:${pdfHash}`,
-        graduation_year: acceptsYear ? graduationYear.toString() : '',
+        // Always record graduation year for display/verification purposes
+        // (only used in ZKP verification when nPublic === 3)
+        graduation_year: graduationYear.toString(),
         commit: `field:${publicSignals[0]}`
       },
       proof: {

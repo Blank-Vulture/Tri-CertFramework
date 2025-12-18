@@ -2,6 +2,20 @@
   "header": {
     "language": "言語"
   },
+  "extractedData": {
+    "title": "抽出されたデータ",
+    "description": "PDFから抽出されたデータの一覧です。検証に使用されます。",
+    "itemsFound": "項目検出",
+    "proof": "ZKP証明",
+    "vkey": "検証キー",
+    "signature": "電子署名",
+    "publicKey": "公開鍵",
+    "technicalDetails": "技術詳細",
+    "schema": "スキーマ",
+    "circuitId": "回路ID",
+    "graduationYear": "卒業年度",
+    "hashMethod": "ハッシュ方式"
+  },
   "lang": {
     "en": "English",
     "ja": "日本語"
@@ -136,9 +150,24 @@
       "error": "エラー",
       "registeredAt": "登録日"
     },
+    "yearMatch": "年度一致",
+    "yearMismatch": "⚠️ 年度不一致",
+    "registeredYear": "登録年度",
+    "proofYear": "証明年度",
+    "yearSuffix": "年",
     "issuer": {
       "title": "認証機関",
       "note": "この証明書は上記の機関で認証されました。PDFの発行元と一致することをご確認ください。"
+    },
+    "certificateInfo": {
+      "title": "証明書情報",
+      "graduationYear": "卒業年度",
+      "circuitId": "回路ID",
+      "vkeyHash": "検証キーハッシュ",
+      "hashMethod": "ハッシュ方式",
+      "hashMethodRaw": "末尾追記方式（暗号化PDF）",
+      "hashMethodNormalized": "メタデータ方式（通常PDF）",
+      "unknownYear": "年度不明"
     }
   }
 }

@@ -2,6 +2,20 @@
   "header": {
     "language": "Language"
   },
+  "extractedData": {
+    "title": "Extracted Data",
+    "description": "Data extracted from the PDF. Used for verification.",
+    "itemsFound": "items found",
+    "proof": "ZKP Proof",
+    "vkey": "Verification Key",
+    "signature": "Digital Signature",
+    "publicKey": "Public Key",
+    "technicalDetails": "Technical Details",
+    "schema": "Schema",
+    "circuitId": "Circuit ID",
+    "graduationYear": "Graduation Year",
+    "hashMethod": "Hash Method"
+  },
   "lang": {
     "en": "English",
     "ja": "日本語"
@@ -136,9 +150,24 @@
       "error": "Error",
       "registeredAt": "Registered on"
     },
+    "yearMatch": "Year matched",
+    "yearMismatch": "⚠️ Year mismatch",
+    "registeredYear": "Registered year",
+    "proofYear": "Proof year",
+    "yearSuffix": "",
     "issuer": {
       "title": "Issuing Institution",
       "note": "This certificate was authenticated by the institution above. Please verify it matches the PDF's issuer."
+    },
+    "certificateInfo": {
+      "title": "Certificate Information",
+      "graduationYear": "Graduation Year",
+      "circuitId": "Circuit ID",
+      "vkeyHash": "Verification Key Hash",
+      "hashMethod": "Hash Method",
+      "hashMethodRaw": "Tail-append (Encrypted PDF)",
+      "hashMethodNormalized": "Metadata (Regular PDF)",
+      "unknownYear": "Year Unknown"
     }
   }
 }

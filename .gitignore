@@ -4,6 +4,7 @@
 # macOS
 .DS_Store
 .obsidian/
+Claude.md
 
 # Dependencies
 node_modules/

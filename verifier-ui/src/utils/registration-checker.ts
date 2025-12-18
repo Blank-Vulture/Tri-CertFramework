@@ -19,6 +19,7 @@ export interface IssuerInfo {
 export interface AllowlistEntry {
   activation_hash: string;
   student_id_hash: string;
+  graduation_year?: number; // 新規: 卒業年度
   created_at: string;
   updated_at: string;
 }
@@ -44,6 +45,8 @@ export interface ActivationHashCheckResult {
   issuerName?: string;
   allowlistUrl?: string;
   registeredAt?: string;
+  graduationYear?: number; // 新規: 登録された卒業年度
+  yearMatchesProof?: boolean; // 新規: 証明の年度と一致するか
   error?: string;
 }
 
@@ -51,26 +54,30 @@ export interface ActivationHashCheckResult {
  * GitHub raw URL for the student registry index
  * Can be overridden via NEXT_PUBLIC_REGISTRY_INDEX_URL environment variable
  */
-const DEFAULT_REGISTRY_INDEX_URL = 'https://raw.githubusercontent.com/Blank-Vulture/Tri-CertFramework/main/registrations/index.json';
-const REGISTRY_INDEX_URL = process.env.NEXT_PUBLIC_REGISTRY_INDEX_URL || DEFAULT_REGISTRY_INDEX_URL;
+const DEFAULT_REGISTRY_INDEX_URL =
+  "https://raw.githubusercontent.com/Blank-Vulture/Tri-CertFramework/main/registrations/index.json";
+const REGISTRY_INDEX_URL =
+  process.env.NEXT_PUBLIC_REGISTRY_INDEX_URL || DEFAULT_REGISTRY_INDEX_URL;
 
 /**
  * GitHub raw URL for the commit allowlist
  * Can be overridden via NEXT_PUBLIC_ALLOWLIST_URL environment variable
  */
-const DEFAULT_ALLOWLIST_URL = 'https://raw.githubusercontent.com/Blank-Vulture/Tri-CertFramework/main/registrations/commit-allowlist.json';
-const ALLOWLIST_URL = process.env.NEXT_PUBLIC_ALLOWLIST_URL || DEFAULT_ALLOWLIST_URL;
+const DEFAULT_ALLOWLIST_URL =
+  "https://raw.githubusercontent.com/Blank-Vulture/Tri-CertFramework/main/registrations/commit-allowlist.json";
+const ALLOWLIST_URL =
+  process.env.NEXT_PUBLIC_ALLOWLIST_URL || DEFAULT_ALLOWLIST_URL;
 
 /**
  * Validate student registry structure for integrity
  */
 function validateRegistryIntegrity(data: unknown): data is StudentRegistry {
-  if (!data || typeof data !== 'object') return false;
+  if (!data || typeof data !== "object") return false;
   const obj = data as Record<string, unknown>;
-  
-  if (typeof obj.schema !== 'string') return false;
-  if (typeof obj.registry !== 'object' || obj.registry === null) return false;
-  
+
+  if (typeof obj.schema !== "string") return false;
+  if (typeof obj.registry !== "object" || obj.registry === null) return false;
+
   return true;
 }
 
@@ -78,25 +85,36 @@ function validateRegistryIntegrity(data: unknown): data is StudentRegistry {
  * Validate allowlist structure for integrity
  */
 function validateAllowlistIntegrity(data: unknown): data is AllowlistFile {
-  if (!data || typeof data !== 'object') return false;
+  if (!data || typeof data !== "object") return false;
   const obj = data as Record<string, unknown>;
-  
+
   // Schema validation
-  if (typeof obj.schema !== 'string' || !obj.schema.startsWith('tri-cert/commit-allowlist@')) {
+  if (
+    typeof obj.schema !== "string" ||
+    !obj.schema.startsWith("tri-cert/commit-allowlist@")
+  ) {
     return false;
   }
-  
+
   // Structure validation
   if (!Array.isArray(obj.entries)) return false;
-  
+
   // Entry validation
   for (const entry of obj.entries) {
-    if (!entry || typeof entry !== 'object') return false;
+    if (!entry || typeof entry !== "object") return false;
     const e = entry as Record<string, unknown>;
-    if (typeof e.activation_hash !== 'string' || !e.activation_hash.startsWith('sha512:')) return false;
-    if (typeof e.student_id_hash !== 'string' || !e.student_id_hash.startsWith('sha512:')) return false;
+    if (
+      typeof e.activation_hash !== "string" ||
+      !e.activation_hash.startsWith("sha512:")
+    )
+      return false;
+    if (
+      typeof e.student_id_hash !== "string" ||
+      !e.student_id_hash.startsWith("sha512:")
+    )
+      return false;
   }
-  
+
   return true;
 }
 
@@ -123,7 +141,7 @@ export async function calculateJWKThumbprint(jwk: {
   // Calculate SHA-256 hash
   const encoder = new TextEncoder();
   const data = encoder.encode(canonicalJSON);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
 
   // Convert to base64url (no padding)
   return arrayBufferToBase64url(hashBuffer);
@@ -134,14 +152,11 @@ export async function calculateJWKThumbprint(jwk: {
  */
 function arrayBufferToBase64url(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
-  let binary = '';
+  let binary = "";
   for (let i = 0; i < bytes.byteLength; i++) {
     binary += String.fromCharCode(bytes[i]);
   }
-  return btoa(binary)
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=/g, '');
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }
 
 /**
@@ -150,12 +165,12 @@ function arrayBufferToBase64url(buffer: ArrayBuffer): string {
 export async function fetchStudentRegistry(): Promise<StudentRegistry | null> {
   try {
     const response = await fetch(REGISTRY_INDEX_URL, {
-      method: 'GET',
+      method: "GET",
       headers: {
-        'Accept': 'application/json',
+        Accept: "application/json",
       },
       // Add cache busting to ensure fresh data
-      cache: 'no-cache',
+      cache: "no-cache",
     });
 
     if (!response.ok) {
@@ -163,12 +178,12 @@ export async function fetchStudentRegistry(): Promise<StudentRegistry | null> {
     }
 
     const data: unknown = await response.json();
-    
+
     // Integrity validation
     if (!validateRegistryIntegrity(data)) {
       return null;
     }
-    
+
     return data;
   } catch {
     return null;
@@ -195,7 +210,7 @@ export async function checkRegistration(publicKey: {
       return {
         isRegistered: false,
         thumbprint,
-        error: 'Failed to fetch student registry',
+        error: "Failed to fetch student registry",
       };
     }
 
@@ -205,7 +220,8 @@ export async function checkRegistration(publicKey: {
       return {
         isRegistered: false,
         thumbprint,
-        error: 'Public key registry is empty (no students registered with public keys yet)',
+        error:
+          "Public key registry is empty (no students registered with public keys yet)",
       };
     }
 
@@ -219,8 +235,8 @@ export async function checkRegistration(publicKey: {
   } catch {
     return {
       isRegistered: false,
-      thumbprint: '',
-      error: 'Registration check failed',
+      thumbprint: "",
+      error: "Registration check failed",
     };
   }
 }
@@ -231,8 +247,10 @@ export async function checkRegistration(publicKey: {
 export function setRegistryURL(url: string): void {
   // This would require making REGISTRY_INDEX_URL mutable
   // For now, users should update the constant directly
-  console.log('To change registry URL, update REGISTRY_INDEX_URL in registration-checker.ts');
-  console.log('Requested URL:', url);
+  console.log(
+    "To change registry URL, update REGISTRY_INDEX_URL in registration-checker.ts",
+  );
+  console.log("Requested URL:", url);
 }
 
 /**
@@ -241,11 +259,11 @@ export function setRegistryURL(url: string): void {
 export async function fetchAllowlist(): Promise<AllowlistFile | null> {
   try {
     const response = await fetch(ALLOWLIST_URL, {
-      method: 'GET',
+      method: "GET",
       headers: {
-        'Accept': 'application/json',
+        Accept: "application/json",
       },
-      cache: 'no-cache',
+      cache: "no-cache",
     });
 
     if (!response.ok) {
@@ -253,12 +271,12 @@ export async function fetchAllowlist(): Promise<AllowlistFile | null> {
     }
 
     const data: unknown = await response.json();
-    
+
     // Integrity validation
     if (!validateAllowlistIntegrity(data)) {
       return null;
     }
-    
+
     return data;
   } catch {
     return null;
@@ -270,7 +288,7 @@ export async function fetchAllowlist(): Promise<AllowlistFile | null> {
  * This verifies that the proof was generated by a registered student
  */
 export async function checkActivationHash(
-  activationHash: string
+  activationHash: string,
 ): Promise<ActivationHashCheckResult> {
   try {
     // Fetch allowlist
@@ -280,12 +298,14 @@ export async function checkActivationHash(
       return {
         isValid: false,
         activationHash,
-        error: 'Failed to fetch allowlist',
+        error: "Failed to fetch allowlist",
       };
     }
 
     // Check if activation hash exists in allowlist
-    const entry = allowlist.entries.find(e => e.activation_hash === activationHash);
+    const entry = allowlist.entries.find(
+      (e) => e.activation_hash === activationHash,
+    );
 
     if (entry) {
       return {
@@ -299,13 +319,13 @@ export async function checkActivationHash(
     return {
       isValid: false,
       activationHash,
-      error: 'Activation hash not found in allowlist',
+      error: "Activation hash not found in allowlist",
     };
   } catch {
     return {
       isValid: false,
       activationHash,
-      error: 'Activation hash check failed',
+      error: "Activation hash check failed",
     };
   }
 }
@@ -313,14 +333,16 @@ export async function checkActivationHash(
 /**
  * Fetch allowlist from a specific URL
  */
-export async function fetchAllowlistFromUrl(url: string): Promise<AllowlistFile | null> {
+export async function fetchAllowlistFromUrl(
+  url: string,
+): Promise<AllowlistFile | null> {
   try {
     const response = await fetch(url, {
-      method: 'GET',
+      method: "GET",
       headers: {
-        'Accept': 'application/json',
+        Accept: "application/json",
       },
-      cache: 'no-cache',
+      cache: "no-cache",
     });
 
     if (!response.ok) {
@@ -328,12 +350,12 @@ export async function fetchAllowlistFromUrl(url: string): Promise<AllowlistFile 
     }
 
     const data: unknown = await response.json();
-    
+
     // Integrity validation
     if (!validateAllowlistIntegrity(data)) {
       return null;
     }
-    
+
     return data;
   } catch {
     return null;
@@ -343,6 +365,7 @@ export async function fetchAllowlistFromUrl(url: string): Promise<AllowlistFile 
 /**
  * Verify registration info from proof against allowlist
  * Supports both legacy (no issuer) and new (with issuer) formats
+ * Optionally verifies that the proof's graduation year matches the registered year
  */
 export async function verifyProofRegistration(
   registration: {
@@ -352,14 +375,15 @@ export async function verifyProofRegistration(
     issuer_name?: string;
     allowlist_url?: string;
     verified_at: string;
-  }
+  },
+  proofGraduationYear?: number, // 新規: 証明から抽出した年度（オプション）
 ): Promise<ActivationHashCheckResult> {
   try {
     // Determine which allowlist to fetch
     const allowlistUrl = registration.allowlist_url || ALLOWLIST_URL;
-    
+
     // Fetch allowlist (from proof's URL if provided, otherwise default)
-    const allowlist = registration.allowlist_url 
+    const allowlist = registration.allowlist_url
       ? await fetchAllowlistFromUrl(registration.allowlist_url)
       : await fetchAllowlist();
 
@@ -367,18 +391,20 @@ export async function verifyProofRegistration(
       return {
         isValid: false,
         activationHash: registration.activation_hash,
-        error: 'Failed to fetch allowlist',
+        error: "Failed to fetch allowlist",
       };
     }
 
     // Check if activation hash exists in allowlist
-    const entry = allowlist.entries.find(e => e.activation_hash === registration.activation_hash);
+    const entry = allowlist.entries.find(
+      (e) => e.activation_hash === registration.activation_hash,
+    );
 
     if (!entry) {
       return {
         isValid: false,
         activationHash: registration.activation_hash,
-        error: 'Activation hash not found in allowlist',
+        error: "Activation hash not found in allowlist",
       };
     }
 
@@ -388,7 +414,7 @@ export async function verifyProofRegistration(
         isValid: false,
         activationHash: registration.activation_hash,
         studentIdHash: registration.student_id_hash,
-        error: 'Student ID hash mismatch',
+        error: "Student ID hash mismatch",
       };
     }
 
@@ -401,12 +427,19 @@ export async function verifyProofRegistration(
           studentIdHash: registration.student_id_hash,
           issuerId: registration.issuer_id,
           issuerName: registration.issuer_name,
-          error: 'Issuer ID mismatch between proof and allowlist',
+          error: "Issuer ID mismatch between proof and allowlist",
         };
       }
     }
 
-    // Return success with issuer info
+    // Determine year match status
+    const registeredYear = entry.graduation_year;
+    let yearMatchesProof: boolean | undefined = undefined;
+    if (registeredYear !== undefined && proofGraduationYear !== undefined) {
+      yearMatchesProof = registeredYear === proofGraduationYear;
+    }
+
+    // Return success with issuer info and year verification
     return {
       isValid: true,
       activationHash: registration.activation_hash,
@@ -415,12 +448,14 @@ export async function verifyProofRegistration(
       issuerName: allowlist.issuer?.name || registration.issuer_name,
       allowlistUrl,
       registeredAt: entry.created_at,
+      graduationYear: registeredYear,
+      yearMatchesProof,
     };
   } catch {
     return {
       isValid: false,
       activationHash: registration.activation_hash,
-      error: 'Registration verification failed',
+      error: "Registration verification failed",
     };
   }
 }

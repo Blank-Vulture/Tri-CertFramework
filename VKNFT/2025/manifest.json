@@ -2,7 +2,7 @@
   "schema": "tri-cert/vknft-bundle@1",
   "version": 1,
   "year": 2025,
-  "generatedAt": "2025-11-26T04:54:22.353Z",
+  "generatedAt": "2025-12-18T05:25:26.508Z",
   "files": {
     "wasm": {
       "fileName": "commitment_2025.wasm",
@@ -18,14 +18,14 @@
     },
     "vk": {
       "fileName": "vkey_2025.json",
-      "sha3_256": "fb070e76b1d53fc02216281ce624c9184db57b2db4c4b24c1aadc2537cfe9ad8",
+      "sha3_256": "d6ec91b65fbe95fdbd97df5183468b4d5b3c79cdecf6bec32edcc0c971d691f9",
       "size": 3396,
       "relativePath": "files/vkey_2025.json",
       "declaredHash": "bc6d09e8aed9cda9518ff11b82442174447aaeea5c40df5ec0b772c5008987b3"
     },
     "zip": {
       "fileName": "vk_bundle_2025.zip",
-      "sha3_256": "f127530bb2d00105e984b53a053a0ac62989a69f09c2442e733e7823a2dbd7ab",
+      "sha3_256": "aaa27a8f9b8851e046027a78f6298d4271486304da0ef5284b9855ea5b32550e",
       "size": 2006112,
       "relativePath": "vk_bundle_2025.zip"
     }
@@ -34,10 +34,10 @@
     "scheme": "ledger-hardware",
     "fileName": "vk_bundle_2025.sig",
     "algorithm": "ECDSA_secp256k1_SHA256",
-    "createdAt": "2025-11-26T04:59:17.956Z",
+    "createdAt": "2025-12-18T05:26:33.880Z",
     "signerLabel": "Ledger Hardware Wallet",
-    "sha3_256": "f127530bb2d00105e984b53a053a0ac62989a69f09c2442e733e7823a2dbd7ab",
-    "signatureBase64": "+1HHKunoARxxPYwr9RYwLTcy5vbjcUmQr1s2lVssJg5bD0eL/IriQ+2qpHL9O3IXhV+iwI859Aa6aouswbOxIQ==",
+    "sha3_256": "aaa27a8f9b8851e046027a78f6298d4271486304da0ef5284b9855ea5b32550e",
+    "signatureBase64": "yky2e0vySHliLqcxVfXSmDP1mfGZKrfRf53CO5zBLKMI0FF1IHo8B+ZkAJB+XZkK9AZtIiDuQp41Tz2hgLV9OQ==",
     "derivation_path": "44'/60'/0'/0/0",
     "publicKeyJwk": {
       "kty": "EC",

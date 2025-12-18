@@ -94,7 +94,7 @@
   "metadata": {
     "graduation_year": 2025,
     "circuit_id": "commitment_poseidon_2025_v1",
-    "generated_at": "2025-11-26T04:54:21.774Z",
+    "generated_at": "2025-12-18T05:25:25.916Z",
     "circuit_wasm": "commitment_2025.wasm",
     "circuit_zkey": "commitment_final_2025.zkey"
   }

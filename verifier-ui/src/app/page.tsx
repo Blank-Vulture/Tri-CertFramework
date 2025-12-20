@@ -218,7 +218,7 @@ export default function Home() {
   const detectGraduationYear = (
     proof: ProofData,
     vkey?: VKeyData | null,
-    sigTarget?: ExtractedData["sigTarget"] | null
+    sigTarget?: ExtractedData["sigTarget"] | null,
   ): number | null => {
     try {
       // Priority 1: Check proof.public_signals.graduation_year
@@ -306,7 +306,11 @@ export default function Home() {
 
       // Store extracted data info for preview
       const detectedYearForPreview = extractedData.proof
-        ? detectGraduationYear(extractedData.proof, extractedData.vkey, extractedData.sigTarget)
+        ? detectGraduationYear(
+            extractedData.proof,
+            extractedData.vkey,
+            extractedData.sigTarget,
+          )
         : null;
       setExtractedDataInfo({
         hasProof: !!extractedData.proof,
@@ -363,7 +367,11 @@ export default function Home() {
           vkey = extractedData.vkey;
           zkpDetails = t("results.usingEmbeddedVK");
         } else {
-          const detectedYear = detectGraduationYear(extractedData.proof, null, extractedData.sigTarget);
+          const detectedYear = detectGraduationYear(
+            extractedData.proof,
+            null,
+            extractedData.sigTarget,
+          );
           if (detectedYear) {
             const autoVkey = await loadVKByYear(detectedYear);
             if (autoVkey) {
@@ -445,7 +453,11 @@ export default function Home() {
       // Salt-based registration check
       // Detect graduation year for year matching (use vkeyUsedForZkp for metadata fallback)
       const proofGraduationYear = extractedData.proof
-        ? detectGraduationYear(extractedData.proof, vkeyUsedForZkp, extractedData.sigTarget)
+        ? detectGraduationYear(
+            extractedData.proof,
+            vkeyUsedForZkp,
+            extractedData.sigTarget,
+          )
         : null;
 
       if (extractedData.proof?.registration) {
@@ -530,7 +542,11 @@ export default function Home() {
 
       // Build certificate info
       const detectedYear = extractedData.proof
-        ? detectGraduationYear(extractedData.proof, vkeyUsedForZkp, extractedData.sigTarget)
+        ? detectGraduationYear(
+            extractedData.proof,
+            vkeyUsedForZkp,
+            extractedData.sigTarget,
+          )
         : null;
       const certificateInfo: CertificateInfo | undefined = extractedData.proof
         ? {

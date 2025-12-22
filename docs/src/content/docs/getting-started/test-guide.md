@@ -8,8 +8,6 @@ description: Prover・Verifierの操作手順（テスト参加者向け）
 メールで受け取った**テスト用PDF**をご用意ください。
 :::
 
----
-
 ## テストの全体像
 
 <div class="sl-steps">

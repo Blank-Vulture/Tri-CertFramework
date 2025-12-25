@@ -6,50 +6,51 @@ description: Step-by-step instructions for Prover and Verifier (for test partici
 :::tip[For Test Participants]
 This guide walks you through **"making a certificate verifiable" → "verifying it"** with hands-on operation.
 Please have the **test PDF** you received by email ready.
+
+**Estimated time: 10-15 minutes**
 :::
 
 ---
 
-## Overview in 1 Minute
+## What You'll Do (2 Steps)
 
-### What You'll Do
+<div class="sl-steps">
 
 1. Use **Prover** to attach "proof" to the test PDF and create **`-secured.pdf`**
+
 2. Use **Verifier** to upload that `-secured.pdf` and check the **✅/❌** verification results
 
-### What the Results Mean
+</div>
+
+### Success Criteria
 
 | Result | Meaning |
 |--------|---------|
-| All 5 ✅ | "Not tampered" and "linked to legitimate issuer" — can be explained to third parties |
-| Any ❌ | Possible tampering, or possible procedural error/system issue |
+| **All 5 ✅** | "Not tampered" and "linked to legitimate issuer" confirmed |
+| **Any ❌** | Possible tampering, or possible procedural error/system issue |
 
----
+### What This Test Verifies
 
-## What This Test Verifies
+| Aspect | What We Check |
+|:------:|---------------|
+| **Functionality** | Can Prover generate `-secured.pdf`? Does Verifier show expected results? |
+| **Usability** | Are steps intuitive? Can you infer causes when errors occur? Can you understand why it proves authenticity? |
 
-### 1. Does It Work Correctly? (Functionality)
+:::note[Role-Play Setting]
+- When using **Prover** → Act as a **graduate student**
+- When using **Verifier** → Act as a **company HR personnel**
+:::
 
-- Prover can generate a "secured PDF (-secured.pdf)"
-- Verifier displays expected results (✅/❌)
+<details>
+<summary><strong>📖 System Background (Optional Reading)</strong></summary>
 
-### 2. Is It Practically Usable? (Usability & Trust)
-
-- Are the steps intuitive? Any confusion?
-- Can you infer the cause when errors occur?
-- Can you understand "why this proves authenticity" from the UI?
-
----
-
-## Background: Why This System Is Needed
+#### Why This System Is Needed
 
 With the increase in remote work and online applications, electronic certificates like PDFs have become convenient, but **tampering and forgery** risks have also increased.
 
 This system embeds a **cryptographic "seal of authenticity"** into certificates, allowing recipients to confirm "this is definitely genuine."
 
----
-
-## System Overview
+#### System Overview
 
 <pre class="mermaid">
 flowchart TB
@@ -80,38 +81,20 @@ flowchart TB
     RC -.->|"Check issuer"| Verifier
 </pre>
 
-### Real-World Usage vs This Test
+#### Real-World Usage vs This Test
 
 | Step | Real-World Usage | In This Test |
 |:----:|------------------|--------------|
-| ① Code Issuance | University issues code | **Skipped** (pre-configured in test PDF) |
+| ① Code Issuance | University issues code | **Skipped** |
 | ② Proof Generation | Student creates with Prover | **Performed** |
-| ③ Sending | Send to company via email | **Skipped** (proceed directly) |
+| ③ Sending | Send to company via email | **Skipped** |
 | ④ Verification | Company verifies with Verifier | **Performed** |
 
-:::note[Test Scope]
-You will perform **② Proof Generation** and **④ Verification**.
-Estimated time: **10-15 minutes** (first-time proof generation may take longer)
-:::
+</details>
 
 ---
 
-## Test Flow (3 Steps)
-
-| Step | Action | Result | What to Check |
-|:----:|--------|--------|---------------|
-| **1** | Attach proof with Prover | `-secured.pdf` generated | Filename includes `-secured` |
-| **2** | Save the file | Saved to PC | Check Downloads folder |
-| **3** | Verify with Verifier | All 5 items ✅ | 5 green checkmarks appear |
-
----
-
-## Steps 1-2: Attach Proof with Prover
-
-:::note[Scenario]
-You are a graduate student submitting a certificate of expected graduation to a company.
-You want the recipient to be able to verify "not tampered" and "truly issued by the university."
-:::
+## Step 1: Attach Proof with Prover
 
 <div class="app-launch-card prover">
   <div class="app-launch-icon">📄</div>
@@ -122,82 +105,72 @@ You want the recipient to be able to verify "not tampered" and "truly issued by 
   <a href="/Tri-CertFramework/prover/" target="_blank" class="app-launch-button">Open Prover →</a>
 </div>
 
-### Instructions
+### Required Steps (Follow in Order)
 
-#### 1. Upload PDF
+<div class="required-steps">
 
-Drag and drop the test PDF (or click to select).
+**1. Upload PDF**
+- Drag and drop the test PDF (or click to select)
 
-#### 2. Identity Verification (Orange Section)
+**2. Identity Verification (Orange Section)**
 
-Enter the following 3 items and click the "Verify" button.
+| Input Field | What to Enter |
+|-------------|---------------|
+| Activation Code | Code from your email |
+| Full Name | Your name |
+| Date of Birth | Your birth date |
 
-| Input Field | What to Enter | Notes |
-|-------------|---------------|-------|
-| **Activation Code** | Code from your email | e.g., `ABCDEF1234567890` |
-| **Full Name** | Your name | e.g., `Taro Yamada` |
-| **Date of Birth** | Your birth date | Select from calendar |
+→ After entering, click "**Verify**" → "✓ Verified" appears if successful
 
-:::caution[Enter Correctly]
-If the input doesn't match the registered information, an error will occur.
-Please enter the information exactly as shown in your email.
+**3. Authenticator Setup (Green Section)**
+- Click "**Setup Authenticator**"
+- Follow browser prompts to authenticate with fingerprint, face recognition, or PIN
+- "✓ Authenticator ready" appears if successful
+
+**4. Secret String and Graduation Year (Blue Section)**
+
+| Input Field | What to Enter |
+|-------------|---------------|
+| Secret String | Any characters or numbers (anything is OK) |
+| Graduation Year | Select with buttons |
+
+**5. Generate Proof**
+- Click "**Generate Proof and Protect**"
+- Processing takes several seconds to tens of seconds (especially long on first run)
+
+**6. Download**
+- After processing completes, click "**Download**"
+- Save the **`-secured.pdf`**
+
+</div>
+
+:::tip[Confirming Success]
+Filename should be **`(original filename)-secured.pdf`**
 :::
 
-When verification succeeds, "✓ Verified" appears in green.
+<details>
+<summary><strong>💡 Detailed Explanations</strong></summary>
 
-#### 3. Authenticator Setup (Green Section)
-
-Click the "Setup Authenticator" button.
-
-- Your browser will prompt for **passkey (biometric or PIN)** setup
-- Authenticate using fingerprint, face recognition, or PIN depending on your device
-- When complete, "✓ Authenticator ready" appears
-
-:::tip[What is a Passkey?]
-A passkey is a way to verify your identity using fingerprint or face recognition instead of a password.
+#### What is a Passkey?
+A passkey verifies your identity using fingerprint or face recognition instead of a password.
 It's used to prove that this certificate was created by you.
 
 **Where it's saved**: Automatically saved to your device's "Passwords" app or Keychain.
-You can delete it after testing (see instructions at the end).
-:::
+You can delete it after testing.
 
-#### 4. Secret String and Graduation Year (Blue Section)
-
-| Input Field | What to Enter | Notes |
-|-------------|---------------|-------|
-| **Secret String** | Any characters or numbers | Anything is OK. You don't need to remember it |
-| **Graduation Year** | Your graduation year | Select with buttons |
-
-:::note[What is the Secret String?]
+#### What is the Secret String?
 This string is **not sent anywhere**. It's only used locally to create the cryptographic proof.
 Enter any string you like (e.g., `test123`).
-:::
 
-#### 5. Generate Proof
+#### If Identity Verification Fails
+The activation code, name, or birth date doesn't match the registered information.
+Please recheck your email.
 
-Click the "Generate Proof and Protect" button.
-
-- Processing takes **several seconds to tens of seconds** (especially long on first run)
-- You can track progress via the step indicator at the top (📄→🔍→🔐→✍️→✅)
-
-#### 6. Download
-
-When processing completes, a download button appears.
-Click it to save the **`-secured.pdf`**.
-
-### Confirming Success
-
-- Filename is **`(original filename)-secured.pdf`**
-- You know where it's saved (Downloads folder, etc.)
+</details>
 
 ---
 
-## Step 3: Verify with Verifier
-
-:::note[Scenario]
-You are an HR personnel at a company. You received a certificate PDF from an applicant.
-You want to verify "Is this genuine? Has it been tampered with?"
-:::
+## Step 2: Verify with Verifier
 
 <div class="app-launch-card verifier">
   <div class="app-launch-icon">✅</div>
@@ -208,111 +181,98 @@ You want to verify "Is this genuine? Has it been tampered with?"
   <a href="/Tri-CertFramework/verifier-ui/" target="_blank" class="app-launch-button">Open Verifier →</a>
 </div>
 
-### Instructions
+### Required Steps
 
-1. **Upload the secured PDF** — Drag and drop the `-secured.pdf` you just saved
-2. **Click "🔍 Verify"**
+<div class="required-steps">
+
+**1. Upload the secured PDF**
+- Drag and drop the **`-secured.pdf`** you just saved
+
+**2. Run verification**
+- Click "**🔍 Verify**"
+
+</div>
 
 ### Understanding the Results
 
 | Result | Meaning |
 |--------|---------|
-| All 5 items ✅ | **Confirmed authentic** — Not tampered, linked to legitimate issuer |
-| Any item ❌ | **Needs review** — Possible forgery, procedural error, or system issue |
+| **All 5 items ✅** | **Success** — Not tampered, linked to legitimate issuer |
+| **Any item ❌** | **Needs review** — Possible forgery, procedural error, or system issue |
+
+:::tip[Test Success]
+**All 5 items showing green ✅** means success.
+:::
 
 :::caution[If ❌ Appears]
 This doesn't definitively mean "forged." It could be a procedural error or wrong file.
-**Which item shows ❌** is crucial for identifying the cause, so please include this in your feedback.
+Please include **which item shows ❌** in your feedback.
 :::
 
----
-
-## The 5 Verification Items
+<details>
+<summary><strong>💡 The 5 Verification Items Explained</strong></summary>
 
 | Item | What ✅ Means |
 |------|--------------|
-| Data Extraction | Verification data correctly read from PDF |
-| Hash Match | Not a single character changed since issuance (tamper detection) |
-| ZK Proof Verification | Cryptographically valid proof (forgery resistance) |
-| Signature Verification | Confirmed created through legitimate process |
-| Registration Check | Confirmed linked to legitimate issuing organization |
+| **Data Extraction** | Verification data correctly read from PDF |
+| **Hash Match** | Not a single character changed since issuance (tamper detection) |
+| **ZK Proof Verification** | Cryptographically valid proof (forgery resistance) |
+| **Signature Verification** | Confirmed created through legitimate process |
+| **Registration Check** | Confirmed linked to legitimate issuing organization |
+
+</details>
 
 ---
 
-## Success Criteria
-
-:::tip[Test Success]
-Success is when **all 5 items show green ✅** in Verifier.
-:::
-
----
-
-## (Optional) Error Behavior Testing
-
-If you have time, please try the following "intentional mistake" tests.
-This helps verify that **the system correctly detects invalid input**.
-
-| What to Try | Expected Result |
-|-------------|-----------------|
-| Enter **wrong name** in identity verification | Error occurs, cannot proceed |
-| Enter **wrong birth date** in identity verification | Error occurs, cannot proceed |
-| Verify **original test PDF** (without -secured) in Verifier | ❌ is displayed |
-
-:::note[Why This Test Matters]
-It's crucial for security that "only correct input passes."
-It would be a problem if proofs could be created with wrong information, or if unprocessed PDFs were judged as "authentic."
-:::
-
----
-
-## Common Issues
+<details>
+<summary><strong>🔧 Common Issues</strong></summary>
 
 ### Prover Side
 
 | Symptom | Cause & Solution |
 |---------|------------------|
-| **Identity verification fails** | Activation code, name, or birth date doesn't match registered info. Please recheck your email |
-| **Passkey setup screen doesn't appear** | Browser may not support WebAuthn. Please use the latest Chrome / Safari / Edge |
-| **Proof generation takes long** | First time may take 30 seconds to 1 minute. Subsequent runs are faster |
+| **Identity verification fails** | Code, name, or birth date doesn't match. Recheck your email |
+| **Passkey setup screen doesn't appear** | Use the latest Chrome / Safari / Edge |
+| **Proof generation takes long** | First time may take 30 sec to 1 min. Faster afterward |
 
 ### Verifier Side
 
 | Symptom | Cause & Solution |
 |---------|------------------|
-| **Verification shows error** | **Original test PDF cannot be verified.** Use the `-secured.pdf` generated by Prover |
-| **"Registration Check" shows ❌** | Identity verification info may have been incorrect. Please redo from Prover |
+| **Verification shows error** | **Original test PDF cannot be verified.** Use `-secured.pdf` |
+| **"Registration Check" shows ❌** | Redo identity verification in Prover |
 
 ### General
 
 | Symptom | Cause & Solution |
 |---------|------------------|
-| **Hard to use on smartphone** | File saving/re-uploading is complex. **PC recommended** |
+| **Hard to use on smartphone** | **PC recommended** |
+
+</details>
 
 ---
 
-## After the Test
+## Feedback
 
-:::tip[About Passkey Deletion]
-Passkeys created during the test may be saved in the "Passwords" app.
-Since these are for testing, you may delete them at your discretion.
-:::
-
----
-
-## Feedback (Please Do!)
-
-If problems occur, please contact us with the information below.
-**Even if no problems occur**, we'd appreciate hearing about any confusion, unclear points, or improvement ideas.
-
-### Report Template
+After completing the test, please copy and paste the form below for your report.
+**Even if no problems occur**, we'd appreciate hearing about any confusion or improvement ideas.
 
 ```
+■ Rating (5 = Very Good, 1 = Very Poor)
+1. Prover understandability: [  ] / 5
+2. Prover ease of use: [  ] / 5
+3. Verifier understandability: [  ] / 5
+4. Verifier ease of use: [  ] / 5
+
+■ Confusion Points / Improvement Ideas (Free Text)
+
+
+■ If Problems Occurred (Optional)
 - Device: Mac / Windows
 - Browser: Chrome / Safari / Edge
 - Which screen: Prover / Verifier
-- Which action: (e.g.) Right after clicking "Generate Proof" after PDF upload
-- Message displayed: (paste as-is, screenshots welcome)
-- Expected behavior: (e.g.) -secured.pdf should be generated
+- Which action:
+- Message displayed: (screenshots welcome)
 ```
 
 Thank you for your cooperation.

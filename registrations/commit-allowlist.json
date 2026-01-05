@@ -4,8 +4,15 @@
     "id": "tricert-framework-demo",
     "name": "KIC TriCert Framework Demo"
   },
-  "updated_at": "2025-12-23T07:07:19Z",
+  "updated_at": "2026-01-05T09:48:30Z",
   "entries": [
+    {
+      "activation_hash": "sha512:dfb1484b30e1576a439eaa32d7a403dc894b3fdbb975400d9734da526b2974f31df08cba45ead3a5c62f4d98250abb357dbbf291e5850fef4c783e030f8c8d5c",
+      "student_id_hash": "sha512:210cb9640d08f982a036dda99c454b78cbfbd66cb06990964b0f671a398a182472eeb5718802dd2d30d342d9984929e16c71ffcfaf75078baef4887d3bf24f4c",
+      "graduation_year": 2024,
+      "created_at": "2026-01-05T09:48:30Z",
+      "updated_at": "2026-01-05T09:48:30Z"
+    },
     {
       "activation_hash": "sha512:d3b0bf2db9466a48fd79d9a0bb8d54f3ada379d752df01c600b4d4caaf9a30e7ae25b5c2a940aa21e44ed2b98c7fa0158766389698b55cd558119f7a2dc29441",
       "student_id_hash": "sha512:41bb36108310e77f29cb319ccda33ee74afc419c161eac9fd2006368199c0326de710929dc9c381daac608e897bd30dde3cc89b25f2b785ecdbbb06ff5facac7",

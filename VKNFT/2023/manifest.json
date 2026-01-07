@@ -1,0 +1,57 @@
+{
+  "schema": "tri-cert/vknft-bundle@1",
+  "version": 1,
+  "year": 2023,
+  "generatedAt": "2026-01-07T03:56:05.366Z",
+  "files": {
+    "wasm": {
+      "fileName": "commitment_2023.wasm",
+      "sha3_256": "5c26eade3de675ee6c3156be3ac849da859fc984fb2511b1c5a013fc81a5e4f8",
+      "size": 1747662,
+      "relativePath": "files/commitment_2023.wasm"
+    },
+    "zkey": {
+      "fileName": "commitment_final_2023.zkey",
+      "sha3_256": "c128eb21ab54cc8dbd1aea3cf025c26902a533ba03e328f0001f5096f11c9df3",
+      "size": 254684,
+      "relativePath": "files/commitment_final_2023.zkey"
+    },
+    "vk": {
+      "fileName": "vkey_2023.json",
+      "sha3_256": "d58e1dce29f956bd0f2fcf6c1e4cd434b227117bc30be437f1af43e6133b4930",
+      "size": 3396,
+      "relativePath": "files/vkey_2023.json",
+      "declaredHash": "bc6d09e8aed9cda9518ff11b82442174447aaeea5c40df5ec0b772c5008987b3"
+    },
+    "zip": {
+      "fileName": "vk_bundle_2023.zip",
+      "sha3_256": "561828e50faf640cdd215d01c8ff94640c40d7c69cfc9c9277bf9d72431572bd",
+      "size": 2006112,
+      "relativePath": "vk_bundle_2023.zip"
+    }
+  },
+  "ledgerSignature": {
+    "scheme": "ledger-hardware",
+    "fileName": "vk_bundle_2023.sig",
+    "algorithm": "ECDSA_secp256k1_SHA256",
+    "createdAt": "2026-01-07T03:59:30.449Z",
+    "signerLabel": "Ledger Hardware Wallet",
+    "sha3_256": "561828e50faf640cdd215d01c8ff94640c40d7c69cfc9c9277bf9d72431572bd",
+    "signatureBase64": "CIT0u9joxvVgWFQ+HPu0BM9OMHH5fyDQsYC+gNhnHqwXr2FlJ65v7dWixb3MkQZL4pFXlIsxRzVgOJMQ9hvuPw==",
+    "derivation_path": "44'/60'/0'/0/0",
+    "publicKeyJwk": {
+      "kty": "EC",
+      "crv": "secp256k1",
+      "x": "AGMjAhwQODV_P7lozlvA1hdf64uPOb8-URGYFbeqbxY",
+      "y": "BD9AKlkMBrR261AetEj-LamBOqT8B_wPCqdzOC8MPMA",
+      "key_ops": [
+        "verify"
+      ],
+      "ext": true
+    }
+  },
+  "tools": {
+    "generator": "Executive Console"
+  },
+  "notes": []
+}

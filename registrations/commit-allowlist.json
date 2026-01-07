@@ -4,42 +4,37 @@
     "id": "tricert-framework-demo",
     "name": "KIC TriCert Framework Demo"
   },
-  "updated_at": "2026-01-05T10:16:22Z",
+  "updated_at": "2025-12-23T07:04:43Z",
   "entries": [
     {
       "activation_hash": "sha512:410273494977930bae08b258dcfeee880b020f83ea2d3f5f5ce75fb2dead39be203d9817da49f25d0334b54bb22a7d3c5898009a712bd54953bcf3878a39d3d1",
       "student_id_hash": "sha512:210cb9640d08f982a036dda99c454b78cbfbd66cb06990964b0f671a398a182472eeb5718802dd2d30d342d9984929e16c71ffcfaf75078baef4887d3bf24f4c",
-      "graduation_year": 2027,
       "created_at": "2026-01-05T10:16:22Z",
       "updated_at": "2026-01-05T10:16:22Z"
     },
     {
       "activation_hash": "sha512:d3b0bf2db9466a48fd79d9a0bb8d54f3ada379d752df01c600b4d4caaf9a30e7ae25b5c2a940aa21e44ed2b98c7fa0158766389698b55cd558119f7a2dc29441",
       "student_id_hash": "sha512:41bb36108310e77f29cb319ccda33ee74afc419c161eac9fd2006368199c0326de710929dc9c381daac608e897bd30dde3cc89b25f2b785ecdbbb06ff5facac7",
-      "graduation_year": 2024,
       "created_at": "2025-12-23T07:06:31Z",
       "updated_at": "2025-12-23T07:06:31Z"
     },
     {
       "activation_hash": "sha512:e3753938fe0f28772ec2b32805e298d580b5aa8601e67d6908637e11601bece36db9adda58b275797836644f242945615b48ef6a06371931904328daa60c81e4",
       "student_id_hash": "sha512:c75ad89f0e73990c7eaf9a38d9525ecbd033dd57a7800f73229ecd6942d37cda64d4e57b01cea25b0948d7c817813d6deae584a62404bb2f19a99bfafadcad34",
-      "graduation_year": 2026,
       "created_at": "2025-12-23T07:07:19Z",
       "updated_at": "2025-12-23T07:07:19Z"
     },
     {
       "activation_hash": "sha512:14d3372e3d909be4e7def3a27d0aa024cd8fe2f3af434d7c0c63a62a98717111580cdc050146a615442e4ddd4f94677d84562823c3b7b076576f4c69c32d7c8f",
       "student_id_hash": "sha512:db9510df3af0919feac2cd1faba7be6493247ea2f6eca63a454f2e6ed7d0edaffed80d3a00d5b4fe1d44fb531c1680a3fe9fdf82a043ff8edb5b7091bf0df437",
-      "graduation_year": 2025,
       "created_at": "2025-12-23T07:04:43Z",
       "updated_at": "2025-12-23T07:04:43Z"
     },
     {
-      "activation_hash": "sha512:49a572b0928312969e5b4bc837a562471d5511aad4e27dfa1fbf07a38b3046ef7720d7babf75799729487317a9c5d7fb718546d11c50e40848bcb6de4c4a1b6d",
+      "activation_hash": "sha512:6a07e7445bbbe39dd47fe48c9008b0bcfa474a9a71cbb2361e2de4709f2a89d7011320682a165ba06942e57700464b22642c2302313e1a82db856e2bee61a05e",
       "student_id_hash": "sha512:fce735acc45b30563ed958f345924064afe11a76afde17886db2fdd81804d2ad155386dcc8f463b7c82572ca414a1726677fc0225584e835f242d188e9e759af",
-      "graduation_year": 2026,
-      "created_at": "2025-12-18T05:43:49Z",
-      "updated_at": "2025-12-18T05:43:49Z"
+      "created_at": "2026-01-07T04:53:01Z",
+      "updated_at": "2026-01-07T04:53:01Z"
     }
   ]
 }

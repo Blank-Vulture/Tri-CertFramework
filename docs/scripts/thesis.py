@@ -53,6 +53,12 @@ THESIS_FILE_PATTERN = re.compile(r"thesis-v(\d+)-(\d+)\.md")
 VERSION_PATTERN = re.compile(r"v?(\d+)[.-](\d+)")
 SECTION_PATTERN = re.compile(r"^(\d+(?:\.\d+)*)\s+(.+)$")
 
+# Image path patterns for conversion
+# thesis-source uses: ![alt](screenshot/component/file.png)
+# Output needs: ![alt](../../../assets/screenshot/component/file.png)
+IMAGE_PATH_PATTERN = re.compile(r'!\[([^\]]*)\]\(([^)]+)\)')
+SCREENSHOT_DIR = DOCS_DIR / "src" / "assets" / "screenshot"
+
 
 # =============================================================================
 # Config Management
@@ -304,6 +310,65 @@ def generate_toc(files: list[SourceFile]) -> str:
                 toc_lines.append(f"- [{f.title}](#{anchor})")
     
     return "\n".join(toc_lines)
+
+
+def convert_image_paths(content: str) -> str:
+    """
+    Convert image paths from thesis-source format to output format.
+
+    Supported input formats:
+    - ![alt](screenshot/prover/default.png)
+    - ![alt](../src/assets/screenshot/prover/default.png)
+    - ![alt](prover/default.png)  (if file exists in screenshot dir)
+
+    Output format:
+    - ![alt](../../../assets/screenshot/prover/default.png)
+
+    Also validates that referenced images exist.
+    """
+    def replace_path(match: re.Match) -> str:
+        alt_text = match.group(1)
+        original_path = match.group(2)
+
+        # Skip URLs
+        if original_path.startswith(('http://', 'https://', '//')):
+            return match.group(0)
+
+        # Normalize path - extract the screenshot-relative portion
+        path_lower = original_path.lower()
+
+        # Find screenshot-related path components
+        screenshot_components = ['prover', 'verifier', 'registrar-console', 'executive-console']
+
+        for component in screenshot_components:
+            if component in path_lower:
+                # Extract from component onwards
+                idx = original_path.lower().find(component)
+                relative_path = original_path[idx:]
+
+                # Verify file exists
+                full_path = SCREENSHOT_DIR / relative_path
+                if full_path.exists():
+                    # Convert to output format
+                    # Output is in: src/content/docs/research/thesis-vX-Y.md
+                    # Screenshots are in: src/assets/screenshot/
+                    # Relative path: ../../../assets/screenshot/
+                    new_path = f"../../../assets/screenshot/{relative_path}"
+                    return f"![{alt_text}]({new_path})"
+                else:
+                    print(f"  ⚠️  Warning: Screenshot not found: {full_path}")
+                    return match.group(0)
+
+        # If path already contains 'assets/screenshot', adjust it
+        if 'assets/screenshot' in original_path:
+            idx = original_path.find('assets/screenshot')
+            new_path = "../../../" + original_path[idx:]
+            return f"![{alt_text}]({new_path})"
+
+        # Return unchanged if we can't process it
+        return match.group(0)
+
+    return IMAGE_PATH_PATTERN.sub(replace_path, content)
 
 
 def build_thesis_content(files: list[SourceFile], config: configparser.ConfigParser) -> str:
@@ -684,7 +749,10 @@ tableOfContents:
         content,
         flags=re.DOTALL,
     )
-    
+
+    # Convert image paths to correct relative paths
+    content = convert_image_paths(content)
+
     # Write output
     new_rev.file_path.write_text(frontmatter + content, encoding="utf-8")
     print(f"  ✓ Created {new_rev.filename}")
@@ -998,7 +1066,8 @@ def show_revision(version_str: str) -> None:
     h1_count = len(re.findall(r"^# ", content, re.MULTILINE))
     h2_count = len(re.findall(r"^## ", content, re.MULTILINE))
     mermaid_count = content.count('<pre class="mermaid">')
-    
+    image_count = len(IMAGE_PATH_PATTERN.findall(content))
+
     print(f"\n📄 Thesis v{rev.version}")
     print("=" * 50)
     print(f"File:       {rev.file_path.relative_to(DOCS_DIR)}")
@@ -1008,6 +1077,7 @@ def show_revision(version_str: str) -> None:
     print(f"Chapters:   {h1_count}")
     print(f"Sections:   {h2_count}")
     print(f"Mermaid:    {mermaid_count} diagram(s)")
+    print(f"Images:     {image_count} image(s)")
     print()
 
 

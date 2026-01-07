@@ -1,0 +1,46 @@
+[Ledger] Chain code length: 194
+[Ledger] Chain code invalid or missing (len=194, remaining=31)
+[Ledger] Successfully parsed public key response
+[Ledger] Searching for Ledger devices (Vendor ID: 0x2c97)...
+[Ledger] Found Ledger device #1:
+  Product: Nano X
+  Manufacturer: Ledger
+  Product ID: 0x4000
+  Serial: Some("0001")
+[Ledger] Opening device...
+[Ledger] Device opened successfully
+[Ledger] Warming up HID connection (100ms)...
+[Ledger] Signing hash: 561828e50faf640cdd215d01c8ff94640c40d7c69cfc9c9277bf9d72431572bd
+[Ledger] Derivation path: 44'/60'/0'/0/0
+[Ledger] Sign payload length: 57 bytes
+[Ledger] Sending APDU command:
+  CLA: 0xe0, INS: 0x08, P1: 0x00, P2: 0x00
+  Data length: 57 bytes
+  Full APDU: e008000039058000002c8000003c80000000000000000000000000000020561828e50faf640cdd215d01c8ff94640c40d7c69cfc9c9277bf9d72431572bd
+[Ledger] Sending 62 bytes in HID frames (packet size: 64)
+[Ledger] Sending packet 0 with 57 bytes of data
+[Ledger] Sending packet 1 with 5 bytes of data
+[Ledger] All 2 packets sent successfully
+[Ledger] APDU sent successfully, waiting for response...
+[Ledger] Starting to receive HID frames...
+[Ledger] Waiting for packet 0 (timeout: 60000ms)...
+[Ledger] Received 64 bytes in packet 0
+[Ledger] Packet header - Channel: 0x0101, Tag: 0x05
+[Ledger] Total response length: 67 bytes
+[Ledger] Copying 57 bytes (remaining: 67, available: 57)
+[Ledger] Response data: 57 / 67 bytes
+[Ledger] Waiting for packet 1 (timeout: 10000ms)...
+[Ledger] Received 64 bytes in packet 1
+[Ledger] Packet header - Channel: 0x0101, Tag: 0x05
+[Ledger] Copying 10 bytes (remaining: 10, available: 59)
+[Ledger] Response data: 67 / 67 bytes
+[Ledger] All data received
+[Ledger] Status word: 0x9000
+[Ledger] Success status received
+[Ledger] Got signature response on attempt 1
+[Ledger] Parsing signature response: 65 bytes
+[Ledger] Response hex: 1b0884f4bbd8e8c6f56058543e1cfbb404cf4e3071f97f20d0b180be80d8671eac17af616527ae6fedd5a2c5bdcc91064be29157948b31473560389310f61bee3f
+[Ledger] Signature parsed successfully:
+  v: 27
+  r: 0884f4bbd8e8c6f56058543e1cfbb404cf4e3071f97f20d0b180be80d8671eac
+  s: 17af616527ae6fedd5a2c5bdcc91064be29157948b31473560389310f61bee3f

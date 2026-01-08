@@ -75,7 +75,7 @@ def load_config() -> configparser.ConfigParser:
         config["version"] = {"major": "1", "minor": "0"}
         config["metadata"] = {
             "title": "修士論文",
-            "subtitle": "文書の真正性検証フレームワークの設計と実装",
+            "subtitle": "デジタル文書の真正性検証: ３層認証アーキテクチャの設計と実装",
             "description": "ゼロ知識証明を用いた分散型証明システム Tri-CertFramework",
         }
         config["paths"] = {

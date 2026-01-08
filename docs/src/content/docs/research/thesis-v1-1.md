@@ -1119,7 +1119,7 @@ https://fidoalliance.org/fido2/
 
 Circomで記述されたコミットメント回路の概要：
 
-```circom
+```javascript
 pragma circom 2.0.0;
 
 include "poseidon.circom";

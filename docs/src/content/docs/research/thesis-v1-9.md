@@ -223,7 +223,7 @@ flowchart TD
 
 本研究は、これらの課題に対して「利用者のプライバシーを確保した偽造対策システム」という提供価値を実現することを目指す。図1.2に、本研究の探究プロセスを示す。
 
-![本研究の探究プロセス](tankyu-chart.png)
+![本研究の探究プロセス](../../../assets/tankyu-chart.png)
 
 <p align="center"><strong>図1.2: 本研究の探究プロセス</strong></p>
 
@@ -1799,7 +1799,7 @@ https://www.nngroup.com/articles/why-you-only-need-to-test-with-5-users/
 
 Circomで記述されたコミットメント回路の概要：
 
-```circom
+```javascript
 pragma circom 2.0.0;
 
 include "poseidon.circom";

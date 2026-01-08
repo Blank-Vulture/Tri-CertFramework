@@ -1799,7 +1799,7 @@ https://www.nngroup.com/articles/why-you-only-need-to-test-with-5-users/
 
 Circomで記述されたコミットメント回路の概要：
 
-```circom
+```javascript
 pragma circom 2.0.0;
 
 include "poseidon.circom";

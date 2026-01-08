@@ -4,7 +4,15 @@ description: "文書の真正性検証フレームワークの設計と実装 - 
 tableOfContents:
   minHeadingLevel: 2
   maxHeadingLevel: 3
+sidebar:
+  badge:
+    text: "過去版"
+    variant: "caution"
 ---
+
+:::caution[過去バージョン]
+これは過去バージョン（v1.6）です。最新版は [v1.7](./thesis-v1-7/) をご覧ください。
+:::
 
 # 文書の真正性検証
 

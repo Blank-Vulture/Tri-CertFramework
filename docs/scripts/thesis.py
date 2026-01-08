@@ -320,12 +320,17 @@ def convert_image_paths(content: str) -> str:
     - ![alt](screenshot/prover/default.png)
     - ![alt](../src/assets/screenshot/prover/default.png)
     - ![alt](prover/default.png)  (if file exists in screenshot dir)
+    - ![alt](image.png)  (if file exists in assets dir)
 
     Output format:
     - ![alt](../../../assets/screenshot/prover/default.png)
+    - ![alt](../../../assets/image.png)
 
     Also validates that referenced images exist.
     """
+    # Assets directory (parent of screenshot dir)
+    assets_dir = SCREENSHOT_DIR.parent
+
     def replace_path(match: re.Match) -> str:
         alt_text = match.group(1)
         original_path = match.group(2)
@@ -365,7 +370,21 @@ def convert_image_paths(content: str) -> str:
             new_path = "../../../" + original_path[idx:]
             return f"![{alt_text}]({new_path})"
 
+        # If path already contains 'assets/', adjust it
+        if 'assets/' in original_path:
+            idx = original_path.find('assets/')
+            new_path = "../../../" + original_path[idx:]
+            return f"![{alt_text}]({new_path})"
+
+        # Check if file exists directly in assets directory
+        # (e.g., tankyu-chart.png -> ../../../assets/tankyu-chart.png)
+        filename = Path(original_path).name
+        if (assets_dir / filename).exists():
+            new_path = f"../../../assets/{filename}"
+            return f"![{alt_text}]({new_path})"
+
         # Return unchanged if we can't process it
+        print(f"  ⚠️  Warning: Image not found: {original_path}")
         return match.group(0)
 
     return IMAGE_PATH_PATTERN.sub(replace_path, content)

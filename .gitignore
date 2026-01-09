@@ -1,5 +1,7 @@
-# PDF
 *.pdf
+.claude/
+output/
+templates/
 
 # macOS
 .DS_Store

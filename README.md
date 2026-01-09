@@ -1,10 +1,27 @@
 # Tri-Cert Framework
-> **次世代の「信頼」を、もっと身近に、もっと確実に。**  
-> デジタル時代の新しい証明書エコシステム
 
 <div align="center">
-  <img src="https://capsule-render.vercel.app/api?type=waving&color=0:303030,100:1a1a1a&height=250&section=header&text=Tri-Cert%20Framework&fontSize=70&fontColor=ffffff&animation=fadeIn&fontAlignY=40" alt="Tri-Cert Banner" width="100%">
+  <img src="./docs/src/assets/banner.png" alt="Tri-Cert Framework - Issuance • Custody • Verification" width="100%">
+
+  <p><strong>次世代の「信頼」を、もっと身近に、もっと確実に。</strong><br>
+  デジタル時代の新しい証明書エコシステム</p>
+
+  ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)
+  ![Rust](https://img.shields.io/badge/Rust-000000?style=flat-square&logo=rust&logoColor=white)
+  ![Go](https://img.shields.io/badge/Go-00ADD8?style=flat-square&logo=go&logoColor=white)
+  ![Next.js](https://img.shields.io/badge/Next.js-000000?style=flat-square&logo=next.js&logoColor=white)
+  ![Tauri](https://img.shields.io/badge/Tauri-FFC131?style=flat-square&logo=tauri&logoColor=black)
+
+  <br>
+
+  [📖 ドキュメント](https://blank-vulture.github.io/Tri-CertFramework/) •
+  [🎓 修士論文](https://blank-vulture.github.io/Tri-CertFramework/research/thesis-v1-16/) •
+  [📱 Prover Demo](https://blank-vulture.github.io/Tri-CertFramework/prover/) •
+  [🔍 Verifier Demo](https://blank-vulture.github.io/Tri-CertFramework/verifier-ui/)
+
 </div>
+
+---
 
 ## 🔰 Overview（概要）
 
@@ -60,44 +77,60 @@ graph LR
 <details open>
 <summary><h3>🏛️ Executive Console (管理コンソール)</h3></summary>
 組織のトップレベル管理者が使用するダッシュボードです。<br>
-<b>特徴:</b> 高いセキュリティと堅牢性。
+<b>特徴:</b> 高いセキュリティと堅牢性。Ledgerハードウェアウォレットによる署名。
 
 - **Path**: `/executive-console`
 - **Tech**: Rust (Tauri), React
-- **Role**: ルート認証局の管理、システム設定、監査ログの監視
+- **Role**: 検証鍵（VK）の生成・管理、Ledger署名
+
+<div align="center">
+  <img src="./docs/src/assets/screenshot/executive-console/vk_generator.png" alt="Executive Console - VK Generator" width="80%">
+</div>
 
 </details>
 
 <details>
 <summary><h3>✍️ Registrar Console (発行実務コンソール)</h3></summary>
 大学の教務課や企業の総務部など、現場担当者が使用するデスクトップアプリです。<br>
-<b>特徴:</b> 事務作業に馴染む軽快な操作性。
+<b>特徴:</b> 事務作業に馴染む軽快な操作性。CSV一括登録対応。
 
 - **Path**: `/registrar-console`
-- **Tech**: Go (Wails), Frontend
-- **Role**: 個別の証明書発行、申請の承認/却下
+- **Tech**: Go (Wails), React
+- **Role**: 学生・資格保持者の登録、認証コード（Salt）の発行
+
+<div align="center">
+  <img src="./docs/src/assets/screenshot/registrar-console/registar.png" alt="Registrar Console - Registration" width="80%">
+</div>
 
 </details>
 
 <details>
 <summary><h3>📱 Prover (証明書ウォレット)</h3></summary>
 一般ユーザーが自分の証明書を受け取り、管理するためのWebアプリケーションです。<br>
-<b>特徴:</b> スマホファーストで直感的なデザイン。
+<b>特徴:</b> スマホファーストで直感的なデザイン。WebAuthn/パスキー対応。
 
 - **Path**: `/prover`
-- **Tech**: Next.js, TypeScript
-- **Role**: 証明書の保管、検証者への提出
+- **Tech**: Next.js, TypeScript, snarkjs
+- **Role**: ゼロ知識証明の生成、証明付きPDFの作成
+
+<div align="center">
+  <img src="./docs/src/assets/screenshot/prover/output.png" alt="Prover - Proof Generation Complete" width="80%">
+</div>
 
 </details>
 
 <details>
 <summary><h3>🔍 Verifier UI (検証ポータル)</h3></summary>
 企業や機関が、提示された証明書が本物かを確認するWebサイトです。<br>
-<b>特徴:</b> ログイン不要で誰でも即座に検証可能
+<b>特徴:</b> ログイン不要で誰でも即座に検証可能。5ステップの自動検証。
 
 - **Path**: `/verifier-ui`
-- **Tech**: Next.js, TypeScript
-- **Role**: 証明書の署名検証、有効期限確認
+- **Tech**: Next.js, TypeScript, snarkjs
+- **Role**: ZKP検証、WebAuthn署名検証、Allowlist照合
+
+<div align="center">
+  <img src="./docs/src/assets/screenshot/verifier/verified_2.png" alt="Verifier UI - Verification Success" width="80%">
+</div>
 
 </details>
 
@@ -143,14 +176,18 @@ DBは必要ありません。全てファイルベースで動作します。<br
 ---
 
 ## 🛡 Security & Compliance
-
-- **Open Standards**: W3C Verifiable Credentials (VC) 準拠（予定）
+- **Blockchain Ready**: 将来的にブロックチェーン連携が可能な設計。
 - **Privacy First**: ユーザーの同意なしに個人情報は共有されません。
 - **Audit**: 全ての操作ログは改ざん困難な形式で記録されます。
 
 ---
 
 <div align="center">
-  <small>Use with ❤️ by the Tri-Cert Development Team.</small>
-</div>
 
+---
+
+**Tri-Cert Framework** は神戸情報大学院大学 修士研究プロジェクトとして開発されました。
+
+[📖 Documentation](https://blank-vulture.github.io/Tri-CertFramework/) • [🎓 Master's Thesis](https://blank-vulture.github.io/Tri-CertFramework/research/thesis-v1-16/)
+
+</div>

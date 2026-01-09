@@ -64,6 +64,7 @@ export default defineConfig({
           translations: { en: 'Research' },
           items: [
             { label: '論文一覧', slug: 'research', translations: { en: 'Papers' } },
+            { label: '修士論文 v1.14', slug: 'research/thesis-v1-14', translations: { en: 'Thesis v1.14' } },
             { label: '修士論文 v1.13', slug: 'research/thesis-v1-13', translations: { en: 'Thesis v1.13' } },
             { label: '修士論文 v1.12', slug: 'research/thesis-v1-12', translations: { en: 'Thesis v1.12' } },
             { label: '修士論文 v1.11', slug: 'research/thesis-v1-11', translations: { en: 'Thesis v1.11' } },

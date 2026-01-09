@@ -307,18 +307,18 @@ h3 {
   font-size: 0.85rem;
 }
 
-/* Table centering for thesis pages */
-[data-slug^="research/thesis"] .sl-markdown-content table {
-  margin-left: auto;
-  margin-right: auto;
-  width: auto;
+/* Table centering for all markdown content */
+.sl-markdown-content table {
+  margin-left: auto !important;
+  margin-right: auto !important;
+  width: fit-content !important;
 }
 
-/* Image centering for thesis pages */
-[data-slug^="research/thesis"] .sl-markdown-content img {
-  display: block;
-  margin-left: auto;
-  margin-right: auto;
+/* Image centering for all markdown content */
+.sl-markdown-content img {
+  display: block !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
 }
 
 /* Mermaid diagrams centering */

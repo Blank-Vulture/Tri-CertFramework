@@ -12,9 +12,17 @@ Usage:
     ./thesis.py tree             Show source directory structure
     ./thesis.py show <version>   Show details of a specific revision
     ./thesis.py remove <version> Remove a revision
+    ./thesis.py docx             Export thesis to DOCX format
+    ./thesis.py pdf              Export thesis to PDF format
+    ./thesis.py export           Export thesis to both DOCX and PDF
 
 Requirements:
-    Python 3.8+ (standard library only, no external dependencies)
+    Python 3.8+
+    For export commands:
+        - pandoc (brew install pandoc)
+        - mermaid-cli (npm install -g @mermaid-js/mermaid-cli)
+        - For PDF: XeLaTeX (brew install --cask mactex-no-gui)
+        - python-docx (pip install python-docx) - for reference template
 
 Examples:
     ./thesis.py init             # Create initial directory structure
@@ -22,13 +30,18 @@ Examples:
     ./thesis.py build            # Build new version from source
     ./thesis.py fetch            # Sync config with research dir
     ./thesis.py tree             # Show thesis source structure
+    ./thesis.py docx             # Export to DOCX for reviewer comments
+    ./thesis.py pdf              # Export to PDF for final submission
+    ./thesis.py export           # Export to both DOCX and PDF
 """
 
 import argparse
 import configparser
 import re
 import shutil
+import subprocess
 import sys
+import tempfile
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -58,6 +71,12 @@ SECTION_PATTERN = re.compile(r"^(\d+(?:\.\d+)*)\s+(.+)$")
 # Output needs: ![alt](../../../assets/screenshot/component/file.png)
 IMAGE_PATH_PATTERN = re.compile(r'!\[([^\]]*)\]\(([^)]+)\)')
 SCREENSHOT_DIR = DOCS_DIR / "src" / "assets" / "screenshot"
+
+# Export-related paths
+TEMPLATES_DIR = SCRIPT_DIR / "templates"
+OUTPUT_DIR = SCRIPT_DIR / "output"
+REFERENCE_DOCX = TEMPLATES_DIR / "reference.docx"
+COVER_DOCX = TEMPLATES_DIR / "表紙.docx"
 
 
 # =============================================================================
@@ -795,6 +814,1067 @@ tableOfContents:
 
 
 # =============================================================================
+# Export Commands (DOCX/PDF)
+# =============================================================================
+
+MERMAID_PATTERN = re.compile(r'```mermaid\n(.*?)```', re.DOTALL)
+MERMAID_PRE_PATTERN = re.compile(r'<pre class="mermaid">\n?(.*?)</pre>', re.DOTALL)
+
+# JPEG quality for export (lower = smaller file size)
+JPEG_QUALITY = 85
+
+
+def convert_png_to_jpg(png_path: Path, output_dir: Path) -> Path:
+    """
+    Convert a PNG image to JPEG format for smaller file size.
+
+    Returns the path to the converted JPEG file.
+    """
+    from PIL import Image
+
+    jpg_name = png_path.stem + ".jpg"
+    jpg_path = output_dir / jpg_name
+
+    try:
+        with Image.open(png_path) as img:
+            # Convert RGBA to RGB (JPEG doesn't support alpha)
+            if img.mode in ('RGBA', 'LA', 'P'):
+                # Create white background
+                background = Image.new('RGB', img.size, (255, 255, 255))
+                if img.mode == 'P':
+                    img = img.convert('RGBA')
+                background.paste(img, mask=img.split()[-1] if img.mode == 'RGBA' else None)
+                img = background
+            elif img.mode != 'RGB':
+                img = img.convert('RGB')
+
+            img.save(jpg_path, 'JPEG', quality=JPEG_QUALITY, optimize=True)
+        return jpg_path
+    except Exception as e:
+        print(f"  ⚠️  Warning: Failed to convert {png_path.name} to JPEG: {e}")
+        return png_path  # Return original on failure
+
+
+def check_dependencies() -> dict[str, bool]:
+    """Check if required dependencies are installed."""
+    deps = {}
+
+    # Check Pillow (for image conversion)
+    try:
+        from PIL import Image
+        deps["pillow"] = True
+    except ImportError:
+        deps["pillow"] = False
+
+    # Check pandoc
+    try:
+        result = subprocess.run(["pandoc", "--version"], capture_output=True, text=True)
+        deps["pandoc"] = result.returncode == 0
+    except FileNotFoundError:
+        deps["pandoc"] = False
+
+    # Check mermaid-cli (mmdc)
+    try:
+        result = subprocess.run(["mmdc", "--version"], capture_output=True, text=True)
+        deps["mermaid"] = result.returncode == 0
+    except FileNotFoundError:
+        deps["mermaid"] = False
+
+    return deps
+
+
+def prerender_mermaid(content: str, output_dir: Path, use_jpeg: bool = False) -> str:
+    """
+    Convert Mermaid code blocks to images.
+
+    Handles both:
+    - ```mermaid ... ``` (raw markdown)
+    - <pre class="mermaid"> ... </pre> (converted format)
+
+    Args:
+        content: Markdown content with Mermaid blocks
+        output_dir: Directory to save rendered images
+        use_jpeg: If True, convert PNG to JPEG for smaller file size
+    """
+    mermaid_dir = output_dir / "mermaid"
+    mermaid_dir.mkdir(parents=True, exist_ok=True)
+
+    counter = [0]  # Use list to allow modification in nested function
+
+    def replace_mermaid(match: re.Match) -> str:
+        mermaid_code = match.group(1).strip()
+        counter[0] += 1
+        png_name = f"mermaid-{counter[0]}.png"
+        png_path = mermaid_dir / png_name
+
+        # Write mermaid code to temp file
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.mmd', delete=False, encoding='utf-8') as f:
+            f.write(mermaid_code)
+            mmd_path = f.name
+
+        try:
+            # Run mmdc to convert to PNG (scale 1.5 for balance between quality and size)
+            result = subprocess.run(
+                ["mmdc", "-i", mmd_path, "-o", str(png_path), "-b", "white", "-s", "1.5"],
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode != 0:
+                print(f"  ⚠️  Warning: Mermaid rendering failed for diagram {counter[0]}")
+                print(f"      {result.stderr[:200]}")
+                return match.group(0)  # Return original on failure
+        finally:
+            Path(mmd_path).unlink(missing_ok=True)
+
+        # Convert to JPEG if requested
+        if use_jpeg and png_path.exists():
+            jpg_path = convert_png_to_jpg(png_path, mermaid_dir)
+            png_path.unlink(missing_ok=True)  # Remove original PNG
+            return f"![]({jpg_path})"
+
+        # Return markdown image reference (empty alt text to avoid duplication with caption)
+        return f"![]({png_path})"
+
+    # Replace both formats
+    content = MERMAID_PATTERN.sub(replace_mermaid, content)
+    content = MERMAID_PRE_PATTERN.sub(replace_mermaid, content)
+
+    if counter[0] > 0:
+        fmt = "JPEG" if use_jpeg else "PNG"
+        print(f"  ✓ Rendered {counter[0]} Mermaid diagram(s) as {fmt}")
+
+    return content
+
+
+def convert_image_paths_for_export(content: str) -> str:
+    """
+    Convert image paths to absolute paths for Pandoc export.
+
+    Input: ![alt](../../../assets/screenshot/prover/default.png)
+    Output: ![alt](/absolute/path/to/screenshot/prover/default.png)
+    """
+    assets_dir = DOCS_DIR / "src" / "assets"
+
+    def replace_path(match: re.Match) -> str:
+        alt_text = match.group(1)
+        original_path = match.group(2)
+
+        # Skip URLs and already absolute paths
+        if original_path.startswith(('http://', 'https://', '//')):
+            return match.group(0)
+
+        # If already absolute, return as-is
+        if original_path.startswith('/'):
+            return match.group(0)
+
+        # Handle relative paths from thesis output format
+        # ../../../assets/screenshot/prover/default.png -> assets/screenshot/prover/default.png
+        if 'assets/' in original_path:
+            idx = original_path.find('assets/')
+            relative_from_assets = original_path[idx + 7:]  # After "assets/"
+            absolute_path = assets_dir / relative_from_assets
+            if absolute_path.exists():
+                return f"![{alt_text}]({absolute_path})"
+
+        # Handle direct screenshot references
+        screenshot_components = ['prover', 'verifier', 'registrar-console', 'executive-console']
+        for component in screenshot_components:
+            if component in original_path.lower():
+                idx = original_path.lower().find(component)
+                relative_path = original_path[idx:]
+                full_path = SCREENSHOT_DIR / relative_path
+                if full_path.exists():
+                    return f"![{alt_text}]({full_path})"
+
+        # Handle direct filename references (e.g., tankyu-chart.png)
+        # Try to find in assets directory directly
+        filename = Path(original_path).name
+        direct_path = assets_dir / filename
+        if direct_path.exists():
+            return f"![{alt_text}]({direct_path})"
+
+        # Also try in screenshot directory
+        screenshot_path = SCREENSHOT_DIR / filename
+        if screenshot_path.exists():
+            return f"![{alt_text}]({screenshot_path})"
+
+        print(f"  ⚠️  Warning: Image not found: {original_path}")
+        return match.group(0)
+
+    return IMAGE_PATH_PATTERN.sub(replace_path, content)
+
+
+def convert_images_to_jpeg_for_export(content: str, output_dir: Path) -> str:
+    """
+    Convert all PNG images to JPEG format for smaller file size.
+
+    Processes all image references in the content, converts PNG files to JPEG,
+    and updates the paths in the content.
+    """
+    assets_dir = DOCS_DIR / "src" / "assets"
+    jpeg_dir = output_dir / "images"
+    jpeg_dir.mkdir(parents=True, exist_ok=True)
+
+    converted_count = [0]
+
+    def replace_and_convert(match: re.Match) -> str:
+        alt_text = match.group(1)
+        original_path = match.group(2)
+
+        # Skip URLs
+        if original_path.startswith(('http://', 'https://', '//')):
+            return match.group(0)
+
+        # Skip already converted JPEG/JPG files
+        if original_path.lower().endswith(('.jpg', '.jpeg')):
+            return match.group(0)
+
+        # Find the actual file path
+        actual_path = None
+
+        # If already absolute path
+        if original_path.startswith('/'):
+            actual_path = Path(original_path)
+        # Handle relative paths from thesis output format
+        elif 'assets/' in original_path:
+            idx = original_path.find('assets/')
+            relative_from_assets = original_path[idx + 7:]
+            actual_path = assets_dir / relative_from_assets
+        else:
+            # Handle direct screenshot references
+            screenshot_components = ['prover', 'verifier', 'registrar-console', 'executive-console']
+            for component in screenshot_components:
+                if component in original_path.lower():
+                    idx = original_path.lower().find(component)
+                    relative_path = original_path[idx:]
+                    actual_path = SCREENSHOT_DIR / relative_path
+                    break
+
+            if actual_path is None or not actual_path.exists():
+                # Try direct filename in assets
+                filename = Path(original_path).name
+                if (assets_dir / filename).exists():
+                    actual_path = assets_dir / filename
+                elif (SCREENSHOT_DIR / filename).exists():
+                    actual_path = SCREENSHOT_DIR / filename
+
+        # If file not found or not PNG, return original
+        if actual_path is None or not actual_path.exists():
+            return match.group(0)
+
+        if not actual_path.suffix.lower() == '.png':
+            # Non-PNG file, just return with absolute path
+            return f"![{alt_text}]({actual_path})"
+
+        # Convert PNG to JPEG
+        # Use unique name to avoid conflicts
+        unique_name = actual_path.stem + "_" + str(hash(str(actual_path)) % 10000)
+        jpg_path = jpeg_dir / (unique_name + ".jpg")
+
+        if not jpg_path.exists():  # Avoid reconverting
+            jpg_path = convert_png_to_jpg(actual_path, jpeg_dir)
+            if jpg_path != actual_path:  # Conversion succeeded
+                # Rename to unique name if needed
+                if jpg_path.name != unique_name + ".jpg":
+                    new_jpg_path = jpeg_dir / (unique_name + ".jpg")
+                    jpg_path.rename(new_jpg_path)
+                    jpg_path = new_jpg_path
+                converted_count[0] += 1
+
+        return f"![{alt_text}]({jpg_path})"
+
+    result = IMAGE_PATH_PATTERN.sub(replace_and_convert, content)
+
+    if converted_count[0] > 0:
+        print(f"  ✓ Converted {converted_count[0]} PNG image(s) to JPEG")
+
+    return result
+
+
+def build_export_content(files: list[SourceFile], config: configparser.ConfigParser) -> str:
+    """
+    Build thesis content for export (DOCX/PDF).
+
+    Similar to build_thesis_content but:
+    - No frontmatter YAML
+    - No mermaid <pre> conversion (handled separately)
+    - Different separator handling
+    """
+    body_parts = []
+
+    for f in files:
+        content = f.content.strip()
+
+        # Skip frontmatter files for body (will be handled separately)
+        if f.level == 0 or f.path.name.startswith("_"):
+            continue
+
+        # Generate heading based on level
+        heading = None
+        if f.number:
+            if f.level == 1:
+                heading = f"# 第{f.number}章 {f.title}"
+            elif f.level == 2:
+                heading = f"## {f.number} {f.title}"
+            elif f.level == 3:
+                heading = f"### {f.number} {f.title}"
+            else:
+                heading = f"#### {f.number} {f.title}"
+        elif f.title:
+            if any(kw in f.title for kw in ["謝辞", "参考文献", "付録"]):
+                heading = f"# {f.title}"
+
+        if heading:
+            if content:
+                if not content.startswith("#"):
+                    body_parts.append(f"{heading}\n\n{content}")
+                else:
+                    body_parts.append(content)
+            else:
+                body_parts.append(heading)
+        elif content:
+            body_parts.append(content)
+
+    return "\n\n".join(body_parts)
+
+
+def get_frontmatter_content(files: list[SourceFile]) -> str:
+    """Extract frontmatter content from source files."""
+    for f in files:
+        if f.path.name == "_frontmatter.md":
+            return f.content.strip()
+    return ""
+
+
+def export_docx(config: configparser.ConfigParser) -> Optional[Path]:
+    """Export thesis to DOCX format."""
+    deps = check_dependencies()
+    if not deps["pandoc"]:
+        print("Error: Pandoc is not installed.")
+        print("  Install with: brew install pandoc")
+        return None
+
+    source_dir = get_source_dir(config)
+    if not source_dir.exists():
+        print(f"Error: Source directory not found: {source_dir}")
+        return None
+
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+    print("Exporting thesis to DOCX...")
+
+    # Collect and build content
+    files = collect_source_files(source_dir)
+    content = build_export_content(files, config)
+    frontmatter = get_frontmatter_content(files)
+
+    # Pre-render Mermaid diagrams if mermaid-cli is available
+    if deps["mermaid"]:
+        content = prerender_mermaid(content, OUTPUT_DIR)
+    else:
+        print("  ⚠️  Warning: mermaid-cli not installed, Mermaid diagrams will be skipped")
+        # Remove mermaid blocks
+        content = MERMAID_PATTERN.sub('[Mermaid diagram - install mmdc to render]', content)
+        content = MERMAID_PRE_PATTERN.sub('[Mermaid diagram - install mmdc to render]', content)
+
+    # Convert image paths to absolute
+    content = convert_image_paths_for_export(content)
+
+    # Combine frontmatter and body
+    full_content = f"{frontmatter}\n\n---\n\n{content}"
+
+    # Write to temp file
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False, encoding='utf-8') as f:
+        f.write(full_content)
+        temp_md = f.name
+
+    # Get version for filename
+    major, minor = get_current_version(config)
+    output_file = OUTPUT_DIR / f"thesis-v{major}-{minor}.docx"
+
+    try:
+        # Build pandoc command
+        cmd = [
+            "pandoc",
+            temp_md,
+            "--from", "markdown",
+            "--to", "docx",
+            "--toc",
+            "--toc-depth=3",
+            "-o", str(output_file),
+        ]
+
+        # Add reference doc if available
+        if REFERENCE_DOCX.exists():
+            cmd.extend(["--reference-doc", str(REFERENCE_DOCX)])
+
+        result = subprocess.run(cmd, capture_output=True, text=True)
+
+        if result.returncode != 0:
+            print(f"Error: Pandoc failed")
+            print(result.stderr)
+            return None
+
+        print(f"  ✓ Created {output_file.name}")
+        print(f"    Size: {output_file.stat().st_size / 1024:.1f} KB")
+        return output_file
+
+    finally:
+        Path(temp_md).unlink(missing_ok=True)
+
+
+def export_pdf(config: configparser.ConfigParser) -> Optional[Path]:
+    """Export thesis to PDF format using XeLaTeX."""
+    deps = check_dependencies()
+    if not deps["pandoc"]:
+        print("Error: Pandoc is not installed.")
+        print("  Install with: brew install pandoc")
+        return None
+
+    # Check for XeLaTeX
+    try:
+        result = subprocess.run(["xelatex", "--version"], capture_output=True, text=True)
+        has_xelatex = result.returncode == 0
+    except FileNotFoundError:
+        has_xelatex = False
+
+    if not has_xelatex:
+        print("Error: XeLaTeX is not installed.")
+        print("  Install with: brew install --cask mactex-no-gui")
+        return None
+
+    source_dir = get_source_dir(config)
+    if not source_dir.exists():
+        print(f"Error: Source directory not found: {source_dir}")
+        return None
+
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+    print("Exporting thesis to PDF...")
+
+    # Collect and build content
+    files = collect_source_files(source_dir)
+    content = build_export_content(files, config)
+    frontmatter = get_frontmatter_content(files)
+
+    # Pre-render Mermaid diagrams
+    if deps["mermaid"]:
+        content = prerender_mermaid(content, OUTPUT_DIR)
+    else:
+        print("  ⚠️  Warning: mermaid-cli not installed, Mermaid diagrams will be skipped")
+        content = MERMAID_PATTERN.sub('[Mermaid diagram - install mmdc to render]', content)
+        content = MERMAID_PRE_PATTERN.sub('[Mermaid diagram - install mmdc to render]', content)
+
+    # Convert image paths to absolute
+    content = convert_image_paths_for_export(content)
+
+    # Combine frontmatter and body
+    full_content = f"{frontmatter}\n\n---\n\n{content}"
+
+    # Write to temp file
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False, encoding='utf-8') as f:
+        f.write(full_content)
+        temp_md = f.name
+
+    # Get version for filename
+    major, minor = get_current_version(config)
+    output_file = OUTPUT_DIR / f"thesis-v{major}-{minor}.pdf"
+
+    try:
+        # Build pandoc command for PDF
+        # Use XeTeX with native Unicode support (works with basictex)
+        # Japanese fonts are handled directly by XeTeX without xeCJK
+        cmd = [
+            "pandoc",
+            temp_md,
+            "--from", "markdown",
+            "--to", "pdf",
+            "--pdf-engine=xelatex",
+            "-V", "documentclass=article",
+            "-V", "geometry:top=2.5cm,left=2.5cm,right=2cm,bottom=2cm,a4paper",
+            "-V", "mainfont=Hiragino Mincho ProN",
+            "-V", "sansfont=Hiragino Sans",
+            "-V", "monofont=Menlo",
+            "--toc",
+            "--toc-depth=3",
+            "-o", str(output_file),
+        ]
+
+        result = subprocess.run(cmd, capture_output=True, text=True)
+
+        if result.returncode != 0:
+            print(f"Error: Pandoc failed")
+            print(result.stderr[:500])
+            return None
+
+        print(f"  ✓ Created {output_file.name}")
+        print(f"    Size: {output_file.stat().st_size / 1024:.1f} KB")
+        return output_file
+
+    finally:
+        Path(temp_md).unlink(missing_ok=True)
+
+
+def export_thesis(config: configparser.ConfigParser) -> None:
+    """Export thesis to both DOCX and PDF formats."""
+    print("\n📄 Thesis Export")
+    print("=" * 50)
+
+    docx_path = export_docx(config)
+    print()
+    pdf_path = export_pdf(config)
+
+    print("\n" + "-" * 50)
+    if docx_path:
+        print(f"✅ DOCX: {docx_path.relative_to(SCRIPT_DIR)}")
+    else:
+        print("❌ DOCX: Failed")
+
+    if pdf_path:
+        print(f"✅ PDF:  {pdf_path.relative_to(SCRIPT_DIR)}")
+    else:
+        print("❌ PDF:  Failed")
+
+
+# =============================================================================
+# Word Export with Cover Template
+# =============================================================================
+
+def build_word(config: configparser.ConfigParser) -> Optional[Path]:
+    """
+    Build Word document with cover template.
+
+    This creates a properly formatted Word document with:
+    - Cover page from template (表紙.docx)
+    - Table of contents
+    - Body content from thesis source
+    - Proper margins and page numbering
+
+    Uses docxcompose for proper document merging (preserves images, styles).
+    """
+    from docx import Document
+    from docx.shared import Cm, Pt
+    from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_BREAK
+    from docx.enum.section import WD_SECTION
+    from docx.oxml.ns import qn
+    from docx.oxml import OxmlElement
+    from docxcompose.composer import Composer
+
+    deps = check_dependencies()
+    if not deps["pandoc"]:
+        print("Error: Pandoc is not installed.")
+        print("  Install with: brew install pandoc")
+        return None
+
+    if not deps["pillow"]:
+        print("Error: Pillow is not installed (required for image compression).")
+        print("  Install with: pip install Pillow")
+        return None
+
+    source_dir = get_source_dir(config)
+    if not source_dir.exists():
+        print(f"Error: Source directory not found: {source_dir}")
+        return None
+
+    if not COVER_DOCX.exists():
+        print(f"Error: Cover template not found: {COVER_DOCX}")
+        return None
+
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+    print("📝 Building Word document with cover template...")
+
+    # Collect and build content
+    files = collect_source_files(source_dir)
+    content = build_export_content(files, config)
+
+    # Pre-render Mermaid diagrams if mermaid-cli is available
+    # Use JPEG format for smaller file size
+    if deps["mermaid"]:
+        content = prerender_mermaid(content, OUTPUT_DIR, use_jpeg=True)
+    else:
+        print("  ⚠️  Warning: mermaid-cli not installed, Mermaid diagrams will be skipped")
+        content = MERMAID_PATTERN.sub('[Mermaid diagram - install mmdc to render]', content)
+        content = MERMAID_PRE_PATTERN.sub('[Mermaid diagram - install mmdc to render]', content)
+
+    # Convert all PNG images to JPEG for smaller file size
+    print("  → Converting images to JPEG...")
+    content = convert_images_to_jpeg_for_export(content, OUTPUT_DIR)
+
+    # Process figure/table captions for Word export
+    # Convert <p align="center"><strong>図X.X: ...</strong></p> to proper Pandoc format
+    # This ensures captions are properly formatted in Word
+    def process_captions(text: str) -> str:
+        import re
+        # Pattern for HTML captions: <p align="center"><strong>図/表X.X: ...</strong></p>
+        caption_pattern = re.compile(
+            r'<p\s+align="center">\s*<strong>((?:図|表)\d+\.\d+:\s*[^<]+)</strong>\s*</p>',
+            re.IGNORECASE
+        )
+        # Replace with Pandoc-friendly centered text
+        # Using a div with custom style that will be processed later
+        text = caption_pattern.sub(r'\n\n::: {.figure-caption}\n**\1**\n:::\n\n', text)
+        return text
+
+    # Remove alt text from images that have a caption following them
+    # This must be done BEFORE process_captions to match the original HTML format
+    # Pattern: ![alt text](path)\n\n<p align="center"><strong>図X.X: caption</strong></p>
+    # Replace with: ![](path)\n\n<p align="center"><strong>図X.X: caption</strong></p>
+    def remove_duplicate_alt_text(text: str) -> str:
+        # Pattern: image with alt text followed by figure caption (with possible whitespace)
+        pattern = re.compile(
+            r'!\[([^\]]+)\]\(([^)]+)\)(\s*\n\s*\n?\s*<p\s+align="center">\s*<strong>(?:図|表)\d+\.\d+:)',
+            re.IGNORECASE
+        )
+        # Replace with empty alt text
+        text = pattern.sub(r'![](\2)\3', text)
+        return text
+
+    content = remove_duplicate_alt_text(content)
+    content = process_captions(content)
+
+    # Remove horizontal rules (---) as they may not be appropriate for academic papers
+    content = re.sub(r'\n---\n', '\n\n', content)
+    content = re.sub(r'^---\n', '\n', content)
+    content = re.sub(r'\n---$', '\n', content)
+
+    # Add spacing between chapters and sections for readability
+    # Add blank lines before chapter headings (# 第X章)
+    content = re.sub(r'\n(# 第\d+章)', r'\n\n\n\1', content)
+    # Add blank lines before section headings (## X.X)
+    content = re.sub(r'\n(## \d+\.\d+)', r'\n\n\1', content)
+    # Add blank lines before subsection headings (### X.X.X)
+    content = re.sub(r'\n(### \d+\.\d+\.\d+)', r'\n\n\1', content)
+    # Add blank lines before special chapters (謝辞, 参考文献, 付録)
+    content = re.sub(r'\n(# (?:謝辞|参考文献|付録))', r'\n\n\n\1', content)
+
+    # Write body content to temp file (without frontmatter - cover handles that)
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False, encoding='utf-8') as f:
+        f.write(content)
+        temp_md = f.name
+
+    # Get version for filename
+    major, minor = get_current_version(config)
+    body_temp = OUTPUT_DIR / "_body_temp.docx"
+    cover_temp = OUTPUT_DIR / "_cover_temp.docx"
+    output_file = OUTPUT_DIR / f"thesis-v{major}-{minor}.docx"
+
+    try:
+        # Step 1: Convert body content to DOCX with Pandoc
+        print("  → Converting body content with Pandoc...")
+        cmd = [
+            "pandoc",
+            temp_md,
+            "--from", "markdown",
+            "--to", "docx",
+            "--toc",
+            "--toc-depth=3",
+            "-o", str(body_temp),
+        ]
+
+        # Use reference doc for styling if available
+        if REFERENCE_DOCX.exists():
+            cmd.extend(["--reference-doc", str(REFERENCE_DOCX)])
+
+        result = subprocess.run(cmd, capture_output=True, text=True)
+
+        if result.returncode != 0:
+            print(f"Error: Pandoc failed")
+            print(result.stderr)
+            return None
+
+        print("  ✓ Body content converted")
+
+        # Step 2: Prepare cover document with page break
+        print("  → Preparing cover page...")
+        cover_doc = Document(COVER_DOCX)
+
+        # Apply margins (per hard_format.md)
+        for section in cover_doc.sections:
+            section.top_margin = Cm(2.5)
+            section.bottom_margin = Cm(2)
+            section.left_margin = Cm(2.5)
+            section.right_margin = Cm(2)
+
+        # Add page break after cover content
+        cover_doc.add_page_break()
+        cover_doc.save(cover_temp)
+        print("  ✓ Cover page prepared")
+
+        # Step 3: Merge documents using docxcompose
+        print("  → Merging documents...")
+        master = Document(cover_temp)
+        composer = Composer(master)
+        body_doc = Document(body_temp)
+        composer.append(body_doc)
+
+        # Step 4: Save merged document temporarily
+        merged_temp = OUTPUT_DIR / "_merged_temp.docx"
+        composer.save(merged_temp)
+
+        # Step 5: Post-process the merged document
+        print("  → Post-processing document...")
+        final_doc = Document(merged_temp)
+
+        # Helper function to add section break with page numbering
+        def add_section_break_with_page_restart(para):
+            """Add section break before paragraph and restart page numbering."""
+            sectPr = OxmlElement('w:sectPr')
+            # Page number format - restart from 1
+            pgNumType = OxmlElement('w:pgNumType')
+            pgNumType.set(qn('w:start'), '1')
+            sectPr.append(pgNumType)
+            para._p.addprevious(sectPr)
+
+        # Find the first chapter heading (第1章) and add section break
+        chapter1_para = None
+        chapter1_idx = -1
+        for i, para in enumerate(final_doc.paragraphs):
+            text = para.text.strip()
+
+            # Find 第1章
+            if text.startswith('第1章') and chapter1_para is None:
+                chapter1_para = para
+                chapter1_idx = i
+                print(f"    ✓ Found 第1章 at paragraph {i}")
+
+            # Center-align figure/table captions
+            if text.startswith('図') or text.startswith('表'):
+                # Check if it looks like a caption (図X.X: or 表X.X:)
+                if re.match(r'^[図表]\d+\.\d+:', text):
+                    para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+            # Center-align paragraphs with figure-caption style or containing only bold caption
+            if para.style and 'caption' in para.style.name.lower():
+                para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+        # Insert section break before 第1章 for page numbering
+        if chapter1_para:
+            # Add section break (next page) before 第1章
+            sectPr = OxmlElement('w:sectPr')
+            sectType = OxmlElement('w:type')
+            sectType.set(qn('w:val'), 'nextPage')
+            sectPr.append(sectType)
+            # Page number restart from 1
+            pgNumType = OxmlElement('w:pgNumType')
+            pgNumType.set(qn('w:start'), '1')
+            sectPr.append(pgNumType)
+            # Insert before the paragraph
+            chapter1_para._p.addprevious(sectPr)
+            print("    ✓ Added section break before 第1章 with page restart from 1")
+
+        # Add page breaks before other chapters for better readability
+        chapter_pattern = re.compile(r'^第[2-9]章\s|^第\d{2,}章\s')  # 第2章 onwards
+        special_chapters = ['謝辞', '参考文献', '付録']
+        pagebreak_count = 0
+        for para in final_doc.paragraphs:
+            text = para.text.strip()
+            # Check for chapter headings (第X章) except 第1章
+            if chapter_pattern.match(text) or text in special_chapters:
+                # Add page break before this paragraph
+                run = para.insert_paragraph_before()
+                run.add_run().add_break(WD_BREAK.PAGE)
+                pagebreak_count += 1
+        if pagebreak_count > 0:
+            print(f"    ✓ Added page breaks before {pagebreak_count} chapter(s)")
+
+        # Process images and center them
+        for para in final_doc.paragraphs:
+            # Check if paragraph contains only an image (drawing)
+            has_drawing = para._element.findall('.//' + qn('w:drawing'))
+            if has_drawing and not para.text.strip():
+                para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+        # Center-align tables
+        for table in final_doc.tables:
+            # Set table alignment to center
+            tbl = table._tbl
+            tblPr = tbl.find(qn('w:tblPr'))
+            if tblPr is None:
+                tblPr = OxmlElement('w:tblPr')
+                tbl.insert(0, tblPr)
+
+            # Remove existing jc element if present
+            existing_jc = tblPr.find(qn('w:jc'))
+            if existing_jc is not None:
+                tblPr.remove(existing_jc)
+
+            # Add center alignment
+            jc = OxmlElement('w:jc')
+            jc.set(qn('w:val'), 'center')
+            tblPr.append(jc)
+
+        print(f"    ✓ Centered {len(final_doc.tables)} table(s)")
+
+        # Set code block line spacing to fixed 9-10pt for compactness
+        # Code blocks typically use styles like "Source Code", "Code", or have monospace fonts
+        from docx.shared import Twips
+        code_para_count = 0
+        code_para_indices = []  # Track code paragraph indices for later table wrapping
+        for i, para in enumerate(final_doc.paragraphs):
+            style_name = para.style.name if para.style else ''
+            # Check if it's a code-related style
+            if any(code_style in style_name.lower() for code_style in ['code', 'source', 'verbatim', 'literal']):
+                # Set line spacing to fixed 10pt (200 twips = 10pt, 1pt = 20 twips)
+                para.paragraph_format.line_spacing = Pt(10)
+                para.paragraph_format.line_spacing_rule = 4  # WD_LINE_SPACING.EXACTLY = 4
+                para.paragraph_format.space_before = Pt(0)
+                para.paragraph_format.space_after = Pt(0)
+                # Keep with next to prevent page breaks within code blocks
+                para.paragraph_format.keep_with_next = True
+                para.paragraph_format.keep_together = True
+                code_para_count += 1
+                code_para_indices.append(i)
+
+        if code_para_count > 0:
+            print(f"    ✓ Set line spacing for {code_para_count} code block paragraph(s)")
+
+        # Add borders to code blocks to create a visual box
+        # Find consecutive code paragraphs and add borders
+        def add_paragraph_borders(para, top=False, bottom=False, left=True, right=True):
+            """Add borders to a paragraph using XML."""
+            pPr = para._p.get_or_add_pPr()
+            pBdr = pPr.find(qn('w:pBdr'))
+            if pBdr is None:
+                pBdr = OxmlElement('w:pBdr')
+                pPr.append(pBdr)
+
+            border_attrs = {
+                qn('w:val'): 'single',
+                qn('w:sz'): '4',  # 0.5pt
+                qn('w:space'): '1',
+                qn('w:color'): '808080',  # Gray
+            }
+
+            if left:
+                left_el = OxmlElement('w:left')
+                for k, v in border_attrs.items():
+                    left_el.set(k, v)
+                pBdr.append(left_el)
+
+            if right:
+                right_el = OxmlElement('w:right')
+                for k, v in border_attrs.items():
+                    right_el.set(k, v)
+                pBdr.append(right_el)
+
+            if top:
+                top_el = OxmlElement('w:top')
+                for k, v in border_attrs.items():
+                    top_el.set(k, v)
+                pBdr.append(top_el)
+
+            if bottom:
+                bottom_el = OxmlElement('w:bottom')
+                for k, v in border_attrs.items():
+                    bottom_el.set(k, v)
+                pBdr.append(bottom_el)
+
+        # Group consecutive code paragraphs and add borders
+        if code_para_indices:
+            # Find groups of consecutive code paragraphs
+            groups = []
+            current_group = [code_para_indices[0]]
+            for i in range(1, len(code_para_indices)):
+                if code_para_indices[i] == code_para_indices[i-1] + 1:
+                    current_group.append(code_para_indices[i])
+                else:
+                    groups.append(current_group)
+                    current_group = [code_para_indices[i]]
+            groups.append(current_group)
+
+            # Add borders to each group
+            for group in groups:
+                for i, para_idx in enumerate(group):
+                    para = final_doc.paragraphs[para_idx]
+                    is_first = (i == 0)
+                    is_last = (i == len(group) - 1)
+                    add_paragraph_borders(para, top=is_first, bottom=is_last, left=True, right=True)
+                    # Add small padding via indentation
+                    para.paragraph_format.left_indent = Pt(6)
+                    para.paragraph_format.right_indent = Pt(6)
+
+            print(f"    ✓ Added borders to {len(groups)} code block group(s)")
+
+        # Add spacing before section and subsection headings
+        # Also disable "page break before" to prevent unwanted page breaks
+        section_spacing_count = 0
+        for para in final_doc.paragraphs:
+            text = para.text.strip()
+            style_name = para.style.name if para.style else ''
+
+            # Check for section headings (## X.X format -> Heading 2)
+            if 'Heading 2' in style_name or re.match(r'^\d+\.\d+\s+\S', text):
+                para.paragraph_format.space_before = Pt(18)  # ~1.5 lines before
+                para.paragraph_format.space_after = Pt(6)
+                para.paragraph_format.page_break_before = False  # Disable auto page break
+                section_spacing_count += 1
+
+            # Check for subsection headings (### X.X.X format -> Heading 3)
+            elif 'Heading 3' in style_name or re.match(r'^\d+\.\d+\.\d+\s+\S', text):
+                para.paragraph_format.space_before = Pt(12)  # ~1 line before
+                para.paragraph_format.space_after = Pt(6)
+                para.paragraph_format.page_break_before = False  # Disable auto page break
+                section_spacing_count += 1
+
+        if section_spacing_count > 0:
+            print(f"    ✓ Adjusted spacing for {section_spacing_count} section heading(s)")
+
+        # Keep list introduction paragraphs with their lists
+        # Paragraphs ending with "：" or ":" followed by a list should stay together
+        keep_with_list_count = 0
+        for para in final_doc.paragraphs:
+            text = para.text.strip()
+            # Check if paragraph ends with colon (Japanese or English)
+            if text.endswith('：') or text.endswith(':'):
+                para.paragraph_format.keep_with_next = True
+                keep_with_list_count += 1
+
+        if keep_with_list_count > 0:
+            print(f"    ✓ Set keep-with-next for {keep_with_list_count} list introduction paragraph(s)")
+
+        # Fix bullet points - remove the "・" prefix from list items
+        # This happens when Pandoc converts lists but the style adds Japanese bullets
+        for para in final_doc.paragraphs:
+            text = para.text
+            # Check for patterns like "・ 1." or "・ -" at the start
+            if text.startswith('・ '):
+                # Get the text after "・ "
+                rest = text[2:]
+                # Clear all runs and rewrite
+                for run in para.runs:
+                    run.text = ''
+                if para.runs:
+                    para.runs[0].text = rest
+                else:
+                    para.add_run(rest)
+            # Also handle "・" without space
+            elif text.startswith('・'):
+                rest = text[1:]
+                for run in para.runs:
+                    run.text = ''
+                if para.runs:
+                    para.runs[0].text = rest
+                else:
+                    para.add_run(rest)
+
+        # Reduce list indentation from default to minimal
+        # List items have numPr in their pPr element
+        list_indent_count = 0
+        for para in final_doc.paragraphs:
+            pPr = para._element.find(qn('w:pPr'))
+            if pPr is not None:
+                numPr = pPr.find(qn('w:numPr'))
+                if numPr is not None:
+                    # This is a list item - reduce indentation
+                    # Set left indent to ~10pt (1 half-width space equivalent)
+                    ind = pPr.find(qn('w:ind'))
+                    if ind is None:
+                        ind = OxmlElement('w:ind')
+                        pPr.append(ind)
+                    # Set left indent to 200 twips (~10pt, 1 half-width space)
+                    ind.set(qn('w:left'), '200')
+                    # Set hanging indent for proper list formatting
+                    ind.set(qn('w:hanging'), '200')
+                    list_indent_count += 1
+
+        if list_indent_count > 0:
+            print(f"    ✓ Reduced indentation for {list_indent_count} list item(s)")
+
+        # Keep figure/table captions with their content (prevent page breaks)
+        keep_with_count = 0
+        for i, para in enumerate(final_doc.paragraphs):
+            text = para.text.strip()
+            # Figure/table captions should stay with the image above
+            if re.match(r'^(?:図|表)\d+\.\d+:', text):
+                para.paragraph_format.keep_with_next = False  # Caption doesn't need to keep with next
+                # But the paragraph BEFORE the caption (the image) should keep with next
+                if i > 0:
+                    prev_para = final_doc.paragraphs[i-1]
+                    prev_para.paragraph_format.keep_with_next = True
+                    keep_with_count += 1
+
+            # Also keep images with their captions
+            has_drawing = para._element.findall('.//' + qn('w:drawing'))
+            if has_drawing:
+                para.paragraph_format.keep_with_next = True
+                keep_with_count += 1
+
+        if keep_with_count > 0:
+            print(f"    ✓ Set keep-with-next for {keep_with_count} figure/image paragraph(s)")
+
+        # Step 6: Configure sections for page numbering
+        # Cover page and TOC should have no page numbers
+        # Chapter 1 onwards should have page numbers starting from 1
+        sections = list(final_doc.sections)
+
+        if len(sections) >= 1:
+            # First section (cover + TOC): no page numbers
+            first_section = sections[0]
+            footer = first_section.footer
+            footer.is_linked_to_previous = False
+            # Clear footer content for first section
+            for para in footer.paragraphs:
+                para.clear()
+            print("    ✓ Cleared page numbers from first section (cover + TOC)")
+
+        if len(sections) >= 2:
+            # Second section (chapter 1 onwards): add page numbers
+            second_section = sections[1]
+            footer = second_section.footer
+            footer.is_linked_to_previous = False
+
+            # Add page number to footer
+            if not footer.paragraphs:
+                para = footer.add_paragraph()
+            else:
+                para = footer.paragraphs[0]
+                para.clear()
+
+            para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+            # Add PAGE field with proper structure: begin -> instrText -> separate -> end
+            run = para.add_run()
+
+            # Field begin
+            fldChar_begin = OxmlElement('w:fldChar')
+            fldChar_begin.set(qn('w:fldCharType'), 'begin')
+            run._r.append(fldChar_begin)
+
+            # Instruction text
+            instrText = OxmlElement('w:instrText')
+            instrText.set(qn('xml:space'), 'preserve')
+            instrText.text = " PAGE "
+            run._r.append(instrText)
+
+            # Field separate (required for field to display)
+            fldChar_separate = OxmlElement('w:fldChar')
+            fldChar_separate.set(qn('w:fldCharType'), 'separate')
+            run._r.append(fldChar_separate)
+
+            # Field end
+            fldChar_end = OxmlElement('w:fldChar')
+            fldChar_end.set(qn('w:fldCharType'), 'end')
+            run._r.append(fldChar_end)
+
+            print("    ✓ Added page numbers to second section (from 第1章)")
+
+        # Save final document
+        final_doc.save(output_file)
+        merged_temp.unlink(missing_ok=True)
+
+        print(f"  ✓ Created {output_file.name}")
+        print(f"    Size: {output_file.stat().st_size / 1024:.1f} KB")
+
+        return output_file
+
+    finally:
+        Path(temp_md).unlink(missing_ok=True)
+        body_temp.unlink(missing_ok=True)
+        cover_temp.unlink(missing_ok=True)
+
+
+# =============================================================================
 # Major Version Command
 # =============================================================================
 
@@ -1218,6 +2298,10 @@ Examples:
     subparsers.add_parser("fetch", help="Sync config with research directory")
     subparsers.add_parser("tree", help="Show source directory structure")
     subparsers.add_parser("list", help="List all revisions")
+    subparsers.add_parser("docx", help="Export thesis to DOCX format")
+    subparsers.add_parser("pdf", help="Export thesis to PDF format")
+    subparsers.add_parser("export", help="Export thesis to both DOCX and PDF")
+    subparsers.add_parser("word", help="Build Word document with cover template")
     
     show_parser = subparsers.add_parser("show", help="Show revision details")
     show_parser.add_argument("version", help="Version (e.g., 1.1)")
@@ -1255,6 +2339,14 @@ Examples:
         show_revision(args.version)
     elif args.command == "remove":
         remove_revision(args.version)
+    elif args.command == "docx":
+        export_docx(config)
+    elif args.command == "pdf":
+        export_pdf(config)
+    elif args.command == "export":
+        export_thesis(config)
+    elif args.command == "word":
+        build_word(config)
     elif args.command == "new":
         # Legacy: just run build
         build_thesis(config)

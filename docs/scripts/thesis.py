@@ -820,13 +820,53 @@ tableOfContents:
 MERMAID_PATTERN = re.compile(r'```mermaid\n(.*?)```', re.DOTALL)
 MERMAID_PRE_PATTERN = re.compile(r'<pre class="mermaid">\n?(.*?)</pre>', re.DOTALL)
 
-# JPEG quality for export (lower = smaller file size)
-JPEG_QUALITY = 85
+# JPEG quality for export (100 = no compression, preserves text clarity)
+JPEG_QUALITY = 100
+
+# Image width settings for Word export (in pixels)
+# Smaller widths reduce file size while maintaining readability
+IMAGE_WIDTH_SETTINGS = {
+    # Screenshots - moderate size for readability
+    "prover": 450,
+    "verifier": 450,
+    "registrar-console": 450,
+    "executive-console": 450,
+    # Diagrams - smaller since they're simpler
+    "mermaid": 400,
+    # Charts and figures - moderate size
+    "tankyu-chart": 500,
+    # Default for other images
+    "default": 450,
+}
 
 
-def convert_png_to_jpg(png_path: Path, output_dir: Path) -> Path:
+def get_image_width(image_path: Path) -> int:
+    """
+    Determine the appropriate width for an image based on its path/name.
+
+    Returns the target width in pixels.
+    """
+    path_str = str(image_path).lower()
+    name = image_path.stem.lower()
+
+    # Check for specific image types
+    for key, width in IMAGE_WIDTH_SETTINGS.items():
+        if key == "default":
+            continue
+        if key in path_str or key in name:
+            return width
+
+    return IMAGE_WIDTH_SETTINGS["default"]
+
+
+def convert_png_to_jpg(png_path: Path, output_dir: Path, resize: bool = True) -> Path:
     """
     Convert a PNG image to JPEG format for smaller file size.
+
+    Args:
+        png_path: Path to the source PNG file
+        output_dir: Directory to save the converted file
+        resize: If True, resize the image based on IMAGE_WIDTH_SETTINGS
 
     Returns the path to the converted JPEG file.
     """
@@ -847,6 +887,15 @@ def convert_png_to_jpg(png_path: Path, output_dir: Path) -> Path:
                 img = background
             elif img.mode != 'RGB':
                 img = img.convert('RGB')
+
+            # Resize image if requested
+            if resize:
+                target_width = get_image_width(png_path)
+                if img.width > target_width:
+                    # Calculate new height maintaining aspect ratio
+                    ratio = target_width / img.width
+                    new_height = int(img.height * ratio)
+                    img = img.resize((target_width, new_height), Image.Resampling.LANCZOS)
 
             img.save(jpg_path, 'JPEG', quality=JPEG_QUALITY, optimize=True)
         return jpg_path
@@ -1563,21 +1612,6 @@ def build_word(config: configparser.ConfigParser) -> Optional[Path]:
             chapter1_para._p.addprevious(sectPr)
             print("    ✓ Added section break before 第1章 with page restart from 1")
 
-        # Add page breaks before other chapters for better readability
-        chapter_pattern = re.compile(r'^第[2-9]章\s|^第\d{2,}章\s')  # 第2章 onwards
-        special_chapters = ['謝辞', '参考文献', '付録']
-        pagebreak_count = 0
-        for para in final_doc.paragraphs:
-            text = para.text.strip()
-            # Check for chapter headings (第X章) except 第1章
-            if chapter_pattern.match(text) or text in special_chapters:
-                # Add page break before this paragraph
-                run = para.insert_paragraph_before()
-                run.add_run().add_break(WD_BREAK.PAGE)
-                pagebreak_count += 1
-        if pagebreak_count > 0:
-            print(f"    ✓ Added page breaks before {pagebreak_count} chapter(s)")
-
         # Process images and center them
         for para in final_doc.paragraphs:
             # Check if paragraph contains only an image (drawing)
@@ -1605,6 +1639,50 @@ def build_word(config: configparser.ConfigParser) -> Optional[Path]:
             tblPr.append(jc)
 
         print(f"    ✓ Centered {len(final_doc.tables)} table(s)")
+
+        # Fix table layout issues: prevent tables from jumping to next page
+        # when there's enough space, and allow row splitting if needed
+        for table in final_doc.tables:
+            tblPr = table._tbl.tblPr
+            if tblPr is not None:
+                # Remove cantSplit at table level if exists
+                for child in list(tblPr):
+                    if child.tag.endswith('cantSplit'):
+                        tblPr.remove(child)
+
+            # For each row, allow splitting across pages
+            for row in table.rows:
+                trPr = row._tr.get_or_add_trPr()
+                # Remove existing cantSplit
+                for child in list(trPr):
+                    if child.tag.endswith('cantSplit'):
+                        trPr.remove(child)
+                # Add cantSplit=false to allow row to split across pages
+                cantSplit = OxmlElement('w:cantSplit')
+                cantSplit.set(qn('w:val'), '0')
+                trPr.append(cantSplit)
+
+                # Also disable page break before for cells
+                for cell in row.cells:
+                    for para in cell.paragraphs:
+                        para.paragraph_format.page_break_before = False
+                        para.paragraph_format.keep_with_next = False
+
+        print(f"    ✓ Fixed table row splitting for {len(final_doc.tables)} table(s)")
+
+        # Also check paragraphs immediately before tables (table captions)
+        # and ensure they have keep_with_next set to stay with the table
+        table_caption_count = 0
+        for i, para in enumerate(final_doc.paragraphs):
+            text = para.text.strip()
+            # Check for table captions (表X.X: format)
+            if re.match(r'^表\d+\.\d+', text):
+                para.paragraph_format.keep_with_next = True
+                para.paragraph_format.page_break_before = False
+                table_caption_count += 1
+
+        if table_caption_count > 0:
+            print(f"    ✓ Fixed page break settings for {table_caption_count} table caption(s)")
 
         # Set code block line spacing to fixed 9-10pt for compactness
         # Code blocks typically use styles like "Source Code", "Code", or have monospace fonts
@@ -1719,6 +1797,31 @@ def build_word(config: configparser.ConfigParser) -> Optional[Path]:
 
         if section_spacing_count > 0:
             print(f"    ✓ Adjusted spacing for {section_spacing_count} section heading(s)")
+
+        # Unify line spacing for all normal paragraphs to prevent inconsistent spacing
+        # This addresses the issue where line spacing varies between paragraphs
+        normal_para_count = 0
+        for para in final_doc.paragraphs:
+            style_name = para.style.name if para.style else ''
+            text = para.text.strip()
+
+            # Skip headings, code blocks, captions, and empty paragraphs
+            if any(skip in style_name.lower() for skip in ['heading', 'code', 'source', 'verbatim', 'literal', 'caption', 'toc']):
+                continue
+            if re.match(r'^(?:第\d+章|謝辞|参考文献|付録|\d+\.\d+)', text):
+                continue
+            if not text:
+                continue
+
+            # Set consistent line spacing for normal paragraphs
+            # Use 1.5 line spacing (approximately 18pt for 12pt font)
+            # This creates a balanced, readable layout
+            para.paragraph_format.line_spacing = 1.5  # 1.5 lines
+            para.paragraph_format.line_spacing_rule = 1  # WD_LINE_SPACING.ONE_AND_A_HALF = 1
+            normal_para_count += 1
+
+        if normal_para_count > 0:
+            print(f"    ✓ Unified line spacing for {normal_para_count} normal paragraph(s)")
 
         # Keep list introduction paragraphs with their lists
         # Paragraphs ending with "：" or ":" followed by a list should stay together

@@ -12,9 +12,9 @@ Usage:
     ./thesis.py tree             Show source directory structure
     ./thesis.py show <version>   Show details of a specific revision
     ./thesis.py remove <version> Remove a revision
-    ./thesis.py docx             Export thesis to DOCX format
+    ./thesis.py word             Build Word document with cover template
     ./thesis.py pdf              Export thesis to PDF format
-    ./thesis.py export           Export thesis to both DOCX and PDF
+    ./thesis.py export           Export thesis to both Word and PDF
 
 Requirements:
     Python 3.8+
@@ -22,7 +22,9 @@ Requirements:
         - pandoc (brew install pandoc)
         - mermaid-cli (npm install -g @mermaid-js/mermaid-cli)
         - For PDF: XeLaTeX (brew install --cask mactex-no-gui)
-        - python-docx (pip install python-docx) - for reference template
+        - python-docx (pip install python-docx) - for Word export
+        - docxcompose (pip install docxcompose) - for Word export
+        - Pillow (pip install Pillow) - for image compression
 
 Examples:
     ./thesis.py init             # Create initial directory structure
@@ -30,9 +32,9 @@ Examples:
     ./thesis.py build            # Build new version from source
     ./thesis.py fetch            # Sync config with research dir
     ./thesis.py tree             # Show thesis source structure
-    ./thesis.py docx             # Export to DOCX for reviewer comments
+    ./thesis.py word             # Build Word document with cover
     ./thesis.py pdf              # Export to PDF for final submission
-    ./thesis.py export           # Export to both DOCX and PDF
+    ./thesis.py export           # Export to both Word and PDF
 """
 
 import argparse
@@ -1365,24 +1367,140 @@ def export_pdf(config: configparser.ConfigParser) -> Optional[Path]:
 
 
 def export_thesis(config: configparser.ConfigParser) -> None:
-    """Export thesis to both DOCX and PDF formats."""
+    """Export thesis to both Word and PDF formats."""
     print("\n📄 Thesis Export")
     print("=" * 50)
 
-    docx_path = export_docx(config)
+    word_path = build_word(config)
     print()
     pdf_path = export_pdf(config)
 
     print("\n" + "-" * 50)
-    if docx_path:
-        print(f"✅ DOCX: {docx_path.relative_to(SCRIPT_DIR)}")
+    if word_path:
+        print(f"✅ Word: {word_path.relative_to(SCRIPT_DIR)}")
     else:
-        print("❌ DOCX: Failed")
+        print("❌ Word: Failed")
 
     if pdf_path:
         print(f"✅ PDF:  {pdf_path.relative_to(SCRIPT_DIR)}")
     else:
         print("❌ PDF:  Failed")
+
+
+# =============================================================================
+# DOCX XML Post-Processing
+# =============================================================================
+
+def postprocess_docx_xml(docx_path: Path) -> Path:
+    """
+    Post-process DOCX file at XML level to fix page break issues.
+
+    This function uses string replacement instead of XML parsing to avoid
+    corrupting the DOCX file structure. Changes made:
+    1. Fix keepNext: change w:val="0" to enabled (remove val attribute)
+    2. Remove lastRenderedPageBreak markers (rendering hints that cause issues)
+    3. Fix widowControl: change w:val="0" to enabled
+
+    Returns the path to the processed DOCX file.
+    """
+    import zipfile
+    import re
+
+    print("  → Post-processing DOCX at XML level (string replacement)...")
+
+    # Create temp directory for extraction
+    temp_dir = docx_path.parent / '_docx_temp'
+    temp_dir.mkdir(exist_ok=True)
+
+    try:
+        # Extract DOCX
+        with zipfile.ZipFile(docx_path, 'r') as zip_ref:
+            zip_ref.extractall(temp_dir)
+
+        # Read document.xml as text
+        doc_xml_path = temp_dir / 'word' / 'document.xml'
+        with open(doc_xml_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+
+        original_content = content
+        keepnext_fixed = 0
+        pagebreak_removed = 0
+        widowcontrol_fixed = 0
+
+        # 1. Fix keepNext: change <w:keepNext w:val="0"/> to <w:keepNext/>
+        # This enables keepNext for all paragraphs where it was explicitly disabled
+        keepnext_patterns = [
+            r'<w:keepNext\s+w:val="0"\s*/>',
+            r'<w:keepNext\s+w:val="false"\s*/>',
+            r'<w:keepNext w:val="0"/>',
+            r'<w:keepNext w:val="false"/>',
+        ]
+        for pattern in keepnext_patterns:
+            matches = re.findall(pattern, content, re.IGNORECASE)
+            keepnext_fixed += len(matches)
+            content = re.sub(pattern, '<w:keepNext/>', content, flags=re.IGNORECASE)
+
+        # 2. Remove lastRenderedPageBreak markers
+        # These are just rendering hints from previous Word sessions and can cause issues
+        pagebreak_patterns = [
+            r'<w:lastRenderedPageBreak\s*/>',
+            r'<w:lastRenderedPageBreak/>',
+        ]
+        for pattern in pagebreak_patterns:
+            matches = re.findall(pattern, content)
+            pagebreak_removed += len(matches)
+            content = re.sub(pattern, '', content)
+
+        # 3. Fix widowControl: change <w:widowControl w:val="0"/> to <w:widowControl/>
+        widowcontrol_patterns = [
+            r'<w:widowControl\s+w:val="0"\s*/>',
+            r'<w:widowControl\s+w:val="false"\s*/>',
+            r'<w:widowControl w:val="0"/>',
+            r'<w:widowControl w:val="false"/>',
+        ]
+        for pattern in widowcontrol_patterns:
+            matches = re.findall(pattern, content, re.IGNORECASE)
+            widowcontrol_fixed += len(matches)
+            content = re.sub(pattern, '<w:widowControl/>', content, flags=re.IGNORECASE)
+
+        # Report changes
+        if keepnext_fixed > 0:
+            print(f"    ✓ Fixed keepNext for {keepnext_fixed} element(s)")
+        if pagebreak_removed > 0:
+            print(f"    ✓ Removed {pagebreak_removed} lastRenderedPageBreak marker(s)")
+        if widowcontrol_fixed > 0:
+            print(f"    ✓ Fixed widowControl for {widowcontrol_fixed} element(s)")
+
+        # Only write if changes were made
+        if content != original_content:
+            with open(doc_xml_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+
+            # Repackage DOCX preserving original ZIP structure
+            import os
+            new_docx_path = docx_path.parent / f'{docx_path.stem}_processed{docx_path.suffix}'
+
+            with zipfile.ZipFile(new_docx_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                for root_dir, dirs, files in os.walk(temp_dir):
+                    for file in files:
+                        file_path = Path(root_dir) / file
+                        arcname = file_path.relative_to(temp_dir)
+                        zipf.write(file_path, arcname)
+
+            # Replace original with processed version
+            docx_path.unlink()
+            new_docx_path.rename(docx_path)
+            print("    ✓ DOCX file updated successfully")
+        else:
+            print("    ℹ️  No changes needed")
+
+        return docx_path
+
+    finally:
+        # Clean up temp directory
+        import shutil
+        if temp_dir.exists():
+            shutil.rmtree(temp_dir)
 
 
 # =============================================================================
@@ -1575,9 +1693,11 @@ def build_word(config: configparser.ConfigParser) -> Optional[Path]:
             sectPr.append(pgNumType)
             para._p.addprevious(sectPr)
 
-        # Find the first chapter heading (第1章) and add section break
+        # Find chapter headings and add page breaks
         chapter1_para = None
         chapter1_idx = -1
+        chapter_paragraphs = []  # List of (paragraph, chapter_name) for chapters after 第1章
+
         for i, para in enumerate(final_doc.paragraphs):
             text = para.text.strip()
 
@@ -1586,6 +1706,18 @@ def build_word(config: configparser.ConfigParser) -> Optional[Path]:
                 chapter1_para = para
                 chapter1_idx = i
                 print(f"    ✓ Found 第1章 at paragraph {i}")
+
+            # Find other chapter headings (第2章, 第3章, etc.) and special sections
+            # Must be a heading style OR short text (chapter titles are short, body text is long)
+            # This prevents matching body text like "第2章で分析した既存手法の..."
+            elif re.match(r'^第[2-9]\d*章\s+\S', text):
+                style_name = para.style.name if para.style else ''
+                is_heading_style = 'Heading' in style_name or '見出し' in style_name
+                is_short = len(text) < 50  # Chapter titles are typically short
+                if is_heading_style or is_short:
+                    chapter_paragraphs.append((para, text))
+            elif text in ['謝辞', '参考文献', '付録']:
+                chapter_paragraphs.append((para, text))
 
             # Center-align figure/table captions
             if text.startswith('図') or text.startswith('表'):
@@ -1611,6 +1743,22 @@ def build_word(config: configparser.ConfigParser) -> Optional[Path]:
             # Insert before the paragraph
             chapter1_para._p.addprevious(sectPr)
             print("    ✓ Added section break before 第1章 with page restart from 1")
+
+        # Add page breaks before other chapters (第2章 onwards and special sections)
+        for chapter_para, chapter_name in chapter_paragraphs:
+            # Add page break before this chapter using paragraph property
+            pPr = chapter_para._p.get_or_add_pPr()
+            # Remove existing pageBreakBefore if present
+            for existing in list(pPr):
+                if existing.tag.endswith('pageBreakBefore'):
+                    pPr.remove(existing)
+            # Add pageBreakBefore element
+            pageBreakBefore = OxmlElement('w:pageBreakBefore')
+            pPr.insert(0, pageBreakBefore)
+
+        if chapter_paragraphs:
+            chapter_names = [name for _, name in chapter_paragraphs]
+            print(f"    ✓ Added page breaks before {len(chapter_paragraphs)} chapter(s): {', '.join(chapter_names[:3])}{'...' if len(chapter_names) > 3 else ''}")
 
         # Process images and center them
         for para in final_doc.paragraphs:
@@ -1670,19 +1818,95 @@ def build_word(config: configparser.ConfigParser) -> Optional[Path]:
 
         print(f"    ✓ Fixed table row splitting for {len(final_doc.tables)} table(s)")
 
-        # Also check paragraphs immediately before tables (table captions)
-        # and ensure they have keep_with_next set to stay with the table
-        table_caption_count = 0
-        for i, para in enumerate(final_doc.paragraphs):
-            text = para.text.strip()
-            # Check for table captions (表X.X: format)
-            if re.match(r'^表\d+\.\d+', text):
-                para.paragraph_format.keep_with_next = True
-                para.paragraph_format.page_break_before = False
-                table_caption_count += 1
+        # Fix paragraphs immediately BEFORE tables (table captions)
+        # Use Document Body traversal to find paragraphs directly preceding tables
+        # and set keepNext at XML level to ensure caption stays with table
+        before_table_para_count = 0
+        body = final_doc._body._body
+        children = list(body)
+        for i, child in enumerate(children):
+            tag = child.tag.split('}')[-1] if '}' in child.tag else child.tag
+            if tag == 'tbl' and i > 0:
+                # Check the previous element
+                prev_child = children[i - 1]
+                prev_tag = prev_child.tag.split('}')[-1] if '}' in prev_child.tag else prev_child.tag
+                if prev_tag == 'p':
+                    # This paragraph is immediately before a table
+                    # Set keepNext at XML level to force Word to keep them together
+                    pPr = prev_child.find(qn('w:pPr'))
+                    if pPr is None:
+                        pPr = OxmlElement('w:pPr')
+                        prev_child.insert(0, pPr)
 
-        if table_caption_count > 0:
-            print(f"    ✓ Fixed page break settings for {table_caption_count} table caption(s)")
+                    # Remove existing keepNext and add new one
+                    for existing in list(pPr):
+                        if existing.tag.endswith('keepNext'):
+                            pPr.remove(existing)
+                    keepNext = OxmlElement('w:keepNext')
+                    # No w:val attribute means true (default)
+                    pPr.insert(0, keepNext)
+
+                    # Also remove pageBreakBefore if present
+                    for existing in list(pPr):
+                        if existing.tag.endswith('pageBreakBefore'):
+                            pPr.remove(existing)
+
+                    # Disable widow control for this paragraph
+                    for existing in list(pPr):
+                        if existing.tag.endswith('widowControl'):
+                            pPr.remove(existing)
+                    widowControl = OxmlElement('w:widowControl')
+                    widowControl.set(qn('w:val'), '0')
+                    pPr.append(widowControl)
+
+                    before_table_para_count += 1
+
+        if before_table_para_count > 0:
+            print(f"    ✓ Fixed keepNext for {before_table_para_count} paragraph(s) before tables")
+
+        # Fix paragraphs immediately after tables to prevent unnecessary page breaks
+        # This addresses the issue where Word pushes content to the next page even when
+        # there's enough space after a table
+        after_table_para_count = 0
+        body = final_doc._body._body
+        prev_was_table = False
+        for child in body:
+            tag = child.tag.split('}')[-1] if '}' in child.tag else child.tag
+            if tag == 'tbl':
+                prev_was_table = True
+            elif tag == 'p' and prev_was_table:
+                # This is a paragraph immediately after a table
+                # Find or create pPr element
+                pPr = child.find(qn('w:pPr'))
+                if pPr is None:
+                    pPr = OxmlElement('w:pPr')
+                    child.insert(0, pPr)
+
+                # Remove existing widowControl if present and set to false
+                for existing in list(pPr):
+                    if existing.tag.endswith('widowControl'):
+                        pPr.remove(existing)
+                widowControl = OxmlElement('w:widowControl')
+                widowControl.set(qn('w:val'), '0')
+                pPr.append(widowControl)
+
+                # Remove existing keepNext if present (we don't want to keep with next)
+                for existing in list(pPr):
+                    if existing.tag.endswith('keepNext'):
+                        pPr.remove(existing)
+
+                # Remove existing keepLines if present
+                for existing in list(pPr):
+                    if existing.tag.endswith('keepLines'):
+                        pPr.remove(existing)
+
+                after_table_para_count += 1
+                prev_was_table = False
+            else:
+                prev_was_table = False
+
+        if after_table_para_count > 0:
+            print(f"    ✓ Fixed widow/orphan control for {after_table_para_count} paragraph(s) after tables")
 
         # Set code block line spacing to fixed 9-10pt for compactness
         # Code blocks typically use styles like "Source Code", "Code", or have monospace fonts
@@ -1965,6 +2189,9 @@ def build_word(config: configparser.ConfigParser) -> Optional[Path]:
         # Save final document
         final_doc.save(output_file)
         merged_temp.unlink(missing_ok=True)
+
+        # Post-process the DOCX at XML level to fix page break issues
+        output_file = postprocess_docx_xml(output_file)
 
         print(f"  ✓ Created {output_file.name}")
         print(f"    Size: {output_file.stat().st_size / 1024:.1f} KB")
@@ -2401,9 +2628,8 @@ Examples:
     subparsers.add_parser("fetch", help="Sync config with research directory")
     subparsers.add_parser("tree", help="Show source directory structure")
     subparsers.add_parser("list", help="List all revisions")
-    subparsers.add_parser("docx", help="Export thesis to DOCX format")
     subparsers.add_parser("pdf", help="Export thesis to PDF format")
-    subparsers.add_parser("export", help="Export thesis to both DOCX and PDF")
+    subparsers.add_parser("export", help="Export thesis to both Word and PDF")
     subparsers.add_parser("word", help="Build Word document with cover template")
     
     show_parser = subparsers.add_parser("show", help="Show revision details")
@@ -2442,8 +2668,6 @@ Examples:
         show_revision(args.version)
     elif args.command == "remove":
         remove_revision(args.version)
-    elif args.command == "docx":
-        export_docx(config)
     elif args.command == "pdf":
         export_pdf(config)
     elif args.command == "export":

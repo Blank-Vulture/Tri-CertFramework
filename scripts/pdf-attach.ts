@@ -101,7 +101,7 @@ if (require.main === module) {
   const args = process.argv.slice(2);
   
   if (args.length < 3) {
-    console.error('Usage: ts-node pdf-attach.ts <input-pdf> <output-pdf> <attachment1> [attachment2] ...');
+    console.error('Usage: npx tsx pdf-attach.ts <input-pdf> <output-pdf> <attachment1> [attachment2] ...');
     process.exit(1);
   }
   

@@ -16,10 +16,7 @@
     "crypto-js": "^4.2.0",
     "pdf-lib": "^1.17.1",
     "snarkjs": "^0.7.5",
-    "ts-node": "^10.9.2",
+    "tsx": "^4.19.0",
     "typescript": "^5.9.2"
-  },
-  "overrides": {
-    "diff": "^8.0.3"
   }
 }

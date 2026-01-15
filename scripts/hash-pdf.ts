@@ -52,7 +52,7 @@ if (require.main === module) {
   const args = process.argv.slice(2);
   
   if (args.length !== 1) {
-    console.error('Usage: ts-node hash-pdf.ts <pdf-file>');
+    console.error('Usage: npx tsx hash-pdf.ts <pdf-file>');
     process.exit(1);
   }
   

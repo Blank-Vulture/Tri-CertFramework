@@ -822,23 +822,24 @@ tableOfContents:
 MERMAID_PATTERN = re.compile(r'```mermaid\n(.*?)```', re.DOTALL)
 MERMAID_PRE_PATTERN = re.compile(r'<pre class="mermaid">\n?(.*?)</pre>', re.DOTALL)
 
-# JPEG quality for export (100 = no compression, preserves text clarity)
-JPEG_QUALITY = 100
+# JPEG quality for export (85 = good balance between quality and file size)
+# 85 is visually indistinguishable from 100 for most images
+JPEG_QUALITY = 85
 
 # Image width settings for Word export (in pixels)
-# Smaller widths reduce file size while maintaining readability
+# Higher resolution for print quality while keeping file size manageable
 IMAGE_WIDTH_SETTINGS = {
-    # Screenshots - moderate size for readability
-    "prover": 450,
-    "verifier": 450,
-    "registrar-console": 450,
-    "executive-console": 450,
-    # Diagrams - smaller since they're simpler
-    "mermaid": 400,
-    # Charts and figures - moderate size
-    "tankyu-chart": 500,
+    # Screenshots - high resolution for text clarity in print
+    "prover": 900,
+    "verifier": 900,
+    "registrar-console": 900,
+    "executive-console": 900,
+    # Diagrams - moderate size (vector-like, less detail needed)
+    "mermaid": 700,
+    # Charts and figures - high resolution
+    "tankyu-chart": 800,
     # Default for other images
-    "default": 450,
+    "default": 800,
 }
 
 

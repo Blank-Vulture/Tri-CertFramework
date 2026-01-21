@@ -411,6 +411,86 @@ def convert_image_paths(content: str) -> str:
     return IMAGE_PATH_PATTERN.sub(replace_path, content)
 
 
+def add_paragraph_indentation(content: str) -> str:
+    """
+    Add Japanese-style paragraph indentation (全角スペース) to paragraphs.
+
+    This adds a full-width space (　) at the beginning of paragraphs for proper
+    Japanese academic paper formatting. Works for both Astro HTML output and
+    Word/PDF export.
+
+    Rules:
+    - Indent paragraphs that start with Japanese text
+    - Skip headings (#), list items (-, *, 1.), code blocks, tables, images
+    - Skip empty lines and HTML tags
+    - Skip blockquotes (>)
+    - Skip lines that already have indentation
+    """
+    lines = content.split('\n')
+    result = []
+    in_code_block = False
+    in_table = False
+
+    # Pattern for Japanese text start (hiragana, katakana, kanji, or common punctuation)
+    jp_start_pattern = re.compile(r'^[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF\u3000-\u303F「『（]')
+
+    for i, line in enumerate(lines):
+        # Track code blocks
+        if line.strip().startswith('```'):
+            in_code_block = not in_code_block
+            result.append(line)
+            continue
+
+        if in_code_block:
+            result.append(line)
+            continue
+
+        # Track tables (lines starting with |)
+        stripped = line.strip()
+        if stripped.startswith('|'):
+            in_table = True
+            result.append(line)
+            continue
+        elif in_table and not stripped.startswith('|') and stripped:
+            in_table = False
+
+        if in_table:
+            result.append(line)
+            continue
+
+        # Skip conditions
+        skip_conditions = [
+            not stripped,                           # Empty line
+            stripped.startswith('#'),               # Heading
+            stripped.startswith('-'),               # Unordered list
+            stripped.startswith('*'),               # Unordered list (asterisk)
+            stripped.startswith('+'),               # Unordered list (plus)
+            re.match(r'^\d+\.', stripped),          # Ordered list
+            stripped.startswith('>'),               # Blockquote
+            stripped.startswith('<'),               # HTML tag
+            stripped.startswith('!'),               # Image
+            stripped.startswith('['),               # Link at start
+            stripped.startswith('　'),              # Already indented
+            stripped.startswith('---'),             # Horizontal rule
+            stripped.startswith('***'),             # Horizontal rule
+            stripped.startswith('___'),             # Horizontal rule
+        ]
+
+        if any(skip_conditions):
+            result.append(line)
+            continue
+
+        # Add indentation to Japanese paragraphs
+        if jp_start_pattern.match(stripped):
+            # Preserve any leading whitespace from original, then add 全角スペース
+            leading_ws = line[:len(line) - len(line.lstrip())]
+            result.append(f"{leading_ws}　{stripped}")
+        else:
+            result.append(line)
+
+    return '\n'.join(result)
+
+
 def build_thesis_content(files: list[SourceFile], config: configparser.ConfigParser) -> str:
     """Build complete thesis content from source files."""
     frontmatter_parts = []
@@ -491,8 +571,12 @@ def build_thesis_content(files: list[SourceFile], config: configparser.ConfigPar
         body_output.append(part)
     
     result_parts.append("\n\n".join(body_output))
-    
-    return "\n\n".join(result_parts)
+
+    # Apply paragraph indentation (全角スペース)
+    result = "\n\n".join(result_parts)
+    result = add_paragraph_indentation(result)
+
+    return result
 
 
 # =============================================================================
@@ -1187,7 +1271,11 @@ def build_export_content(files: list[SourceFile], config: configparser.ConfigPar
         elif content:
             body_parts.append(content)
 
-    return "\n\n".join(body_parts)
+    # Apply paragraph indentation (全角スペース)
+    result = "\n\n".join(body_parts)
+    result = add_paragraph_indentation(result)
+
+    return result
 
 
 def get_frontmatter_content(files: list[SourceFile]) -> str:

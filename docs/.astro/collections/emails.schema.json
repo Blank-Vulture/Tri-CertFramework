@@ -1,0 +1,58 @@
+{
+  "$ref": "#/definitions/emails",
+  "definitions": {
+    "emails": {
+      "type": "object",
+      "properties": {
+        "timestamp": {
+          "type": "string"
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "subject": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "received",
+            "sent",
+            "internal"
+          ]
+        },
+        "summary": {
+          "type": "string"
+        },
+        "interpretation": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "$schema": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "timestamp",
+        "from",
+        "to",
+        "sessionId",
+        "type",
+        "summary"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

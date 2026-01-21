@@ -60,10 +60,19 @@ export default defineConfig({
           ],
         },
         {
+          label: '研究論文改訂歴',
+          translations: { en: 'Revision History' },
+          items: [
+            { label: '改訂歴一覧', slug: 'revision-history', translations: { en: 'Revision History' } },
+            { label: '2025-01-21 平石先生', slug: 'revision-history/2025-01-21-hiraishi-feedback', translations: { en: '2025-01-21 Hiraishi' } },
+          ],
+        },
+        {
           label: '研究論文',
           translations: { en: 'Research' },
           items: [
             { label: '論文一覧', slug: 'research', translations: { en: 'Papers' } },
+            { label: '修士論文 v2.45', slug: 'research/thesis-v2-45', translations: { en: 'Thesis v2.45' } },
             { label: '修士論文 v2.44', slug: 'research/thesis-v2-44', translations: { en: 'Thesis v2.44' } },
             { label: '修士論文 v2.43', slug: 'research/thesis-v2-43', translations: { en: 'Thesis v2.43' } },
             { label: '修士論文 v2.42', slug: 'research/thesis-v2-42', translations: { en: 'Thesis v2.42' } },

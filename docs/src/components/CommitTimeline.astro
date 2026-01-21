@@ -1,0 +1,348 @@
+---
+/**
+ * CommitTimeline - Git風のコミット履歴タイムライン
+ * メールや改訂イベントを時系列で表示
+ */
+import { getCollection } from 'astro:content';
+
+interface Props {
+  sessionId?: string; // 特定セッションのみ表示
+  limit?: number;
+}
+
+const { sessionId, limit } = Astro.props;
+
+// メールコレクションを取得
+let emails = await getCollection('emails');
+
+// セッションIDでフィルタ
+if (sessionId) {
+  emails = emails.filter(e => e.data.sessionId === sessionId);
+}
+
+// タイムスタンプでソート（新しい順）
+emails.sort((a, b) =>
+  new Date(b.data.timestamp).getTime() - new Date(a.data.timestamp).getTime()
+);
+
+// 制限
+if (limit) {
+  emails = emails.slice(0, limit);
+}
+
+// 日付でグループ化
+const groupedByDate = emails.reduce((acc, email) => {
+  const date = new Date(email.data.timestamp).toLocaleDateString('ja-JP', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+  if (!acc[date]) acc[date] = [];
+  acc[date].push(email);
+  return acc;
+}, {} as Record<string, typeof emails>);
+
+// タイプに応じたアイコンと色
+const typeConfig = {
+  received: { icon: '📥', color: '#3b82f6', label: '受信' },
+  sent: { icon: '📤', color: '#10b981', label: '送信' },
+  internal: { icon: '📝', color: '#8b5cf6', label: '内部' },
+};
+
+function formatTime(timestamp: string) {
+  return new Date(timestamp).toLocaleTimeString('ja-JP', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+---
+
+<div class="commit-timeline">
+  {Object.entries(groupedByDate).map(([date, dateEmails]) => (
+    <div class="date-group">
+      <div class="date-header">
+        <span class="date-line"></span>
+        <span class="date-label">{date}</span>
+        <span class="date-line"></span>
+      </div>
+
+      <div class="commits">
+        {dateEmails.map(async (email) => {
+          const { Content } = await email.render();
+          const config = typeConfig[email.data.type];
+
+          return (
+            <div class="commit-item" data-type={email.data.type}>
+              <div class="commit-dot" style={`background-color: ${config.color}`}>
+                <span class="commit-icon">{config.icon}</span>
+              </div>
+              <div class="commit-line"></div>
+
+              <div class="commit-content">
+                <div class="commit-header">
+                  <span class="commit-time">{formatTime(email.data.timestamp)}</span>
+                  <span class="commit-badge" style={`background-color: ${config.color}20; color: ${config.color}`}>
+                    {config.label}
+                  </span>
+                </div>
+
+                <div class="commit-meta">
+                  <span class="commit-from">{email.data.from}</span>
+                  <span class="commit-arrow">→</span>
+                  <span class="commit-to">{email.data.to}</span>
+                </div>
+
+                <div class="commit-summary">{email.data.summary}</div>
+
+                <details class="commit-details">
+                  <summary>詳細を表示</summary>
+                  <div class="commit-body">
+                    <Content />
+                  </div>
+                  {email.data.interpretation && (
+                    <div class="commit-interpretation">
+                      <strong>解釈・決定事項:</strong>
+                      <p>{email.data.interpretation}</p>
+                    </div>
+                  )}
+                </details>
+
+                {email.data.tags && email.data.tags.length > 0 && (
+                  <div class="commit-tags">
+                    {email.data.tags.map(tag => (
+                      <span class="tag">{tag}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  ))}
+</div>
+
+<style>
+  .commit-timeline {
+    --timeline-color: var(--sl-color-gray-5);
+    --dot-size: 2.5rem;
+    font-family: var(--sl-font);
+  }
+
+  .date-group {
+    margin-bottom: 2rem;
+  }
+
+  .date-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .date-line {
+    flex: 1;
+    height: 1px;
+    background: var(--timeline-color);
+  }
+
+  .date-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--sl-color-gray-2);
+    background: var(--sl-color-bg);
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    border: 1px solid var(--timeline-color);
+  }
+
+  .commits {
+    position: relative;
+    padding-left: calc(var(--dot-size) / 2);
+  }
+
+  .commit-item {
+    position: relative;
+    padding-left: calc(var(--dot-size) / 2 + 1.5rem);
+    padding-bottom: 1.5rem;
+  }
+
+  .commit-item:last-child {
+    padding-bottom: 0;
+  }
+
+  .commit-item:last-child .commit-line {
+    display: none;
+  }
+
+  .commit-dot {
+    position: absolute;
+    left: calc(var(--dot-size) / -2);
+    top: 0;
+    width: var(--dot-size);
+    height: var(--dot-size);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .commit-icon {
+    font-size: 1rem;
+  }
+
+  .commit-line {
+    position: absolute;
+    left: 0;
+    top: var(--dot-size);
+    bottom: 0;
+    width: 2px;
+    background: var(--timeline-color);
+  }
+
+  .commit-content {
+    background: var(--sl-color-bg-nav);
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    transition: box-shadow 0.2s;
+  }
+
+  .commit-content:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  .commit-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .commit-time {
+    font-family: var(--sl-font-mono);
+    font-size: 0.875rem;
+    color: var(--sl-color-gray-3);
+  }
+
+  .commit-badge {
+    font-size: 0.75rem;
+    padding: 0.125rem 0.5rem;
+    border-radius: 9999px;
+    font-weight: 500;
+  }
+
+  .commit-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .commit-from {
+    font-weight: 600;
+    color: var(--sl-color-text);
+  }
+
+  .commit-arrow {
+    color: var(--sl-color-gray-4);
+  }
+
+  .commit-to {
+    color: var(--sl-color-gray-2);
+  }
+
+  .commit-summary {
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--sl-color-text);
+    margin-bottom: 0.75rem;
+  }
+
+  .commit-details {
+    margin-top: 0.75rem;
+    border-top: 1px solid var(--sl-color-gray-6);
+    padding-top: 0.75rem;
+  }
+
+  .commit-details summary {
+    cursor: pointer;
+    font-size: 0.875rem;
+    color: var(--sl-color-text-accent);
+    user-select: none;
+  }
+
+  .commit-details summary:hover {
+    text-decoration: underline;
+  }
+
+  .commit-details[open] summary {
+    margin-bottom: 0.75rem;
+  }
+
+  .commit-body {
+    font-size: 0.875rem;
+    line-height: 1.6;
+    color: var(--sl-color-gray-2);
+    background: var(--sl-color-bg);
+    padding: 1rem;
+    border-radius: 0.375rem;
+    border: 1px solid var(--sl-color-gray-6);
+  }
+
+  .commit-body :global(p) {
+    margin: 0.5rem 0;
+  }
+
+  .commit-body :global(ul), .commit-body :global(ol) {
+    margin: 0.5rem 0;
+    padding-left: 1.5rem;
+  }
+
+  .commit-interpretation {
+    margin-top: 0.75rem;
+    padding: 0.75rem;
+    background: #fef3c720;
+    border-left: 3px solid #f59e0b;
+    border-radius: 0 0.375rem 0.375rem 0;
+  }
+
+  .commit-interpretation strong {
+    color: #d97706;
+    font-size: 0.875rem;
+  }
+
+  .commit-interpretation p {
+    margin: 0.5rem 0 0;
+    font-size: 0.875rem;
+    color: var(--sl-color-text);
+  }
+
+  .commit-tags {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: 0.75rem;
+  }
+
+  .tag {
+    font-size: 0.75rem;
+    padding: 0.125rem 0.5rem;
+    background: var(--sl-color-gray-6);
+    color: var(--sl-color-gray-2);
+    border-radius: 0.25rem;
+  }
+
+  /* ダークモード対応 */
+  :global([data-theme='dark']) .commit-content {
+    background: var(--sl-color-gray-6);
+  }
+
+  :global([data-theme='dark']) .commit-body {
+    background: var(--sl-color-gray-7);
+  }
+</style>

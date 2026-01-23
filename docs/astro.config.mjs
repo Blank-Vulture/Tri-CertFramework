@@ -72,6 +72,12 @@ export default defineConfig({
           translations: { en: 'Research' },
           items: [
             { label: '論文一覧', slug: 'research', translations: { en: 'Papers' } },
+            { label: '修士論文 v2.52', slug: 'research/thesis-v2-52', translations: { en: 'Thesis v2.52' } },
+            { label: '修士論文 v2.51', slug: 'research/thesis-v2-51', translations: { en: 'Thesis v2.51' } },
+            { label: '修士論文 v2.50', slug: 'research/thesis-v2-50', translations: { en: 'Thesis v2.50' } },
+            { label: '修士論文 v2.49', slug: 'research/thesis-v2-49', translations: { en: 'Thesis v2.49' } },
+            { label: '修士論文 v2.48', slug: 'research/thesis-v2-48', translations: { en: 'Thesis v2.48' } },
+            { label: '修士論文 v2.47', slug: 'research/thesis-v2-47', translations: { en: 'Thesis v2.47' } },
             { label: '修士論文 v2.46', slug: 'research/thesis-v2-46', translations: { en: 'Thesis v2.46' } },
             { label: '修士論文 v2.45', slug: 'research/thesis-v2-45', translations: { en: 'Thesis v2.45' } },
             { label: '修士論文 v2.44', slug: 'research/thesis-v2-44', translations: { en: 'Thesis v2.44' } },

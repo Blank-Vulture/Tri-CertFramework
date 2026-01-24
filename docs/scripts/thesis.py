@@ -1761,7 +1761,9 @@ def build_word(config: configparser.ConfigParser) -> Optional[Path]:
     # Pre-render Mermaid diagrams if mermaid-cli is available
     # Use JPEG format for smaller file size
     if deps["mermaid"]:
-        content = prerender_mermaid(content, OUTPUT_DIR, use_jpeg=True)
+        # Keep Mermaid diagrams as PNG to avoid conversion artifacts
+        # JPEG conversion can cause cropping/scaling issues with diagrams
+        content = prerender_mermaid(content, OUTPUT_DIR, use_jpeg=False)
     else:
         print("  ⚠️  Warning: mermaid-cli not installed, Mermaid diagrams will be skipped")
         content = MERMAID_PATTERN.sub('[Mermaid diagram - install mmdc to render]', content)
@@ -2240,6 +2242,17 @@ def build_word(config: configparser.ConfigParser) -> Optional[Path]:
         # Add spacing before section and subsection headings
         # Also disable "page break before" to prevent unwanted page breaks
         section_spacing_count = 0
+        heading4_fixed_count = 0
+
+        # First pass: fix Heading 4 style issues
+        # Pandoc may not correctly style #### headings, so we detect them by text patterns
+        # and apply Heading 4 style manually
+        heading4_style = None
+        for style in final_doc.styles:
+            if style.name == 'Heading 4':
+                heading4_style = style
+                break
+
         for para in final_doc.paragraphs:
             text = para.text.strip()
             style_name = para.style.name if para.style else ''
@@ -2258,8 +2271,48 @@ def build_word(config: configparser.ConfigParser) -> Optional[Path]:
                 para.paragraph_format.page_break_before = False  # Disable auto page break
                 section_spacing_count += 1
 
+            # Check for Heading 4 (#### in source)
+            # These might not have Heading 4 style applied by Pandoc
+            # Detect by checking if it's a short paragraph that looks like a heading
+            elif 'Heading 4' in style_name:
+                para.paragraph_format.space_before = Pt(10)
+                para.paragraph_format.space_after = Pt(4)
+                para.paragraph_format.page_break_before = False
+                section_spacing_count += 1
+
+            # Also check for paragraphs that should be Heading 4 but aren't styled
+            # These are typically short lines (< 50 chars) that end without punctuation
+            # and are followed by normal paragraphs
+            elif (not any(x in style_name.lower() for x in ['heading', 'code', 'caption', 'toc'])
+                  and len(text) < 60
+                  and len(text) > 5
+                  and not text.endswith(('。', '．', '.', '、', '，', ',', '：', ':'))
+                  and not text.startswith(('　', '-', '・', '1', '2', '3', '4', '5', '6', '7', '8', '9', '図', '表', '['))
+                  and not re.match(r'^第\d+章', text)
+                  and not re.match(r'^\d+\.\d+', text)):
+                # Check if this looks like a heading (e.g., ends with question or contains "とは" etc.)
+                heading_patterns = [
+                    r'とは$',
+                    r'について$',
+                    r'の(概要|特徴|目的|背景|理由|仕組み|方法|種類|比較|課題|利点|欠点)$',
+                    r'(SHA|ZKP|FIDO|WebAuthn|Poseidon|Groth16|VKNFT)',  # Technical terms
+                    r'が.*理由$',
+                    r'は.*か$',  # Question pattern
+                    r'の使い分け$',
+                ]
+                is_likely_heading = any(re.search(p, text) for p in heading_patterns)
+
+                if is_likely_heading and heading4_style:
+                    para.style = heading4_style
+                    para.paragraph_format.space_before = Pt(10)
+                    para.paragraph_format.space_after = Pt(4)
+                    para.paragraph_format.page_break_before = False
+                    heading4_fixed_count += 1
+
         if section_spacing_count > 0:
             print(f"    ✓ Adjusted spacing for {section_spacing_count} section heading(s)")
+        if heading4_fixed_count > 0:
+            print(f"    ✓ Fixed Heading 4 style for {heading4_fixed_count} paragraph(s)")
 
         # Unify line spacing for all normal paragraphs to prevent inconsistent spacing
         # This addresses the issue where line spacing varies between paragraphs
@@ -2326,6 +2379,7 @@ def build_word(config: configparser.ConfigParser) -> Optional[Path]:
 
         # Reduce list indentation from default to minimal
         # List items have numPr in their pPr element
+        # Also fix tab stops to reduce space between number and text
         list_indent_count = 0
         for para in final_doc.paragraphs:
             pPr = para._element.find(qn('w:pPr'))
@@ -2333,15 +2387,26 @@ def build_word(config: configparser.ConfigParser) -> Optional[Path]:
                 numPr = pPr.find(qn('w:numPr'))
                 if numPr is not None:
                     # This is a list item - reduce indentation
-                    # Set left indent to ~10pt (1 half-width space equivalent)
                     ind = pPr.find(qn('w:ind'))
                     if ind is None:
                         ind = OxmlElement('w:ind')
                         pPr.append(ind)
-                    # Set left indent to 200 twips (~10pt, 1 half-width space)
-                    ind.set(qn('w:left'), '200')
-                    # Set hanging indent for proper list formatting
-                    ind.set(qn('w:hanging'), '200')
+                    # Set minimal left indent (360 twips = ~18pt = about 2 half-width spaces)
+                    # Hanging indent determines where text starts after the number
+                    ind.set(qn('w:left'), '360')
+                    ind.set(qn('w:hanging'), '360')
+
+                    # Remove existing tabs and set a tight tab stop
+                    existing_tabs = pPr.find(qn('w:tabs'))
+                    if existing_tabs is not None:
+                        pPr.remove(existing_tabs)
+                    tabs = OxmlElement('w:tabs')
+                    tab = OxmlElement('w:tab')
+                    tab.set(qn('w:val'), 'left')
+                    tab.set(qn('w:pos'), '360')  # Tab at same position as indent
+                    tabs.append(tab)
+                    pPr.append(tabs)
+
                     list_indent_count += 1
 
         if list_indent_count > 0:

@@ -4,7 +4,15 @@ description: "デジタル文書の真正性検証: ３層認証アーキテク�
 tableOfContents:
   minHeadingLevel: 2
   maxHeadingLevel: 3
+sidebar:
+  badge:
+    text: "過去版"
+    variant: "caution"
 ---
+
+:::caution[過去バージョン]
+これは過去バージョン（v2.52）です。最新版は [v2.53](./thesis-v2-53/) をご覧ください。
+:::
 
 # デジタル文書の真正性検証: ３層認証アーキテクチャの設計と実装
 

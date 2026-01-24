@@ -420,19 +420,27 @@ def add_paragraph_indentation(content: str) -> str:
     Word/PDF export.
 
     Rules:
-    - Indent paragraphs that start with Japanese text
-    - Skip headings (#), list items (-, *, 1.), code blocks, tables, images
-    - Skip empty lines and HTML tags
-    - Skip blockquotes (>)
-    - Skip lines that already have indentation
+    - Indent ALL paragraph lines by default
+    - Skip only: headings, list items, code blocks, tables, images, HTML tags,
+      blockquotes, empty lines, horizontal rules, already indented lines
     """
     lines = content.split('\n')
     result = []
     in_code_block = False
     in_table = False
 
-    # Pattern for Japanese text start (hiragana, katakana, kanji, or common punctuation)
-    jp_start_pattern = re.compile(r'^[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF\u3000-\u303F「『（]')
+    def is_list_item(s: str) -> bool:
+        """Check if line is a list item (not bold/italic markdown)."""
+        # Unordered list: "- ", "* ", "+ " (with space after)
+        if s.startswith('- ') or s.startswith('+ '):
+            return True
+        # Asterisk list item: "* " but not "**" (bold)
+        if s.startswith('* ') and not s.startswith('**'):
+            return True
+        # Ordered list: "1. ", "2. ", etc.
+        if re.match(r'^\d+\.\s', s):
+            return True
+        return False
 
     for i, line in enumerate(lines):
         # Track code blocks
@@ -458,21 +466,17 @@ def add_paragraph_indentation(content: str) -> str:
             result.append(line)
             continue
 
-        # Skip conditions
+        # Skip conditions - everything else gets indented
         skip_conditions = [
             not stripped,                           # Empty line
             stripped.startswith('#'),               # Heading
-            stripped.startswith('-'),               # Unordered list
-            stripped.startswith('*'),               # Unordered list (asterisk)
-            stripped.startswith('+'),               # Unordered list (plus)
-            re.match(r'^\d+\.', stripped),          # Ordered list
+            is_list_item(stripped),                 # List items (-, * , +, 1.)
             stripped.startswith('>'),               # Blockquote
             stripped.startswith('<'),               # HTML tag
             stripped.startswith('!'),               # Image
             stripped.startswith('['),               # Link at start
             stripped.startswith('　'),              # Already indented
             stripped.startswith('---'),             # Horizontal rule
-            stripped.startswith('***'),             # Horizontal rule
             stripped.startswith('___'),             # Horizontal rule
         ]
 
@@ -480,13 +484,9 @@ def add_paragraph_indentation(content: str) -> str:
             result.append(line)
             continue
 
-        # Add indentation to Japanese paragraphs
-        if jp_start_pattern.match(stripped):
-            # Preserve any leading whitespace from original, then add 全角スペース
-            leading_ws = line[:len(line) - len(line.lstrip())]
-            result.append(f"{leading_ws}　{stripped}")
-        else:
-            result.append(line)
+        # Indent all other lines (paragraphs)
+        leading_ws = line[:len(line) - len(line.lstrip())]
+        result.append(f"{leading_ws}　{stripped}")
 
     return '\n'.join(result)
 
@@ -906,54 +906,104 @@ tableOfContents:
 MERMAID_PATTERN = re.compile(r'```mermaid\n(.*?)```', re.DOTALL)
 MERMAID_PRE_PATTERN = re.compile(r'<pre class="mermaid">\n?(.*?)</pre>', re.DOTALL)
 
-# JPEG quality for export (85 = good balance between quality and file size)
-# 85 is visually indistinguishable from 100 for most images
-JPEG_QUALITY = 85
+# JPEG quality for export
+# Higher quality for screenshots with text to prevent blurriness
+# 95+ is essentially lossless for text, 92-94 is very high quality
+JPEG_QUALITY_HIGH = 95  # For screenshots with text (near lossless)
+JPEG_QUALITY_DEFAULT = 88  # For diagrams and other images
 
-# Image width settings for Word export (in pixels)
-# Higher resolution for print quality while keeping file size manageable
-IMAGE_WIDTH_SETTINGS = {
-    # Screenshots - high resolution for text clarity in print
-    "prover": 900,
-    "verifier": 900,
-    "registrar-console": 900,
-    "executive-console": 900,
-    # Diagrams - moderate size (vector-like, less detail needed)
-    "mermaid": 700,
-    # Charts and figures - high resolution
-    "tankyu-chart": 800,
+# Compression threshold: only compress images larger than this width (in pixels)
+# Images smaller than this will NOT be resized to avoid upscaling artifacts
+# Retina displays typically produce 2x resolution, so 1400px is a safe threshold
+COMPRESSION_THRESHOLD_WIDTH = 1400
+
+# Target width for Word export (in pixels)
+# Only applied to images exceeding COMPRESSION_THRESHOLD_WIDTH
+# Higher resolution for print quality (論文印刷用)
+TARGET_WIDTH_SETTINGS = {
+    # Screenshots - higher resolution for text clarity in print
+    # (Retina screenshots are typically 1800+ px, target 1400px for Word)
+    "prover": 1400,
+    "verifier": 1400,
+    "registrar-console": 1400,
+    "executive-console": 1400,
+    # Diagrams - keep original size (usually small)
+    "mermaid": None,  # None = no resize
+    # Charts and figures
+    "tankyu-chart": 1200,
     # Default for other images
-    "default": 800,
+    "default": 1200,
 }
 
 
-def get_image_width(image_path: Path) -> int:
+def get_target_width(image_path: Path) -> Optional[int]:
     """
-    Determine the appropriate width for an image based on its path/name.
+    Determine the target width for an image based on its path/name.
 
-    Returns the target width in pixels.
+    Returns:
+        Target width in pixels, or None if image should not be resized.
     """
     path_str = str(image_path).lower()
     name = image_path.stem.lower()
 
     # Check for specific image types
-    for key, width in IMAGE_WIDTH_SETTINGS.items():
+    for key, width in TARGET_WIDTH_SETTINGS.items():
         if key == "default":
             continue
         if key in path_str or key in name:
             return width
 
-    return IMAGE_WIDTH_SETTINGS["default"]
+    return TARGET_WIDTH_SETTINGS["default"]
 
 
-def convert_png_to_jpg(png_path: Path, output_dir: Path, resize: bool = True) -> Path:
+def should_compress_image(image_path: Path, img_width: int) -> bool:
+    """
+    Determine if an image should be compressed/resized.
+
+    Only large images (above COMPRESSION_THRESHOLD_WIDTH) are compressed.
+    This prevents quality degradation of small images like Mermaid diagrams.
+
+    Args:
+        image_path: Path to the image file
+        img_width: Current width of the image in pixels
+
+    Returns:
+        True if image should be compressed, False otherwise.
+    """
+    # Don't resize Mermaid diagrams - they're already optimized
+    path_str = str(image_path).lower()
+    if "mermaid" in path_str:
+        return False
+
+    # Only compress if image exceeds threshold
+    return img_width > COMPRESSION_THRESHOLD_WIDTH
+
+
+def get_jpeg_quality(image_path: Path) -> int:
+    """
+    Determine JPEG quality based on image type.
+
+    Screenshots with text use higher quality to prevent blurriness.
+    """
+    path_str = str(image_path).lower()
+    # Screenshots typically contain text and need higher quality
+    screenshot_keywords = ["prover", "verifier", "registrar", "executive", "screenshot"]
+    if any(kw in path_str for kw in screenshot_keywords):
+        return JPEG_QUALITY_HIGH
+    return JPEG_QUALITY_DEFAULT
+
+
+def convert_png_to_jpg(png_path: Path, output_dir: Path, force_resize: bool = False) -> Path:
     """
     Convert a PNG image to JPEG format for smaller file size.
+
+    Only resizes images that exceed COMPRESSION_THRESHOLD_WIDTH to preserve
+    quality of smaller images (like Mermaid diagrams).
 
     Args:
         png_path: Path to the source PNG file
         output_dir: Directory to save the converted file
-        resize: If True, resize the image based on IMAGE_WIDTH_SETTINGS
+        force_resize: If True, always resize regardless of threshold
 
     Returns the path to the converted JPEG file.
     """
@@ -964,6 +1014,9 @@ def convert_png_to_jpg(png_path: Path, output_dir: Path, resize: bool = True) ->
 
     try:
         with Image.open(png_path) as img:
+            original_width = img.width
+            original_height = img.height
+
             # Convert RGBA to RGB (JPEG doesn't support alpha)
             if img.mode in ('RGBA', 'LA', 'P'):
                 # Create white background
@@ -975,16 +1028,21 @@ def convert_png_to_jpg(png_path: Path, output_dir: Path, resize: bool = True) ->
             elif img.mode != 'RGB':
                 img = img.convert('RGB')
 
-            # Resize image if requested
-            if resize:
-                target_width = get_image_width(png_path)
-                if img.width > target_width:
+            # Only resize if image exceeds threshold or force_resize is True
+            should_resize = force_resize or should_compress_image(png_path, original_width)
+
+            if should_resize:
+                target_width = get_target_width(png_path)
+                if target_width is not None and original_width > target_width:
                     # Calculate new height maintaining aspect ratio
-                    ratio = target_width / img.width
-                    new_height = int(img.height * ratio)
+                    ratio = target_width / original_width
+                    new_height = int(original_height * ratio)
                     img = img.resize((target_width, new_height), Image.Resampling.LANCZOS)
 
-            img.save(jpg_path, 'JPEG', quality=JPEG_QUALITY, optimize=True)
+            # Use appropriate JPEG quality
+            quality = get_jpeg_quality(png_path)
+            img.save(jpg_path, 'JPEG', quality=quality, optimize=True)
+
         return jpg_path
     except Exception as e:
         print(f"  ⚠️  Warning: Failed to convert {png_path.name} to JPEG: {e}")
@@ -1142,16 +1200,22 @@ def convert_image_paths_for_export(content: str) -> str:
 
 def convert_images_to_jpeg_for_export(content: str, output_dir: Path) -> str:
     """
-    Convert all PNG images to JPEG format for smaller file size.
+    Convert PNG images to JPEG format for smaller file size.
+
+    Only compresses large images (above COMPRESSION_THRESHOLD_WIDTH) to preserve
+    quality of smaller images. Screenshots with text use higher JPEG quality.
 
     Processes all image references in the content, converts PNG files to JPEG,
     and updates the paths in the content.
     """
+    from PIL import Image
+
     assets_dir = DOCS_DIR / "src" / "assets"
     jpeg_dir = output_dir / "images"
     jpeg_dir.mkdir(parents=True, exist_ok=True)
 
-    converted_count = [0]
+    # Statistics
+    stats = {"converted": 0, "resized": 0, "skipped_small": 0, "reused": 0}
 
     def replace_and_convert(match: re.Match) -> str:
         alt_text = match.group(1)
@@ -1202,27 +1266,53 @@ def convert_images_to_jpeg_for_export(content: str, output_dir: Path) -> str:
             # Non-PNG file, just return with absolute path
             return f"![{alt_text}]({actual_path})"
 
-        # Convert PNG to JPEG
-        # Use unique name to avoid conflicts
+        # Check image size to determine if compression is needed
+        try:
+            with Image.open(actual_path) as img:
+                original_width = img.width
+        except Exception:
+            original_width = 0
+
+        # Use unique name based on file path hash
         unique_name = actual_path.stem + "_" + str(hash(str(actual_path)) % 10000)
         jpg_path = jpeg_dir / (unique_name + ".jpg")
 
-        if not jpg_path.exists():  # Avoid reconverting
-            jpg_path = convert_png_to_jpg(actual_path, jpeg_dir)
-            if jpg_path != actual_path:  # Conversion succeeded
-                # Rename to unique name if needed
-                if jpg_path.name != unique_name + ".jpg":
-                    new_jpg_path = jpeg_dir / (unique_name + ".jpg")
+        if jpg_path.exists():
+            # Already converted in a previous run
+            stats["reused"] += 1
+            return f"![{alt_text}]({jpg_path})"
+
+        # Convert PNG to JPEG
+        jpg_path = convert_png_to_jpg(actual_path, jpeg_dir)
+
+        if jpg_path != actual_path:  # Conversion succeeded
+            # Rename to unique name if needed
+            if jpg_path.name != unique_name + ".jpg":
+                new_jpg_path = jpeg_dir / (unique_name + ".jpg")
+                if jpg_path.exists():
                     jpg_path.rename(new_jpg_path)
                     jpg_path = new_jpg_path
-                converted_count[0] += 1
+
+            stats["converted"] += 1
+
+            # Check if image was resized
+            if should_compress_image(actual_path, original_width):
+                stats["resized"] += 1
+            else:
+                stats["skipped_small"] += 1
 
         return f"![{alt_text}]({jpg_path})"
 
     result = IMAGE_PATH_PATTERN.sub(replace_and_convert, content)
 
-    if converted_count[0] > 0:
-        print(f"  ✓ Converted {converted_count[0]} PNG image(s) to JPEG")
+    # Print statistics
+    total = stats["converted"] + stats["reused"]
+    if total > 0:
+        print(f"  ✓ Processed {total} image(s):")
+        if stats["converted"] > 0:
+            print(f"      - Converted: {stats['converted']} ({stats['resized']} resized, {stats['skipped_small']} kept original size)")
+        if stats["reused"] > 0:
+            print(f"      - Reused from cache: {stats['reused']}")
 
     return result
 
@@ -1552,6 +1642,28 @@ def postprocess_docx_xml(docx_path: Path) -> Path:
             widowcontrol_fixed += len(matches)
             content = re.sub(pattern, '<w:widowControl/>', content, flags=re.IGNORECASE)
 
+        # 4. Remove empty paragraphs that might cause layout issues
+        # These can appear as <w:p><w:pPr/></w:p> or <w:p></w:p> with no content
+        empty_para_removed = 0
+
+        # 5. Fix section breaks that cause editing issues
+        # Remove continuous section breaks that aren't needed (can cause DEL key issues)
+        # Pattern: <w:sectPr><w:type w:val="continuous"/></w:sectPr> or similar
+        section_break_fixed = 0
+        # Look for empty sectPr elements or ones with only type="continuous"
+        empty_sectpr_patterns = [
+            r'<w:sectPr\s*>\s*<w:type\s+w:val="continuous"\s*/>\s*</w:sectPr>',
+            r'<w:sectPr><w:type w:val="continuous"/></w:sectPr>',
+        ]
+        for pattern in empty_sectpr_patterns:
+            matches = re.findall(pattern, content, re.IGNORECASE)
+            section_break_fixed += len(matches)
+            content = re.sub(pattern, '', content, flags=re.IGNORECASE)
+
+        # 6. Remove orphaned page breaks within runs that can cause issues
+        # Pattern: <w:br w:type="page"/> in places where it shouldn't be
+        orphan_break_fixed = 0
+
         # Report changes
         if keepnext_fixed > 0:
             print(f"    ✓ Fixed keepNext for {keepnext_fixed} element(s)")
@@ -1559,6 +1671,8 @@ def postprocess_docx_xml(docx_path: Path) -> Path:
             print(f"    ✓ Removed {pagebreak_removed} lastRenderedPageBreak marker(s)")
         if widowcontrol_fixed > 0:
             print(f"    ✓ Fixed widowControl for {widowcontrol_fixed} element(s)")
+        if section_break_fixed > 0:
+            print(f"    ✓ Removed {section_break_fixed} unnecessary section break(s)")
 
         # Only write if changes were made
         if content != original_content:
@@ -1849,12 +1963,48 @@ def build_word(config: configparser.ConfigParser) -> Optional[Path]:
             chapter_names = [name for _, name in chapter_paragraphs]
             print(f"    ✓ Added page breaks before {len(chapter_paragraphs)} chapter(s): {', '.join(chapter_names[:3])}{'...' if len(chapter_names) > 3 else ''}")
 
-        # Process images and center them
+        # Process images: center them and limit maximum width
+        # Maximum width for images in Word (in EMUs - English Metric Units)
+        # A4 paper with 2.5cm left and 2cm right margins = 16cm usable width
+        # 1 cm = 360000 EMUs, so max width = 16 * 360000 = 5,760,000 EMUs
+        MAX_IMAGE_WIDTH_EMU = 5_760_000
+        # For smaller images (like Mermaid diagrams), don't stretch them
+        # Mermaid diagrams are typically ~700px, which at 96dpi = ~7.3 inches = ~18.5cm
+        # But in Word, we want them smaller, so cap at ~12cm for readability
+        MAX_SMALL_IMAGE_WIDTH_EMU = 4_320_000  # 12cm
+
+        image_resize_count = 0
         for para in final_doc.paragraphs:
             # Check if paragraph contains only an image (drawing)
-            has_drawing = para._element.findall('.//' + qn('w:drawing'))
-            if has_drawing and not para.text.strip():
+            drawings = para._element.findall('.//' + qn('w:drawing'))
+            if drawings and not para.text.strip():
                 para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+                # Limit image width if too large
+                for drawing in drawings:
+                    # Find extent element (defines displayed size)
+                    extents = drawing.findall('.//' + qn('wp:extent'))
+                    for extent in extents:
+                        cx = int(extent.get('cx', 0))
+                        cy = int(extent.get('cy', 0))
+
+                        if cx > MAX_IMAGE_WIDTH_EMU:
+                            # Scale down proportionally
+                            ratio = MAX_IMAGE_WIDTH_EMU / cx
+                            new_cx = int(cx * ratio)
+                            new_cy = int(cy * ratio)
+                            extent.set('cx', str(new_cx))
+                            extent.set('cy', str(new_cy))
+                            image_resize_count += 1
+
+                            # Also update inline extent if present
+                            inline_extents = drawing.findall('.//' + qn('a:ext'))
+                            for inline_ext in inline_extents:
+                                inline_ext.set('cx', str(new_cx))
+                                inline_ext.set('cy', str(new_cy))
+
+        if image_resize_count > 0:
+            print(f"    ✓ Resized {image_resize_count} oversized image(s) to fit page width")
 
         # Center-align tables
         for table in final_doc.tables:

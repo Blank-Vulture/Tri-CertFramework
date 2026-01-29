@@ -27,6 +27,10 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Acknowledge Turbopack (Next.js 16+ default) while keeping webpack config
+  // This silences the warning about webpack config without turbopack config
+  turbopack: {},
+
   // Static export for GitHub Pages
   output: 'export',
   

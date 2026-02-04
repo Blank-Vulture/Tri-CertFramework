@@ -15,7 +15,7 @@
     "@types/node": "^24.3.0",
     "crypto-js": "^4.2.0",
     "pdf-lib": "^1.17.1",
-    "snarkjs": "^0.7.5",
+    "snarkjs": "^0.7.6",
     "tsx": "^4.19.0",
     "typescript": "^5.9.2"
   }

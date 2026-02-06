@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI活用開発ワークフロー</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Meiryo", sans-serif;
+      background: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 2rem;
+    }
+    .container {
+      max-width: 1200px;
+      width: 100%;
+    }
+    h1 {
+      text-align: center;
+      font-size: 1.5rem;
+      color: #1a1a2e;
+      margin-bottom: 1.2rem;
+      font-weight: 700;
+    }
+    .mermaid {
+      display: flex;
+      justify-content: center;
+    }
+    .mermaid svg {
+      max-width: 100%;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>AI活用開発ワークフロー</h1>
+    <pre class="mermaid">
+flowchart TB
+    subgraph phase1["<b>設計フェーズ</b>　─　デスクトップ版"]
+        direction TB
+        common["Gemini / ChatGPT / Claude（共通）\n設計方針・デザインパターンの検討"]
+        chatgpt1["<b>ChatGPT</b>\n要求定義・プロンプト改良"]
+        gemini1["<b>Gemini</b>\n検索を伴う調査"]
+        claude1["<b>Claude</b>\n実装全般の設計"]
+        common --> chatgpt1 & gemini1 & claude1
+    end
+
+    subgraph phase2["<b>実装フェーズ</b>　─　Cursor / CLI 経由"]
+        direction LR
+        claudecode["<b>Claude Code</b>\nコードの実装"]
+        codex["<b>Codex（ChatGPT）</b>\nコードレビュー\nバグフィックス"]
+        gemini2["<b>Gemini</b>\n他ツールで解決困難な\nバグ修正・UIデザイン改善"]
+    end
+
+    subgraph phase3["<b>品質保証フェーズ</b>　─　GitHub"]
+        direction LR
+        dependabot["<b>Dependabot</b>\n依存パッケージの\n脆弱性検査"]
+        bugbot["<b>Cursor bugbot</b>\nClaude Code PRの\nレビュー"]
+        codeql["<b>CodeQL</b>\n全使用言語の\nコード品質チェック\n（GitHub Actions連動）"]
+        gitguardian["<b>GitGuardian</b>\n機密情報の\n漏洩検知"]
+    end
+
+    phase1 -- "設計完了" --> phase2
+    phase2 -- "実装完了" --> phase3
+
+    classDef phaseStyle fill:#f0f4ff,stroke:#4a6fa5,stroke-width:2px,color:#1a1a2e
+    classDef chatgptStyle fill:#74aa9c,stroke:#5a8f7d,color:#fff,stroke-width:1.5px
+    classDef geminiStyle fill:#4285f4,stroke:#3367d6,color:#fff,stroke-width:1.5px
+    classDef claudeStyle fill:#d4a574,stroke:#b8895c,color:#fff,stroke-width:1.5px
+    classDef claudeCodeStyle fill:#c67b4a,stroke:#a86535,color:#fff,stroke-width:1.5px
+    classDef githubStyle fill:#6e40c9,stroke:#5a32a3,color:#fff,stroke-width:1.5px
+    classDef commonStyle fill:#e8eaf6,stroke:#7986cb,color:#1a1a2e,stroke-width:1.5px
+
+    class phase1,phase2,phase3 phaseStyle
+    class chatgpt1,codex chatgptStyle
+    class gemini1,gemini2 geminiStyle
+    class claude1 claudeStyle
+    class claudecode claudeCodeStyle
+    class dependabot,bugbot,codeql,gitguardian githubStyle
+    class common commonStyle
+    </pre>
+  </div>
+
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'base',
+      themeVariables: {
+        fontSize: '14px',
+        fontFamily: '"Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif'
+      },
+      flowchart: {
+        htmlLabels: true,
+        useMaxWidth: true,
+        curve: 'basis',
+        padding: 20,
+        nodeSpacing: 40,
+        rankSpacing: 50
+      }
+    });
+  </script>
+</body>
+</html>

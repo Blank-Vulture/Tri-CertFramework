@@ -1,108 +1,364 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI活用開発ワークフロー</title>
-  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Meiryo", sans-serif;
-      background: #fff;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-      padding: 2rem;
-    }
-    .container {
-      max-width: 1200px;
-      width: 100%;
-    }
-    h1 {
-      text-align: center;
-      font-size: 1.5rem;
-      color: #1a1a2e;
-      margin-bottom: 1.2rem;
-      font-weight: 700;
-    }
-    .mermaid {
-      display: flex;
-      justify-content: center;
-    }
-    .mermaid svg {
-      max-width: 100%;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI活用開発ワークフロー</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --chatgpt: #10a37f;
+    --chatgpt-light: #e6f7f2;
+    --gemini: #4285f4;
+    --gemini-light: #e8f0fe;
+    --claude: #d97757;
+    --claude-light: #fdf0eb;
+    --github: #6e40c9;
+    --github-light: #f0ebf8;
+    --phase1-bg: #f8f9ff;
+    --phase1-border: #b8c5e8;
+    --phase2-bg: #f7fbf8;
+    --phase2-border: #a8d4b8;
+    --phase3-bg: #f9f7fc;
+    --phase3-border: #c4b5dc;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+    background: #fff;
+    color: #1e293b;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 2.5rem 2rem;
+  }
+
+  .workflow {
+    max-width: 960px;
+    width: 100%;
+  }
+
+  .workflow-title {
+    text-align: center;
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 2.2rem;
+    letter-spacing: 0.02em;
+  }
+
+  /* --- Phase Section --- */
+  .phase {
+    border-radius: 16px;
+    padding: 1.5rem 1.5rem 1.3rem;
+    margin-bottom: 0;
+    position: relative;
+  }
+
+  .phase-header {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    margin-bottom: 1rem;
+  }
+
+  .phase-number {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.82rem; font-weight: 700; color: #fff;
+    flex-shrink: 0;
+  }
+
+  .phase-label {
+    font-size: 1.05rem;
+    font-weight: 700;
+  }
+
+  .phase-env {
+    font-size: 0.82rem;
+    color: #64748b;
+    font-weight: 400;
+    margin-left: 0.3rem;
+  }
+
+  /* Phase colors */
+  .phase--design              { background: var(--phase1-bg); border: 1.5px solid var(--phase1-border); }
+  .phase--design .phase-number { background: #5b7cc5; }
+  .phase--impl                { background: var(--phase2-bg); border: 1.5px solid var(--phase2-border); }
+  .phase--impl .phase-number  { background: #4a9d6e; }
+  .phase--qa                  { background: var(--phase3-bg); border: 1.5px solid var(--phase3-border); }
+  .phase--qa .phase-number    { background: #7c5bb5; }
+
+  /* --- Common banner --- */
+  .common-banner {
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    padding: 0.65rem 1rem;
+    margin-bottom: 1rem;
+    text-align: center;
+    font-size: 0.88rem;
+    color: #475569;
+    line-height: 1.5;
+  }
+  .common-banner strong { color: #1e293b; font-weight: 600; }
+
+  /* --- Cards grid --- */
+  .cards { display: flex; gap: 0.8rem; flex-wrap: wrap; }
+  .cards--3 .card { flex: 1 1 0; min-width: 180px; }
+  .cards--4 .card { flex: 1 1 0; min-width: 160px; }
+
+  .card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 1rem 1rem 0.9rem;
+    border: 1.5px solid #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    transition: box-shadow 0.2s;
+  }
+  .card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.07); }
+
+  .card-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+  }
+
+  .card-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .card-name {
+    font-size: 0.92rem;
+    font-weight: 700;
+  }
+
+  .card-role {
+    font-size: 0.82rem;
+    color: #475569;
+    line-height: 1.55;
+  }
+
+  .card-tag {
+    margin-top: auto;
+    padding-top: 0.35rem;
+  }
+  .card-tag span {
+    font-size: 0.7rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    font-weight: 500;
+  }
+
+  /* Brand-specific accents */
+  .card--chatgpt  { border-left: 3.5px solid var(--chatgpt); }
+  .card--chatgpt .card-dot  { background: var(--chatgpt); }
+  .card--chatgpt .card-name { color: #0d8c6d; }
+  .card--chatgpt .card-tag span { background: var(--chatgpt-light); color: #0d8c6d; }
+
+  .card--gemini   { border-left: 3.5px solid var(--gemini); }
+  .card--gemini .card-dot   { background: var(--gemini); }
+  .card--gemini .card-name  { color: #2b6cd4; }
+  .card--gemini .card-tag span  { background: var(--gemini-light); color: #2b6cd4; }
+
+  .card--claude   { border-left: 3.5px solid var(--claude); }
+  .card--claude .card-dot   { background: var(--claude); }
+  .card--claude .card-name  { color: #c0623e; }
+  .card--claude .card-tag span  { background: var(--claude-light); color: #c0623e; }
+
+  .card--github   { border-left: 3.5px solid var(--github); }
+  .card--github .card-dot   { background: var(--github); }
+  .card--github .card-name  { color: #5a32a3; }
+  .card--github .card-tag span  { background: var(--github-light); color: #5a32a3; }
+
+  /* --- Flow arrow between phases --- */
+  .flow-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.6rem 0;
+    position: relative;
+  }
+  .flow-arrow::before {
+    content: "";
+    width: 2px; height: 28px;
+    background: #94a3b8;
+    display: block;
+  }
+  .flow-arrow::after {
+    content: "";
+    position: absolute;
+    bottom: 0.35rem;
+    width: 0; height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 8px solid #94a3b8;
+  }
+
+  /* --- Legend --- */
+  .legend {
+    display: flex;
+    gap: 1.5rem;
+    justify-content: center;
+    margin-top: 1.6rem;
+    flex-wrap: wrap;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.78rem;
+    color: #64748b;
+  }
+  .legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+  }
+</style>
 </head>
 <body>
-  <div class="container">
-    <h1>AI活用開発ワークフロー</h1>
-    <pre class="mermaid">
-flowchart TB
-    subgraph phase1["<b>設計フェーズ</b>　─　デスクトップ版"]
-        direction TB
-        common["Gemini / ChatGPT / Claude（共通）\n設計方針・デザインパターンの検討"]
-        chatgpt1["<b>ChatGPT</b>\n要求定義・プロンプト改良"]
-        gemini1["<b>Gemini</b>\n検索を伴う調査"]
-        claude1["<b>Claude</b>\n実装全般の設計"]
-        common --> chatgpt1 & gemini1 & claude1
-    end
 
-    subgraph phase2["<b>実装フェーズ</b>　─　Cursor / CLI 経由"]
-        direction LR
-        claudecode["<b>Claude Code</b>\nコードの実装"]
-        codex["<b>Codex（ChatGPT）</b>\nコードレビュー\nバグフィックス"]
-        gemini2["<b>Gemini</b>\n他ツールで解決困難な\nバグ修正・UIデザイン改善"]
-    end
+<div class="workflow">
+  <h1 class="workflow-title">AI活用開発ワークフロー</h1>
 
-    subgraph phase3["<b>品質保証フェーズ</b>　─　GitHub"]
-        direction LR
-        dependabot["<b>Dependabot</b>\n依存パッケージの\n脆弱性検査"]
-        bugbot["<b>Cursor bugbot</b>\nClaude Code PRの\nレビュー"]
-        codeql["<b>CodeQL</b>\n全使用言語の\nコード品質チェック\n（GitHub Actions連動）"]
-        gitguardian["<b>GitGuardian</b>\n機密情報の\n漏洩検知"]
-    end
+  <!-- ========== Phase 1: Design ========== -->
+  <section class="phase phase--design">
+    <div class="phase-header">
+      <div class="phase-number">1</div>
+      <div class="phase-label">設計フェーズ<span class="phase-env"> &mdash; デスクトップ版</span></div>
+    </div>
 
-    phase1 -- "設計完了" --> phase2
-    phase2 -- "実装完了" --> phase3
+    <div class="common-banner">
+      <strong>Gemini / ChatGPT / Claude</strong> に共通で設計方針・デザインパターンを出力させ、<br>
+      各ツールの強みに応じて以下のように使い分けた
+    </div>
 
-    classDef phaseStyle fill:#f0f4ff,stroke:#4a6fa5,stroke-width:2px,color:#1a1a2e
-    classDef chatgptStyle fill:#74aa9c,stroke:#5a8f7d,color:#fff,stroke-width:1.5px
-    classDef geminiStyle fill:#4285f4,stroke:#3367d6,color:#fff,stroke-width:1.5px
-    classDef claudeStyle fill:#d4a574,stroke:#b8895c,color:#fff,stroke-width:1.5px
-    classDef claudeCodeStyle fill:#c67b4a,stroke:#a86535,color:#fff,stroke-width:1.5px
-    classDef githubStyle fill:#6e40c9,stroke:#5a32a3,color:#fff,stroke-width:1.5px
-    classDef commonStyle fill:#e8eaf6,stroke:#7986cb,color:#1a1a2e,stroke-width:1.5px
+    <div class="cards cards--3">
+      <div class="card card--chatgpt">
+        <div class="card-brand">
+          <span class="card-dot"></span>
+          <span class="card-name">ChatGPT</span>
+        </div>
+        <div class="card-role">要求定義の整理<br>プロンプトの改良</div>
+        <div class="card-tag"><span>要件定義</span></div>
+      </div>
+      <div class="card card--gemini">
+        <div class="card-brand">
+          <span class="card-dot"></span>
+          <span class="card-name">Gemini</span>
+        </div>
+        <div class="card-role">検索を伴う技術調査<br>先行事例のリサーチ</div>
+        <div class="card-tag"><span>検索・調査</span></div>
+      </div>
+      <div class="card card--claude">
+        <div class="card-brand">
+          <span class="card-dot"></span>
+          <span class="card-name">Claude</span>
+        </div>
+        <div class="card-role">実装全般の設計<br>アーキテクチャ検討</div>
+        <div class="card-tag"><span>設計</span></div>
+      </div>
+    </div>
+  </section>
 
-    class phase1,phase2,phase3 phaseStyle
-    class chatgpt1,codex chatgptStyle
-    class gemini1,gemini2 geminiStyle
-    class claude1 claudeStyle
-    class claudecode claudeCodeStyle
-    class dependabot,bugbot,codeql,gitguardian githubStyle
-    class common commonStyle
-    </pre>
+  <div class="flow-arrow"></div>
+
+  <!-- ========== Phase 2: Implementation ========== -->
+  <section class="phase phase--impl">
+    <div class="phase-header">
+      <div class="phase-number">2</div>
+      <div class="phase-label">実装フェーズ<span class="phase-env"> &mdash; Cursor / CLI 経由</span></div>
+    </div>
+
+    <div class="cards cards--3">
+      <div class="card card--claude">
+        <div class="card-brand">
+          <span class="card-dot"></span>
+          <span class="card-name">Claude Code</span>
+        </div>
+        <div class="card-role">コードの実装全般<br>（メインの実装担当）</div>
+        <div class="card-tag"><span>実装</span></div>
+      </div>
+      <div class="card card--chatgpt">
+        <div class="card-brand">
+          <span class="card-dot"></span>
+          <span class="card-name">Codex (ChatGPT)</span>
+        </div>
+        <div class="card-role">コードレビュー<br>バグフィックス</div>
+        <div class="card-tag"><span>レビュー</span></div>
+      </div>
+      <div class="card card--gemini">
+        <div class="card-brand">
+          <span class="card-dot"></span>
+          <span class="card-name">Gemini</span>
+        </div>
+        <div class="card-role">他ツールで解決困難なバグ修正<br>UIデザイン（色合い等）の改善</div>
+        <div class="card-tag"><span>補完</span></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="flow-arrow"></div>
+
+  <!-- ========== Phase 3: QA ========== -->
+  <section class="phase phase--qa">
+    <div class="phase-header">
+      <div class="phase-number">3</div>
+      <div class="phase-label">品質保証フェーズ<span class="phase-env"> &mdash; GitHub</span></div>
+    </div>
+
+    <div class="cards cards--4">
+      <div class="card card--github">
+        <div class="card-brand">
+          <span class="card-dot"></span>
+          <span class="card-name">Dependabot</span>
+        </div>
+        <div class="card-role">依存パッケージの<br>脆弱性検査</div>
+        <div class="card-tag"><span>脆弱性</span></div>
+      </div>
+      <div class="card card--github">
+        <div class="card-brand">
+          <span class="card-dot"></span>
+          <span class="card-name">Cursor bugbot</span>
+        </div>
+        <div class="card-role">Claude Code が出す<br>PRのレビュー</div>
+        <div class="card-tag"><span>PRレビュー</span></div>
+      </div>
+      <div class="card card--github">
+        <div class="card-brand">
+          <span class="card-dot"></span>
+          <span class="card-name">CodeQL</span>
+        </div>
+        <div class="card-role">全使用言語のコード品質<br>GitHub Actions と連動</div>
+        <div class="card-tag"><span>静的解析</span></div>
+      </div>
+      <div class="card card--github">
+        <div class="card-brand">
+          <span class="card-dot"></span>
+          <span class="card-name">GitGuardian</span>
+        </div>
+        <div class="card-role">機密情報の<br>漏洩検知</div>
+        <div class="card-tag"><span>シークレット</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Legend -->
+  <div class="legend">
+    <div class="legend-item"><span class="legend-dot" style="background:var(--chatgpt)"></span>ChatGPT / Codex</div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--gemini)"></span>Gemini</div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--claude)"></span>Claude / Claude Code</div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--github)"></span>GitHub ツール</div>
   </div>
+</div>
 
-  <script>
-    mermaid.initialize({
-      startOnLoad: true,
-      theme: 'base',
-      themeVariables: {
-        fontSize: '14px',
-        fontFamily: '"Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif'
-      },
-      flowchart: {
-        htmlLabels: true,
-        useMaxWidth: true,
-        curve: 'basis',
-        padding: 20,
-        nodeSpacing: 40,
-        rankSpacing: 50
-      }
-    });
-  </script>
 </body>
 </html>
